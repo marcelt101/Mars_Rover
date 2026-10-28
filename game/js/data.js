@@ -141,10 +141,26 @@ MR.PERKS = {
   sharp_eyes:  {name:'Sharp eyes', tier:'Common', rank:2, icon:'◉', desc:'See 1 square farther and scan 1 square wider.', real:'Perseverance has 23 cameras, more than any Mars mission before it.'},
   supercam:    {name:'SuperCam laser', tier:'Rare', rank:3, icon:'✶', desc:'Analyze also zaps signals up to 3 squares straight ahead.', real:'SuperCam zaps rocks with a laser from up to 7 meters away and reads the glow.'},
   big_battery: {name:'Big battery', tier:'Rare', rank:4, icon:'▮', desc:'The battery holds 150% instead of 100%.', real:'Rovers store energy in lithium-ion batteries, like a phone but much tougher.'},
+  better_radio: {name:'Better radio', tier:'Common', rank:1, icon:'≋', desc:'Your commands reach the rover 30% faster.', real:'Rovers usually talk to Earth through orbiters like Mars Reconnaissance Orbiter, using a UHF radio.'},
+  hg_antenna:  {name:'High-gain antenna', tier:'Rare', rank:3, icon:'⌔', desc:'Your commands reach the rover twice as fast.', real:"Perseverance's high-gain antenna can talk straight to Earth without an orbiter."},
 };
 /* Cadet perks are automatic. */
 MR.CADET_LEN = rank => 5 + Math.min(3, rank);
 MR.cadetMagnet = rank => rank >= 2;
+/* Signal delay for one sol: 5–10 s with the stock antenna, the same for the whole team that sol
+   (like the changing Earth–Mars distance). Radio and antenna perks shorten it. Cadets get them by rank. */
+MR.uplinkMs = (st, r) => {
+  const h = Math.sin((st.seed % 100000) * 12.9898 + st.sol * 78.233) * 43758.5453, frac = h - Math.floor(h);
+  let ms = 5000 + 5000 * frac;
+  const radio = r && (r.role === 'cadet' ? r.rank >= 1 : (r.perks || []).includes('better_radio'));
+  const antenna = r && (r.role === 'cadet' ? r.rank >= 3 : (r.perks || []).includes('hg_antenna'));
+  if (radio) ms *= .7;
+  if (antenna) ms *= .5;
+  const q = new URLSearchParams(location.search).get('uplink');
+  return ms * (q != null ? Math.max(0, +q) : 1);
+};
+MR.antennaName = r => { const radio = r.role === 'cadet' ? r.rank >= 1 : (r.perks||[]).includes('better_radio'), ant = r.role === 'cadet' ? r.rank >= 3 : (r.perks||[]).includes('hg_antenna');
+  return ant && radio ? 'High-gain antenna and better radio' : ant ? 'High-gain antenna' : radio ? 'Better radio' : 'Stock antenna'; };
 
 /* Maps */
 MR.MAPS = {

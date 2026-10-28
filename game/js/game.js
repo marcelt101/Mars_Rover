@@ -37,6 +37,7 @@ function leave(){
   if (G.net) { try { G.net.close(); } catch (e) {} }
   if (G.wake) { try { G.wake.release(); } catch (e) {} G.wake = null; }
   clearInterval(G.pingTimer);
+  G.gen = (G.gen || 0) + 1;
   Object.assign(G, {chain:Promise.resolve(), mode:null, net:null, code:null, phase:'home', state:null, plan:[], ready:false, readyPids:[], plans:{}, drafts:{}, cid2pid:{}, pending:[]});
   $('win').hidden = true; $('joinBtn').disabled = false; $('joinBtn').textContent = 'Join'; UI.renderHome(); UI.show('scrHome');
 }
@@ -449,6 +450,7 @@ function markPlan(idx, skipped){
   renderPlan();
 }
 async function playEvent(ev){
+  if (!G.state) return;
   const st = G.state, W = st.world, r = st.rovers.find(x => x.pid === ev.pid), a = r && R.anim[r.pid], mine = ev.pid === G.myPid;
   if (ev.msg) log(ev.msg.k, ev.msg.text);
   if (mine && ev.idx != null && ev.t !== 'skip') markPlan(ev.idx);
@@ -488,14 +490,25 @@ async function playEvent(ev){
   }
   renderHud();
 }
+function uplink(){
+  if (!G.state) return Promise.resolve();
+  const r = myRover(), ms = MR.uplinkMs(G.state, r);
+  $('uplink').hidden = false;
+  $('ulSub').textContent = `${r ? MR.antennaName(r) : 'Stock antenna'}. Real signals take 4 to 24 minutes.` + (r && r.role !== 'cadet' && !(r.perks||[]).includes('hg_antenna') ? ' Radio and antenna perks make it faster.' : '');
+  return new Promise(res => { const t0 = performance.now();
+    (function step(t){ const k = ms ? Math.min(1, (t - t0) / ms) : 1;
+      $('ulBar').style.width = (k*100) + '%';
+      $('ulTitle').textContent = `Signal on its way to Mars… ${Math.max(0, Math.ceil((ms - (t - t0)) / 1000))} s`;
+      if (k < 1) requestAnimationFrame(step); else { $('uplink').hidden = true; $('ulBar').style.width = '0'; res(); } })(t0); });
+}
 async function playSol(timeline, newState){
+  const gen = G.gen;
   G.phase = 'run'; G.ready = false; if (!isHostish()) G.readyPids = []; R.running = true; R.ghost = []; R.drafts = {}; G.drafts = {};
   renderTeam(); renderPlan();
-  $('uplink').hidden = false;
-  await tween(1500, k => $('ulBar').style.width = (k*100) + '%');
-  $('uplink').hidden = true; $('ulBar').style.width = '0';
+  await uplink();
+  if (gen !== G.gen) return;
   R.cam.follow = true;
-  for (const tick of timeline) { await Promise.all(tick.map(playEvent)); renderSide(); renderCrewBar(); }
+  for (const tick of timeline) { await Promise.all(tick.map(playEvent)); if (gen !== G.gen) return; renderSide(); renderCrewBar(); }
   R.running = false; $('runLine').hidden = true;
   setGameState(newState);
   const won = timeline.some(t => t.some(e => e.t === 'win'));

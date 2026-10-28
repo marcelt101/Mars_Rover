@@ -121,7 +121,9 @@ UI.inventory = tab => {
     if (p.role === 'cadet') {
       body += `<h3 class="t">Cadet powers</h3><div class="perks">
         <div class="perk" aria-pressed="true"><span class="pi">↑</span><span><b>${MR.CADET_LEN(ri.rank)} pictures per plan</b><small>Rank up to plan longer trips (up to 8).</small></span></div>
-        <div class="perk ${MR.cadetMagnet(ri.rank) ? '' : 'locked'}" aria-pressed="${MR.cadetMagnet(ri.rank)}"><span class="pi">✦</span><span><b>Gem magnet</b><small>Dig grabs gems right next to you. ${MR.cadetMagnet(ri.rank) ? 'Unlocked!' : 'Unlocks at Field Geologist.'}</small></span></div></div>`;
+        <div class="perk ${MR.cadetMagnet(ri.rank) ? '' : 'locked'}" aria-pressed="${MR.cadetMagnet(ri.rank)}"><span class="pi">✦</span><span><b>Gem magnet</b><small>Dig grabs gems right next to you. ${MR.cadetMagnet(ri.rank) ? 'Unlocked!' : 'Unlocks at Field Geologist.'}</small></span></div>
+        <div class="perk ${ri.rank >= 1 ? '' : 'locked'}" aria-pressed="${ri.rank >= 1}"><span class="pi">≋</span><span><b>Better radio</b><small>Your GO reaches Mars faster. ${ri.rank >= 1 ? 'Unlocked!' : 'Unlocks at Rover Driver.'}</small></span></div>
+        <div class="perk ${ri.rank >= 3 ? '' : 'locked'}" aria-pressed="${ri.rank >= 3}"><span class="pi">⌔</span><span><b>High-gain antenna</b><small>Twice as fast again. ${ri.rank >= 3 ? 'Unlocked!' : 'Unlocks at Science Lead.'}</small></span></div></div>`;
     } else {
       body += `<div class="ph"><h3 class="t">Perks</h3><span class="count">${eq.length} of ${slots} slots used · changes apply to your next expedition</span></div>
         <div class="perks" id="perkList">${Object.entries(MR.PERKS).map(([k, pk]) => { const has = own.includes(k), on = eq.includes(k);

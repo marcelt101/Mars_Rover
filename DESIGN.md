@@ -117,7 +117,8 @@ Built in v2:
 2. Cadet picture-sequence mode with footprint preview and treasure-chest animation
 3. Multiplayer for up to 6: host and join with codes or QR, Ready buttons, chat, drafts of everyone's paths, reconnects, "Start without waiting"
 4. Gusev Crater with the Excavator, sand traps and Spirit at Troy
-5. Perks: Common and Rare tiers (Wide wheels, Sharp eyes, SuperCam laser, Big battery)
+5. Perks: Common and Rare tiers (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery)
+6. Signal delay of 5–10 s per sol with the stock antenna; radio and antenna perks shorten it
 
 ## Next revision (v3): real NASA maps
 

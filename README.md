@@ -48,7 +48,8 @@ The devices find each other through the free PeerJS service, then talk directly.
 - **Inventory:** press **I** (or **E**) any time, like Minecraft and Minetest.
 - **Mineral cards** with real facts, rarities and rare shiny versions. Team finds go to everyone.
 - **Mars history:** find Perseverance's backshell, the Ingenuity helicopter, and the Spirit rover where it got stuck.
-- **24 mission patches**, **ranks** from Trainee to Flight Director, and **perks** (Wide wheels, Sharp eyes, SuperCam laser, Big battery).
+- **24 mission patches**, **ranks** from Trainee to Flight Director, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
+- **Signal delay:** each sol's commands take 5–10 seconds to reach Mars with the stock antenna. Better radio makes it 30% faster, the High-gain antenna twice as fast. Cadets get both automatically as they rank up.
 - Finishing Jezero unlocks Gusev for the team.
 - Progress is saved in each device's browser. **Parents and saves** on the start screen has a backup code to move or restore profiles, and a switch to unlock all maps.
 
