@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mars Rover Ops</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Mission-control console framing a Mars surface map: map + brief on the left, today's command sequence + log on the right */
+:root{
+  --bg:#0e1319; --panel:#151c24; --raise:#1c2530; --line:#29343f; --fg:#e6ecf1; --muted:#8fa0b0;
+  --signal:#58cfbe; --sci:#f0bf5a; --build:#e8844f; --power:#86d48f; --bad:#ff7b6c;
+  --display:'Chakra Petch','Segoe UI',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{background:var(--bg)}
+body{color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.app{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+
+.top{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end;justify-content:space-between}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.mark{width:38px;height:38px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#e89a6c,#b4532f 55%,#6d2c18);box-shadow:0 0 0 3px var(--bg),0 0 0 4px var(--line)}
+h1{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.04em;text-transform:uppercase;margin:0;line-height:1.1}
+.sub{margin:2px 0 0;color:var(--muted);font-size:14px}
+.missions{display:flex;flex-wrap:wrap;gap:6px}
+.mchip{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;display:flex;gap:8px;align-items:center;cursor:pointer;font-size:13px}
+.mchip:hover{background:var(--raise)}
+.mchip[aria-current="true"]{border-color:var(--signal);background:var(--raise)}
+.mchip .n{font-family:var(--mono);color:var(--muted)}
+.mchip .stars{color:var(--sci);font-size:11px;letter-spacing:1px}
+.mchip .stars i{font-style:normal;color:var(--line)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+
+.brief{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:start}
+@media (max-width:560px){.brief{grid-template-columns:minmax(0,1fr)}}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--signal)}
+h2{font-family:var(--display);font-size:22px;font-weight:600;margin:2px 0 4px;text-wrap:balance}
+.brief p{margin:0;color:#c3ced8;max-width:62ch}
+.goals{list-style:none;margin:0;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;min-width:210px}
+.goals .h{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.goals li{display:flex;gap:8px;align-items:center;font-size:14px}
+.goals .box{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--muted);flex:none;display:grid;place-items:center;font-size:11px;line-height:1}
+.goals li.done .box{background:var(--power);border-color:var(--power);color:var(--bg)}
+.goals li.done span.t{color:var(--muted);text-decoration:line-through}
+.goals .cnt{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.hud{display:flex;flex-wrap:wrap;gap:8px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-family:var(--display);font-weight:600;font-size:18px;font-variant-numeric:tabular-nums}
+.stat.bat{flex:1 1 200px}
+.batbar{height:8px;border-radius:4px;background:var(--raise);overflow:hidden;margin-top:4px}
+.batbar span{display:block;height:100%;background:var(--power);transition:width .25s ease,background .25s}
+.batbar span.low{background:var(--bad)}
+
+.mapwrap{position:relative;width:100%;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#5a2a1a;line-height:0}
+#map{display:block;touch-action:manipulation}
+.win{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,19,.72);line-height:1.45;padding:16px}
+.win .card{background:var(--panel);border:1px solid var(--signal);border-radius:12px;padding:20px 24px;text-align:center;max-width:340px;display:flex;flex-direction:column;gap:8px;align-items:center}
+.win h3{font-family:var(--display);font-size:24px;margin:0;text-transform:uppercase;letter-spacing:.04em}
+.win .big{font-size:34px;color:var(--sci);letter-spacing:6px}
+.win .big i{font-style:normal;color:var(--line)}
+.win p{margin:0;color:#c3ced8}
+.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.maptools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.btn{background:var(--raise);border:1px solid var(--line);border-radius:7px;padding:8px 14px;cursor:pointer;font-size:14px}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--signal);border-color:var(--signal);color:#06201c;font-weight:600}
+.toggle{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:14px;cursor:pointer}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:13px;margin-left:auto}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+h3.t{font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:0}
+.count{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
+.pal{display:grid;grid-template-columns:28px 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;text-align:left;background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:7px 8px;cursor:pointer}
+.pal:hover:not(:disabled){border-color:var(--muted)}
+.pal:disabled{opacity:.45;cursor:not-allowed}
+.ic{grid-row:span 2;width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:17px;font-weight:600;color:#0b1015;font-family:var(--body)}
+.pal .lb{font-weight:500;font-size:14px;line-height:1.15}
+.pal small{color:var(--muted);font-family:var(--mono);font-size:11px}
+.cat-move .ic{background:var(--signal)}
+.cat-sci .ic{background:var(--sci)}
+.cat-build .ic{background:var(--build)}
+.cat-power .ic{background:var(--power)}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:6px 10px;cursor:pointer;color:var(--muted);font-size:14px;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--signal)}
+.prog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;min-height:60px}
+.prog .empty{color:var(--muted);font-size:14px;padding:14px 10px;border:1px dashed var(--line);border-radius:8px;text-align:center}
+.cmd{display:flex;align-items:center;gap:8px;background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:5px 6px 5px 8px;transition:border-color .15s,opacity .2s,background .15s}
+.cmd .num{font-family:var(--mono);font-size:12px;color:var(--muted);width:18px;text-align:right;font-variant-numeric:tabular-nums}
+.cmd .ic{grid-row:auto;width:24px;height:24px;font-size:15px}
+.cmd .lb{flex:1;min-width:0;font-size:14px}
+.cmd.active{border-color:var(--signal);background:#1f3236}
+.cmd.done{opacity:.6}
+.cmd.skipped{opacity:.35;text-decoration:line-through}
+.arg{display:flex;align-items:center;gap:2px}
+.arg b{font-family:var(--mono);min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
+.mini{width:26px;height:26px;border-radius:6px;border:1px solid var(--line);background:var(--panel);cursor:pointer;display:grid;place-items:center;font-size:15px;line-height:1;padding:0}
+.mini:hover:not(:disabled){border-color:var(--muted)}
+.mini:disabled{opacity:.4;cursor:not-allowed}
+.code{margin:0;background:#0b1015;border:1px solid var(--line);border-radius:8px;padding:12px;font-family:var(--mono);font-size:13px;line-height:1.6;overflow-x:auto;white-space:pre;min-height:60px}
+.code .c{color:var(--muted)} .code .f{color:var(--signal)} .code .n{color:var(--sci)}
+.uplink{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.uplink strong{color:var(--fg);font-weight:500}
+.ulbar{height:6px;border-radius:3px;background:var(--raise);overflow:hidden}
+.ulbar span{display:block;height:100%;width:0;background:repeating-linear-gradient(90deg,var(--signal) 0 10px,#3a9e91 10px 14px)}
+.actions{display:flex;gap:8px}
+.actions .primary{flex:1;padding:11px 14px;font-size:15px;font-family:var(--display);letter-spacing:.06em;text-transform:uppercase}
+
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;font-size:13.5px}
+.log li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:baseline;min-width:0}
+.log .tag{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.log .good{color:var(--power)} .log .bad{color:var(--bad)} .log .warn{color:var(--sci)} .log .info{color:#c3ced8}
+details.how{font-size:14px;color:#c3ced8}
+details.how summary{cursor:pointer;color:var(--muted)}
+details.how ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <h1>Mars Rover Ops</h1>
+        <p class="sub">Plan today's commands, send them to Mars, and watch the rover carry them out.</p>
+      </div>
+    </div>
+    <nav id="missions" class="missions" aria-label="Missions"></nav>
+  </header>
+
+  <main class="grid">
+    <section class="col">
+      <div class="brief">
+        <div>
+          <div class="eyebrow" id="mEyebrow">Mission 1 of 5</div>
+          <h2 id="mName">Touchdown</h2>
+          <p id="mBrief"></p>
+        </div>
+        <ul class="goals" id="goals"></ul>
+      </div>
+
+      <div class="hud">
+        <div class="stat"><span class="k">Sol</span><span class="v" id="hSol">1</span></div>
+        <div class="stat bat"><span class="k">Battery <span id="hBatTxt">100%</span></span><div class="batbar"><span id="hBat" style="width:100%"></span></div></div>
+        <div class="stat"><span class="k">Facing</span><span class="v" id="hDir">East</span></div>
+        <div class="stat" id="hBucketWrap"><span class="k">Bucket</span><span class="v" id="hBucket">Empty</span></div>
+      </div>
+
+      <div class="mapwrap" id="mapwrap">
+        <canvas id="map" role="img" aria-label="Top-down map of the Mars surface showing the rover, rocks, craters and targets"></canvas>
+        <div class="win" id="win" hidden>
+          <div class="card">
+            <h3>Mission complete</h3>
+            <div class="big" id="winStars"></div>
+            <p id="winText"></p>
+            <div class="row">
+              <button class="btn" id="againBtn">Play again</button>
+              <button class="btn primary" id="nextBtn">Next mission</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="maptools">
+        <button class="btn" id="resetBtn">Restart mission</button>
+        <button class="btn" id="newMapBtn" hidden>New map</button>
+        <label class="toggle"><input type="checkbox" id="fast"> Fast mode</label>
+        <div class="legend">
+          <span><i style="background:var(--sci)"></i>Science target</span>
+          <span><i style="background:#c9a07c"></i>Sand pile</span>
+          <span><i style="background:#6e4a3a"></i>Rock or crater (hazard)</span>
+        </div>
+      </div>
+      <details class="how">
+        <summary>How it works</summary>
+        <ol>
+          <li>Tap commands to build today's sequence. You get up to 10 per sol (a Mars day).</li>
+          <li>Press Send to Mars. Real signals take 4 to 24 minutes to arrive. Here it takes a few seconds.</li>
+          <li>Watch the rover. If it sees a hazard, it stops itself and skips the rest of the plan.</li>
+          <li>Every night the solar panels add 25% battery. Finish in fewer sols to earn more stars.</li>
+        </ol>
+      </details>
+    </section>
+
+    <section class="col">
+      <div class="panel">
+        <div class="ph"><h3 class="t">Today's sequence</h3><span class="count" id="count">0 / 10</span></div>
+        <div class="palette" id="palette"></div>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tabBlocks" aria-selected="true">Blocks</button>
+          <button class="tab" role="tab" id="tabCode" aria-selected="false">Python</button>
+        </div>
+        <ol class="prog" id="prog"></ol>
+        <pre class="code" id="code" hidden></pre>
+        <div class="uplink" id="uplink" hidden>
+          <div><strong id="ulText">Uplink: Earth to Mars</strong> <span id="ulSub">Real signals take 4 to 24 minutes.</span></div>
+          <div class="ulbar"><span id="ulBar"></span></div>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="sendBtn">Send to Mars</button>
+          <button class="btn" id="clearBtn">Clear</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h3 class="t">Mission log</h3></div>
+        <ol class="log" id="log"></ol>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+const COLS = 14, ROWS = 10, MAXCMD = 10, SOLAR = 25;
+const DIRS = [[0,-1],[1,0],[0,1],[-1,0]];
+const DIRNAME = ['North','East','South','West'];
+const COST = {move:3, turn:1, scan:4, photo:2, drill:8, dig:6, dump:2, charge:15};
+const CMDS = {
+  forward:{label:'Forward', icon:'↑', cat:'move', arg:true, cost:'3% / square', py:a=>`rover.forward(${a})`},
+  back:   {label:'Back', icon:'↓', cat:'move', arg:true, cost:'3% / square', py:a=>`rover.backward(${a})`},
+  left:   {label:'Turn left', icon:'↶', cat:'move', cost:'1%', py:()=>'rover.turn_left()'},
+  right:  {label:'Turn right', icon:'↷', cat:'move', cost:'1%', py:()=>'rover.turn_right()'},
+  scan:   {label:'Scan', icon:'◎', cat:'sci', cost:'4%', py:()=>'rover.scan()'},
+  photo:  {label:'Photo', icon:'◫', cat:'sci', cost:'2%', py:()=>'rover.take_photo()'},
+  drill:  {label:'Drill', icon:'⊛', cat:'sci', cost:'8%', py:()=>'rover.drill()'},
+  dig:    {label:'Dig', icon:'⤓', cat:'build', cost:'6%', py:()=>'rover.dig()'},
+  dump:   {label:'Dump', icon:'⤒', cat:'build', cost:'2%', py:()=>'rover.dump()'},
+  charge: {label:'Charge', icon:'ϟ', cat:'power', cost:'+15%', py:()=>'rover.charge()'},
+};
+const BLOCK = {R:'a rock', C:'a crater', P:'a rock outcrop', p:'a rock outcrop', D:'a sand pile'};
+const MOVE = ['forward','back','left','right'];
+
+const LEVELS = [
+  {name:'Touchdown', dir:1, bat:100, fog:false, par:2, cmds:MOVE, goals:{reach:true},
+   brief:'You just landed on Mars. Drive to the flag. Rocks block the way, so count the squares and steer around them.',
+   map:['..............','..............','..R.......R...','..............','.A.....R....F.','..............','....R.........','..............','.........R....','..............']},
+  {name:'Rock Hound', dir:1, bat:100, fog:false, par:3, cmds:[...MOVE,'photo','drill'], goals:{samples:2, photos:1},
+   brief:'Scientists want two rock samples and one photo. Drive onto a glowing sample site and Drill. To photograph the striped outcrop, stop next to it and face it.',
+   map:['..............','...S....R.....','.......RR.....','..R...........','.A.....C...P..','..............','.....R....S...','...C..........','........R.....','..............']},
+  {name:'Road Crew', dir:1, bat:100, fog:false, par:5, cmds:[...MOVE,'dig','dump'], goals:{deliver:3},
+   brief:'Build a landing pad. Face a sand pile and Dig to fill the bucket, then drive onto the base pad and Dump. The bucket holds one load at a time.',
+   map:['..............','....D.........','..........R...','.A....BB......','......BB...D..','..R...........','.........C....','...D..........','..............','..............']},
+  {name:'Into the Dark', dir:1, bat:60, fog:true, par:4, cmds:[...MOVE,'scan','drill','charge'], goals:{samples:1, reach:true},
+   brief:'Dust storm! The cameras only see two squares around the rover. Scan to look farther. Drill the hidden sample site, then reach the flag. Power is low, so Charge when you need to.',
+   map:['.......R......','..R.......C...','.....C....R.F.','.A.R....R.....','....R..S..R...','..C.....R.....','......R...C...','...R..........','.........R....','..............']},
+  {name:'Free Roam', dir:1, bat:100, fog:false, par:8, sandbox:true, cmds:Object.keys(CMDS), goals:{samples:3, photos:1, deliver:2},
+   brief:'A new patch of Mars every time. Drill all three samples, photograph the outcrop and deliver two loads of sand to the base pad.'},
+];
+
+const $ = id => document.getElementById(id);
+const canvas = $('map'), ctx = canvas.getContext('2d');
+let li = 0, L, grid, rover, st, sol, seen, tracks, shapes, fx = [], program = [], running = false;
+let cell = 40, W = 560, H = 400, dpr = 1, ground = null, sandboxSeed = Math.floor(Math.random()*1e6);
+let showCode = false;
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const store = {
+  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+let stars = store.get('mro.stars', {});
+$('fast').checked = store.get('mro.fast', false);
+
+function genMap(seed){
+  const r = mulberry32(seed), g = [...Array(ROWS)].map(()=>Array(COLS).fill('.'));
+  const sx = 1, sy = 5, bx = 8+Math.floor(r()*3), by = 1+Math.floor(r()*6);
+  for (let y=by;y<by+2;y++) for (let x=bx;x<bx+2;x++) g[y][x] = 'B';
+  const put = (ch,n) => { let k=0, guard=0; while (k<n && guard++<800) {
+    const x=Math.floor(r()*COLS), y=Math.floor(r()*ROWS);
+    if (g[y][x] !== '.' || (Math.abs(x-sx)<=1 && Math.abs(y-sy)<=1)) continue;
+    g[y][x] = ch; k++; } };
+  put('S',3); put('P',1); put('D',2); put('C',4); put('R',14);
+  g[sy][sx] = 'A';
+  return g.map(row=>row.join(''));
+}
+
+function makeShapes(seed){
+  const r = mulberry32(seed);
+  return grid.map(row => row.map(ch => {
+    if (ch === 'R') {
+      const n = 1 + Math.floor(r()*2.4), out = [];
+      for (let i=0;i<n;i++) out.push({x:.5+(r()-.5)*(n>1?.42:.18), y:.5+(r()-.5)*(n>1?.42:.18), rad:(n>1?.17:.27)+r()*.1, shade:r(), pts:[...Array(8)].map(()=>.72+r()*.36)});
+      return out;
+    }
+    if (ch === 'C') return {rad:.36+r()*.07, ox:(r()-.5)*.08, oy:(r()-.5)*.08};
+    if (ch === 'S' ) return {pebbles:[...Array(4)].map(()=>({x:.5+(r()-.5)*.36, y:.5+(r()-.5)*.36, rad:.05+r()*.05}))};
+    if (ch === 'D') return {rx:.38+r()*.05, ry:.3+r()*.05};
+    return null;
+  }));
+}
+
+function loadLevel(i){
+  li = i; L = LEVELS[i];
+  const map = L.sandbox ? genMap(sandboxSeed) : L.map;
+  let sx = 1, sy = 4;
+  grid = map.map((row,y) => [...row].map((ch,x) => { if (ch === 'A') { sx = x; sy = y; return '.'; } return ch; }));
+  rover = {x:sx, y:sy, dir:L.dir, ang:L.dir*90, px:sx, py:sy, bat:L.bat, cargo:0, busy:null};
+  st = {samples:0, photos:0, delivered:0, reached:false, won:false};
+  sol = 1; tracks = []; fx = [];
+  seen = grid.map(row => row.map(() => !L.fog));
+  revealAround(sx, sy, 2);
+  shapes = makeShapes(9001 + i*977 + (L.sandbox ? sandboxSeed : 0));
+  program = [];
+  $('win').hidden = true;
+  $('newMapBtn').hidden = !L.sandbox;
+  $('hBucketWrap').hidden = !L.cmds.includes('dig');
+  $('mEyebrow').textContent = `Mission ${i+1} of ${LEVELS.length}`;
+  $('mName').textContent = L.name;
+  $('mBrief').textContent = L.brief;
+  $('log').innerHTML = '';
+  makeGround();
+  log('info', `Rover ready at the landing site, facing ${DIRNAME[rover.dir].toLowerCase()}. Battery ${rover.bat}%.`);
+  renderAll();
+}
+
+/* ---------- reveal / helpers ---------- */
+const inb = (x,y) => x>=0 && y>=0 && x<COLS && y<ROWS;
+function revealAround(cx, cy, r){
+  let found = [];
+  for (let y=cy-r;y<=cy+r;y++) for (let x=cx-r;x<=cx+r;x++) {
+    if (!inb(x,y) || (x-cx)**2+(y-cy)**2 > r*r+1) continue;
+    if (!seen[y][x]) { seen[y][x] = true; found.push(grid[y][x]); }
+  }
+  return found;
+}
+const front = () => [rover.x+DIRS[rover.dir][0], rover.y+DIRS[rover.dir][1]];
+function speed(){ return $('fast').checked ? .33 : 1; }
+function tween(ms, f){
+  ms *= speed();
+  return new Promise(res => { const t0 = performance.now();
+    (function step(t){ const k = Math.min(1,(t-t0)/ms); f(k<.5?2*k*k:1-((-2*k+2)**2)/2); if (k<1) requestAnimationFrame(step); else res(); })(t0); });
+}
+const wait = ms => new Promise(r => setTimeout(r, ms*speed()));
+function addFx(o){ o.t0 = performance.now(); o.dur *= speed(); fx.push(o); }
+function spend(n, what){
+  if (rover.bat < n) { log('bad', `Not enough power to ${what}. The rover is waiting. Try Charge, or wait for tomorrow's sunlight.`); return false; }
+  rover.bat -= n; renderHUD(); return true;
+}
+
+/* ---------- commands ---------- */
+async function drive(n, sgn){
+  for (let k=0;k<n;k++) {
+    const nx = rover.x + DIRS[rover.dir][0]*sgn, ny = rover.y + DIRS[rover.dir][1]*sgn;
+    if (!inb(nx,ny)) { log('warn','Edge of the mapped area. The rover stopped.'); addFx({type:'hazard',x:rover.x,y:rover.y,dur:1200}); return false; }
+    const c = grid[ny][nx];
+    if (BLOCK[c]) {
+      seen[ny][nx] = true;
+      addFx({type:'hazard', x:nx, y:ny, dur:1500});
+      log('bad', `Hazard avoidance: ${BLOCK[c]} ${sgn>0?'ahead':'behind'}. The rover stopped itself.`);
+      return false;
+    }
+    if (!spend(COST.move, 'drive')) return false;
+    const fx0 = rover.x, fy0 = rover.y;
+    await tween(420, k => { rover.px = fx0+(nx-fx0)*k; rover.py = fy0+(ny-fy0)*k; });
+    tracks.push([fx0,fy0,nx,ny]);
+    rover.x = nx; rover.y = ny;
+    revealAround(nx, ny, 2);
+    if (c === 'F' && !st.reached) { st.reached = true; log('good','Arrived at the flag!'); renderGoals(); }
+  }
+  return true;
+}
+async function turn(sgn){
+  if (!spend(COST.turn, 'turn')) return false;
+  const a0 = rover.ang;
+  await tween(300, k => rover.ang = a0 + 90*sgn*k);
+  rover.dir = (rover.dir + sgn + 4) % 4; rover.ang = a0 + 90*sgn;
+  renderHUD(); return true;
+}
+async function scan(){
+  if (!spend(COST.scan, 'scan')) return false;
+  addFx({type:'ring', x:rover.x, y:rover.y, dur:1100, r:4.5});
+  await wait(700);
+  const found = revealAround(rover.x, rover.y, 4);
+  const n = ch => found.filter(f => f===ch).length;
+  const parts = [];
+  if (n('R')) parts.push(`${n('R')} rock${n('R')>1?'s':''}`);
+  if (n('C')) parts.push(`${n('C')} crater${n('C')>1?'s':''}`);
+  if (n('S')) parts.push(`${n('S')} sample site${n('S')>1?'s':''}`);
+  if (n('F')) parts.push('the flag');
+  log(n('S')||n('F') ? 'good' : 'info', parts.length ? `Scan found ${parts.join(', ')}.` : 'Scan complete. Nothing new nearby.');
+  await wait(300); return true;
+}
+async function photo(){
+  if (!spend(COST.photo, 'take a photo')) return false;
+  const [fx1, fy1] = front();
+  addFx({type:'flash', x:fx1, y:fy1, dur:500});
+  await wait(500);
+  if (inb(fx1,fy1) && grid[fy1][fx1] === 'P') { grid[fy1][fx1] = 'p'; st.photos++; log('good','Photo captured: layered rock from an ancient lakebed. Scientists are thrilled!'); }
+  else log('info','Photo taken: just dust and sky. Face the striped outcrop from the square next to it.');
+  renderGoals(); return true;
+}
+async function drill(){
+  if (grid[rover.y][rover.x] !== 'S') { log('warn','Nothing to drill here. Drive onto a glowing sample site first.'); await wait(300); return true; }
+  if (!spend(COST.drill, 'drill')) return false;
+  rover.busy = 'drill';
+  addFx({type:'dust', x:rover.x, y:rover.y, dur:1000, parts:dustParts()});
+  await wait(1000); rover.busy = null;
+  grid[rover.y][rover.x] = 's'; st.samples++;
+  log('good', `Sample ${st.samples} collected and stored.`);
+  renderGoals(); return true;
+}
+async function dig(){
+  const [fx1, fy1] = front();
+  if (!inb(fx1,fy1) || grid[fy1][fx1] !== 'D') { log('warn','No sand pile in front of the rover. Face a pile first.'); await wait(300); return true; }
+  if (rover.cargo) { log('warn','The bucket is already full. Dump it on the base pad first.'); await wait(300); return true; }
+  if (!spend(COST.dig, 'dig')) return false;
+  rover.busy = 'dig';
+  addFx({type:'dust', x:fx1, y:fy1, dur:900, parts:dustParts()});
+  await wait(900); rover.busy = null;
+  grid[fy1][fx1] = '.'; rover.cargo = 1;
+  log('good','Bucket full of sand. Now drive to the base pad.');
+  renderHUD(); return true;
+}
+async function dump(){
+  if (!rover.cargo) { log('warn','The bucket is empty. Dig a sand pile first.'); await wait(300); return true; }
+  if (!spend(COST.dump, 'dump')) return false;
+  addFx({type:'dust', x:rover.x, y:rover.y, dur:800, parts:dustParts()});
+  await wait(800);
+  rover.cargo = 0;
+  if (grid[rover.y][rover.x] === 'B') { st.delivered++; log('good', `Load ${st.delivered} delivered to the base pad.`); }
+  else log('warn','Sand dumped on the ground. It needs to go on the base pad.');
+  renderHUD(); renderGoals(); return true;
+}
+async function charge(){
+  addFx({type:'sun', x:rover.x, y:rover.y, dur:1100});
+  await wait(1100);
+  const before = rover.bat; rover.bat = Math.min(100, rover.bat + COST.charge);
+  log('good', `Solar charging: battery ${before}% to ${rover.bat}%.`);
+  renderHUD(); return true;
+}
+function dustParts(){ return [...Array(16)].map(()=>({a:Math.random()*Math.PI*2, v:.25+Math.random()*.45, s:.03+Math.random()*.04})); }
+
+async function exec(c){
+  switch (c.type) {
+    case 'forward': return drive(c.arg, 1);
+    case 'back': return drive(c.arg, -1);
+    case 'left': return turn(-1);
+    case 'right': return turn(1);
+    case 'scan': return scan();
+    case 'photo': return photo();
+    case 'drill': return drill();
+    case 'dig': return dig();
+    case 'dump': return dump();
+    case 'charge': return charge();
+  }
+}
+
+function goalsDone(){
+  const g = L.goals;
+  return (!g.reach || st.reached) && (!g.samples || st.samples >= g.samples) && (!g.photos || st.photos >= g.photos) && (!g.deliver || st.delivered >= g.deliver);
+}
+
+async function run(){
+  if (running || !program.length || st.won) return;
+  running = true; renderLock();
+  program.forEach(c => c.state = '');
+  renderProg();
+  log('info', `Uplinking ${program.length} command${program.length>1?'s':''}.`);
+  $('uplink').hidden = false; $('ulText').textContent = 'Uplink: Earth to Mars';
+  await tween(2200, k => $('ulBar').style.width = (k*100)+'%');
+  $('uplink').hidden = true; $('ulBar').style.width = '0';
+  for (let i=0;i<program.length;i++) {
+    program[i].state = 'active'; renderProg();
+    const ok = await exec(program[i]);
+    program[i].state = 'done';
+    if (goalsDone()) { st.won = true; renderProg(); break; }
+    if (ok === false) { for (let j=i+1;j<program.length;j++) program[j].state = 'skipped'; renderProg(); break; }
+    renderProg();
+  }
+  renderGoals();
+  if (st.won) {
+    const s = sol <= L.par ? 3 : sol <= L.par + 2 ? 2 : 1;
+    stars[li] = Math.max(stars[li]||0, s); store.set('mro.stars', stars);
+    $('winStars').innerHTML = '★'.repeat(s) + `<i>${'★'.repeat(3-s)}</i>`;
+    $('winText').textContent = `Finished on sol ${sol}. Target for 3 stars: ${L.par} sol${L.par>1?'s':''}.`;
+    $('nextBtn').hidden = li === LEVELS.length - 1;
+    log('good', `Mission complete on sol ${sol}!`);
+    await wait(500);
+    $('win').hidden = false;
+    renderMissions();
+  } else {
+    log('info', 'Downlink received. Sun is setting.');
+    sol++;
+    const before = rover.bat; rover.bat = Math.min(100, rover.bat + SOLAR);
+    log('info', `Night passes. Solar panels recharged the battery from ${before}% to ${rover.bat}%. Ready for sol ${sol}.`);
+  }
+  running = false; renderAll();
+}
+
+/* ---------- drawing ---------- */
+function makeGround(){
+  const r = mulberry32(4242 + li*31 + (L.sandbox ? sandboxSeed : 0));
+  ground = document.createElement('canvas');
+  ground.width = Math.max(1, Math.round(W*dpr)); ground.height = Math.max(1, Math.round(H*dpr));
+  const g = ground.getContext('2d'), gw = ground.width, gh = ground.height;
+  const grad = g.createLinearGradient(0,0,gw,gh);
+  grad.addColorStop(0,'#b85f3c'); grad.addColorStop(.55,'#a9512f'); grad.addColorStop(1,'#93452a');
+  g.fillStyle = grad; g.fillRect(0,0,gw,gh);
+  for (let i=0;i<260;i++) {
+    const x=r()*gw, y=r()*gh, rad=(.02+r()*.07)*gw;
+    g.fillStyle = r() < .5 ? 'rgba(230,150,105,0.06)' : 'rgba(90,35,18,0.07)';
+    g.beginPath(); g.ellipse(x,y,rad,rad*(.5+r()*.5),r()*3,0,Math.PI*2); g.fill();
+  }
+  for (let i=0;i<2200;i++) {
+    g.fillStyle = r() < .5 ? 'rgba(255,210,180,0.18)' : 'rgba(60,20,10,0.22)';
+    const s = (r()*1.6+.4)*dpr; g.fillRect(r()*gw, r()*gh, s, s);
+  }
+}
+function poly(cx, cy, rad, pts){
+  ctx.beginPath();
+  pts.forEach((p,i) => { const a = i/pts.length*Math.PI*2; const x=cx+Math.cos(a)*rad*p, y=cy+Math.sin(a)*rad*p; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.closePath();
+}
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function drawCell(ch, x, y, t){
+  const c = cell, x0 = x*c, y0 = y*c, sh = shapes[y][x];
+  if (ch === 'R') {
+    sh.forEach(s => {
+      const cx=x0+s.x*c, cy=y0+s.y*c, R=s.rad*c;
+      ctx.fillStyle='rgba(45,15,6,0.35)'; poly(cx+R*.22, cy+R*.3, R, s.pts); ctx.fill();
+      const v = Math.round(90+s.shade*40);
+      ctx.fillStyle=`rgb(${v+20},${Math.round(v*.62)},${Math.round(v*.45)})`; poly(cx, cy, R, s.pts); ctx.fill();
+      ctx.fillStyle='rgba(255,225,200,0.16)'; poly(cx-R*.2, cy-R*.22, R*.55, s.pts); ctx.fill();
+    });
+  } else if (ch === 'C') {
+    const cx=x0+(.5+sh.ox)*c, cy=y0+(.5+sh.oy)*c, R=sh.rad*c;
+    const g = ctx.createRadialGradient(cx+R*.15,cy+R*.2,R*.1,cx,cy,R);
+    g.addColorStop(0,'#5e2716'); g.addColorStop(.75,'#7f3820'); g.addColorStop(1,'#a85232');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(245,190,150,0.45)'; ctx.lineWidth=c*.06;
+    ctx.beginPath(); ctx.arc(cx,cy,R,Math.PI*.55,Math.PI*1.95); ctx.stroke();
+  } else if (ch === 'S' || ch === 's') {
+    sh.pebbles.forEach(p => { ctx.fillStyle = ch==='S' ? '#d9cbb3' : '#8a6b5a'; ctx.beginPath(); ctx.arc(x0+p.x*c, y0+p.y*c, p.rad*c, 0, Math.PI*2); ctx.fill(); });
+    const cx=x0+c/2, cy=y0+c/2;
+    if (ch === 'S') {
+      const pulse = .5+.5*Math.sin(t/300);
+      ctx.strokeStyle=`rgba(240,191,90,${.55+.4*pulse})`; ctx.lineWidth=c*.06;
+      ctx.setLineDash([c*.12,c*.08]); ctx.lineDashOffset = -t/60;
+      ctx.beginPath(); ctx.arc(cx,cy,c*.36,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+    } else {
+      ctx.fillStyle='#2b130b'; ctx.beginPath(); ctx.arc(cx,cy,c*.07,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(134,212,143,0.8)'; ctx.lineWidth=c*.045; ctx.beginPath(); ctx.arc(cx,cy,c*.36,0,Math.PI*2); ctx.stroke();
+    }
+  } else if (ch === 'P' || ch === 'p') {
+    const bw=c*.8, bh=c*.66, bx=x0+c*.1, by=y0+c*.17;
+    ctx.fillStyle='rgba(45,15,6,0.35)'; rr(bx+c*.06,by+c*.07,bw,bh,c*.12); ctx.fill();
+    ctx.save(); rr(bx,by,bw,bh,c*.12); ctx.clip();
+    const bands=['#c79a74','#a7704f','#d8b08a','#9a6446','#c58e66','#8e5a3e'];
+    bands.forEach((col,i)=>{ ctx.fillStyle=col; ctx.fillRect(bx, by+i*bh/bands.length, bw, bh/bands.length+1); });
+    ctx.restore();
+    if (ch === 'P') {
+      const pulse=.5+.5*Math.sin(t/300); ctx.strokeStyle=`rgba(240,191,90,${.55+.4*pulse})`; ctx.lineWidth=c*.06;
+      const m=c*.04, L2=c*.2, ax=x0+m, ay=y0+m, bx2=x0+c-m, by2=y0+c-m;
+      ctx.beginPath();
+      ctx.moveTo(ax,ay+L2);ctx.lineTo(ax,ay);ctx.lineTo(ax+L2,ay);
+      ctx.moveTo(bx2-L2,ay);ctx.lineTo(bx2,ay);ctx.lineTo(bx2,ay+L2);
+      ctx.moveTo(bx2,by2-L2);ctx.lineTo(bx2,by2);ctx.lineTo(bx2-L2,by2);
+      ctx.moveTo(ax+L2,by2);ctx.lineTo(ax,by2);ctx.lineTo(ax,by2-L2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle='rgba(134,212,143,0.95)'; ctx.beginPath(); ctx.arc(x0+c*.82,y0+c*.2,c*.13,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#0e1319'; ctx.lineWidth=c*.04; ctx.beginPath(); ctx.moveTo(x0+c*.76,y0+c*.2); ctx.lineTo(x0+c*.81,y0+c*.25); ctx.lineTo(x0+c*.89,y0+c*.15); ctx.stroke();
+    }
+  } else if (ch === 'D') {
+    const cx=x0+c/2, cy=y0+c*.54;
+    ctx.fillStyle='rgba(60,20,8,0.3)'; ctx.beginPath(); ctx.ellipse(cx+c*.06,cy+c*.06,sh.rx*c,sh.ry*c,0,0,Math.PI*2); ctx.fill();
+    const g=ctx.createRadialGradient(cx-c*.1,cy-c*.12,c*.03,cx,cy,sh.rx*c);
+    g.addColorStop(0,'#ecc49c'); g.addColorStop(1,'#c4855a');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(cx,cy,sh.rx*c,sh.ry*c,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(140,80,45,0.5)'; ctx.lineWidth=c*.025;
+    for (let i=1;i<3;i++){ ctx.beginPath(); ctx.ellipse(cx,cy+c*.03*i,sh.rx*c*(1-i*.28),sh.ry*c*(1-i*.3),0,Math.PI*1.1,Math.PI*1.9); ctx.stroke(); }
+  } else if (ch === 'F') {
+    const px=x0+c*.38, base=y0+c*.82, top=y0+c*.14;
+    ctx.fillStyle='rgba(45,15,6,0.35)'; ctx.beginPath(); ctx.ellipse(px+c*.04,base,c*.14,c*.05,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#e6ecf1'; ctx.lineWidth=c*.05; ctx.beginPath(); ctx.moveTo(px,base); ctx.lineTo(px,top); ctx.stroke();
+    const wave=Math.sin(t/250)*c*.03;
+    ctx.fillStyle = st.reached ? '#86d48f' : '#58cfbe';
+    ctx.beginPath(); ctx.moveTo(px,top); ctx.quadraticCurveTo(px+c*.22,top+c*.06+wave,px+c*.42,top+c*.12); ctx.lineTo(px,top+c*.3); ctx.closePath(); ctx.fill();
+  }
+}
+
+function drawPads(t){
+  const c = cell;
+  const pads = [];
+  grid.forEach((row,y)=>row.forEach((ch,x)=>{ if (ch==='B' && seen[y][x]) pads.push([x,y]); }));
+  if (!pads.length) return;
+  const goal = L.goals.deliver || 1, fill = Math.min(1, st.delivered/goal);
+  pads.forEach(([x,y]) => {
+    ctx.fillStyle = `rgba(232,200,160,${.16+fill*.45})`; ctx.fillRect(x*c+1, y*c+1, c-2, c-2);
+  });
+  const xs = pads.map(p=>p[0]), ys = pads.map(p=>p[1]);
+  const bx = Math.min(...xs)*c, by = Math.min(...ys)*c, bw = (Math.max(...xs)+1)*c-bx, bh = (Math.max(...ys)+1)*c-by;
+  ctx.strokeStyle='rgba(240,191,90,0.85)'; ctx.lineWidth=c*.05; ctx.setLineDash([c*.14,c*.1]);
+  ctx.strokeRect(bx+c*.08, by+c*.08, bw-c*.16, bh-c*.16); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,240,220,0.85)'; ctx.font=`600 ${Math.round(c*.26)}px 'Chakra Petch', sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('BASE', bx+bw/2, by+bh/2);
+}
+
+function drawRover(t){
+  const c = cell, s = c*.86, cx = (rover.px+.5)*c, cy = (rover.py+.5)*c;
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.fillStyle='rgba(40,12,4,0.35)'; ctx.beginPath(); ctx.ellipse(s*.05,s*.07,s*.46,s*.48,0,0,Math.PI*2); ctx.fill();
+  ctx.rotate(rover.ang*Math.PI/180);
+  if (rover.busy) ctx.translate((Math.random()-.5)*s*.02, (Math.random()-.5)*s*.02);
+  ctx.fillStyle='#24272c';
+  [-.33,0,.33].forEach(wy => [-.38,.38].forEach(wx => { rr(wx*s-s*.08, wy*s-s*.1, s*.16, s*.2, s*.04); ctx.fill(); }));
+  ctx.strokeStyle='#8d949c'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.moveTo(-.38*s,-.33*s); ctx.lineTo(-.38*s,.33*s); ctx.moveTo(.38*s,-.33*s); ctx.lineTo(.38*s,.33*s); ctx.stroke();
+  if (L.cmds.includes('dig')) {
+    ctx.fillStyle='#c9ced4'; rr(-s*.2,-s*.56,s*.4,s*.14,s*.03); ctx.fill();
+    ctx.fillStyle='#8d949c'; ctx.fillRect(-s*.03,-s*.44,s*.06,s*.12);
+    if (rover.cargo) { ctx.fillStyle='#e0ab7c'; ctx.beginPath(); ctx.ellipse(0,-s*.5,s*.16,s*.07,0,0,Math.PI*2); ctx.fill(); }
+  }
+  ctx.fillStyle='#ebe6dc'; rr(-s*.27,-s*.32,s*.54,s*.64,s*.07); ctx.fill();
+  ctx.fillStyle='#24456a'; rr(-s*.22,-s*.02,s*.44,s*.28,s*.03); ctx.fill();
+  ctx.strokeStyle='rgba(140,190,240,0.45)'; ctx.lineWidth=s*.015;
+  for (let i=1;i<4;i++){ ctx.beginPath(); ctx.moveTo(-s*.22+i*s*.11,-s*.02); ctx.lineTo(-s*.22+i*s*.11,s*.26); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(-s*.22,s*.12); ctx.lineTo(s*.22,s*.12); ctx.stroke();
+  ctx.fillStyle='#c9ced4'; ctx.beginPath(); ctx.arc(0,-s*.18,s*.1,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#58cfbe'; ctx.beginPath(); ctx.arc(0,-s*.22,s*.045,0,Math.PI*2); ctx.fill();
+  if (rover.busy === 'drill') { ctx.strokeStyle='#f0bf5a'; ctx.lineWidth=s*.05; ctx.beginPath(); ctx.arc(s*.18,-s*.12,s*.08,t/60,t/60+4); ctx.stroke(); }
+  ctx.restore();
+}
+
+function drawFx(t){
+  const c = cell;
+  fx = fx.filter(f => t - f.t0 < f.dur);
+  fx.forEach(f => {
+    const k = Math.max(0,(t-f.t0)/f.dur), cx=(f.x+.5)*c, cy=(f.y+.5)*c;
+    if (f.type === 'hazard') {
+      const a = .5+.5*Math.sin(k*Math.PI*6);
+      ctx.strokeStyle=`rgba(255,123,108,${.4+.6*a})`; ctx.lineWidth=c*.08;
+      ctx.strokeRect(f.x*c+c*.06, f.y*c+c*.06, c*.88, c*.88);
+    } else if (f.type === 'ring') {
+      ctx.strokeStyle=`rgba(88,207,190,${1-k})`; ctx.lineWidth=c*.08;
+      ctx.beginPath(); ctx.arc(cx,cy,k*f.r*c,0,Math.PI*2); ctx.stroke();
+    } else if (f.type === 'flash') {
+      ctx.fillStyle=`rgba(255,255,255,${(1-k)*.85})`; ctx.beginPath(); ctx.arc(cx,cy,c*(.3+k*.5),0,Math.PI*2); ctx.fill();
+    } else if (f.type === 'dust') {
+      f.parts.forEach(p => { ctx.fillStyle=`rgba(236,190,150,${(1-k)*.8})`; ctx.beginPath();
+        ctx.arc(cx+Math.cos(p.a)*p.v*k*c, cy+Math.sin(p.a)*p.v*k*c, p.s*c, 0, Math.PI*2); ctx.fill(); });
+    } else if (f.type === 'sun') {
+      const g=ctx.createRadialGradient(cx,cy,c*.1,cx,cy,c*1.4);
+      g.addColorStop(0,`rgba(255,230,140,${.55*Math.sin(k*Math.PI)})`); g.addColorStop(1,'rgba(255,230,140,0)');
+      ctx.fillStyle=g; ctx.fillRect(cx-c*1.5,cy-c*1.5,c*3,c*3);
+    }
+  });
+}
+
+function frame(t){
+  if (!grid) { requestAnimationFrame(frame); return; }
+  const c = cell;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  if (ground) ctx.drawImage(ground,0,0,W,H);
+  drawPads(t);
+  ctx.lineCap='round';
+  tracks.forEach(([x1,y1,x2,y2]) => {
+    const dx=x2-x1, dy=y2-y1, ox=-dy*.28*c, oy=dx*.28*c;
+    ctx.strokeStyle='rgba(70,25,12,0.35)'; ctx.lineWidth=c*.09; ctx.setLineDash([c*.07,c*.06]);
+    [[ox,oy],[-ox,-oy]].forEach(([a,b]) => { ctx.beginPath(); ctx.moveTo((x1+.5)*c+a,(y1+.5)*c+b); ctx.lineTo((x2+.5)*c+a,(y2+.5)*c+b); ctx.stroke(); });
+  });
+  ctx.setLineDash([]); ctx.lineCap='butt';
+  ctx.strokeStyle='rgba(255,230,210,0.09)'; ctx.lineWidth=1;
+  ctx.beginPath();
+  for (let x=1;x<COLS;x++){ ctx.moveTo(x*c+.5,0); ctx.lineTo(x*c+.5,H); }
+  for (let y=1;y<ROWS;y++){ ctx.moveTo(0,y*c+.5); ctx.lineTo(W,y*c+.5); }
+  ctx.stroke();
+  for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++) if (seen[y][x] && grid[y][x] !== '.' && grid[y][x] !== 'B') drawCell(grid[y][x], x, y, t);
+  drawFx(t);
+  drawRover(t);
+  if (L.fog) {
+    ctx.fillStyle='rgba(12,9,8,0.86)';
+    for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++) if (!seen[y][x]) ctx.fillRect(x*c,y*c,c,c);
+  }
+  requestAnimationFrame(frame);
+}
+
+function resize(){
+  const w = $('mapwrap').clientWidth;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cell = Math.max(18, Math.floor(w / COLS));
+  W = cell*COLS; H = cell*ROWS;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+  if (L) makeGround();
+}
+
+/* ---------- UI ---------- */
+function esc(s){ return s.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+function log(kind, text){
+  const el = document.createElement('li');
+  el.innerHTML = `<span class="tag">SOL ${sol}</span><span class="${kind}">${esc(text)}</span>`;
+  const lg = $('log'); lg.prepend(el);
+  while (lg.children.length > 60) lg.lastChild.remove();
+}
+function renderMissions(){
+  $('missions').innerHTML = LEVELS.map((l,i) => {
+    const s = stars[i] || 0;
+    return `<button class="mchip" data-i="${i}" aria-current="${i===li}"><span class="n">${i+1}</span>${esc(l.name)}<span class="stars" aria-label="${s} of 3 stars">${'★'.repeat(s)}<i>${'★'.repeat(3-s)}</i></span></button>`;
+  }).join('');
+}
+function renderGoals(){
+  const g = L.goals, items = [];
+  if (g.reach) items.push(['Reach the flag', st.reached, '']);
+  if (g.samples) items.push([`Drill ${g.samples} sample${g.samples>1?'s':''}`, st.samples>=g.samples, `${st.samples}/${g.samples}`]);
+  if (g.photos) items.push([`Photograph the outcrop`, st.photos>=g.photos, `${st.photos}/${g.photos}`]);
+  if (g.deliver) items.push([`Deliver ${g.deliver} loads of sand`, st.delivered>=g.deliver, `${st.delivered}/${g.deliver}`]);
+  $('goals').innerHTML = `<li class="h">Objectives</li>` + items.map(([t,d,n]) =>
+    `<li class="${d?'done':''}"><span class="box">${d?'✓':''}</span><span class="t">${t}</span><span class="cnt">${n}</span></li>`).join('');
+}
+function renderHUD(){
+  $('hSol').textContent = sol;
+  $('hBatTxt').textContent = rover.bat + '%';
+  $('hBat').style.width = rover.bat + '%';
+  $('hBat').classList.toggle('low', rover.bat < 25);
+  $('hDir').textContent = DIRNAME[rover.dir];
+  $('hBucket').textContent = rover.cargo ? 'Full' : 'Empty';
+}
+function renderPalette(){
+  $('palette').innerHTML = L.cmds.map(k => { const d = CMDS[k];
+    return `<button class="pal cat-${d.cat}" data-c="${k}"><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span><small>${d.cost}</small></button>`; }).join('');
+}
+function renderProg(){
+  $('count').textContent = `${program.length} / ${MAXCMD}`;
+  if (!program.length) { $('prog').innerHTML = `<li class="empty">Tap a command above to add it to today's plan.</li>`; }
+  else $('prog').innerHTML = program.map((c,i) => { const d = CMDS[c.type];
+    return `<li class="cmd cat-${d.cat} ${c.state||''}" data-i="${i}">
+      <span class="num">${i+1}</span><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span>
+      ${d.arg ? `<span class="arg"><button class="mini" data-a="dec" aria-label="Fewer squares" ${running?'disabled':''}>−</button><b>${c.arg}</b><button class="mini" data-a="inc" aria-label="More squares" ${running?'disabled':''}>+</button></span>` : ''}
+      <button class="mini" data-a="up" aria-label="Move up" ${running||i===0?'disabled':''}>⌃</button>
+      <button class="mini" data-a="del" aria-label="Remove" ${running?'disabled':''}>×</button></li>`; }).join('');
+  renderCode();
+}
+function renderCode(){
+  const lines = [`<span class="c"># Sol ${sol} command sequence</span>`, `<span class="f">from</span> mars <span class="f">import</span> rover`, ''];
+  if (!program.length) lines.push('<span class="c"># (empty) add commands in Blocks</span>');
+  program.forEach(c => { const py = CMDS[c.type].py(c.arg);
+    lines.push(py.replace(/^rover\.(\w+)\((\d*)\)$/, (m,f,n) => `rover.<span class="f">${f}</span>(${n?`<span class="n">${n}</span>`:''})`)); });
+  $('code').innerHTML = lines.join('\n');
+}
+function renderLock(){
+  const full = program.length >= MAXCMD;
+  document.querySelectorAll('.pal').forEach(b => b.disabled = running || full || st.won);
+  $('sendBtn').disabled = running || !program.length || st.won;
+  $('clearBtn').disabled = running || !program.length;
+  $('resetBtn').disabled = running; $('newMapBtn').disabled = running;
+  document.querySelectorAll('.mchip').forEach(b => b.disabled = running);
+  $('sendBtn').textContent = running ? 'Rover working…' : 'Send to Mars';
+}
+function renderAll(){ renderMissions(); renderGoals(); renderHUD(); renderPalette(); renderProg(); renderLock(); }
+
+$('palette').addEventListener('click', e => {
+  const b = e.target.closest('.pal'); if (!b || running || program.length >= MAXCMD) return;
+  const k = b.dataset.c; program.forEach(c => c.state = '');
+  program.push({type:k, arg: CMDS[k].arg ? 1 : undefined});
+  renderProg(); renderLock();
+});
+$('prog').addEventListener('click', e => {
+  const b = e.target.closest('button'), item = e.target.closest('.cmd');
+  if (!b || !item || running) return;
+  const i = +item.dataset.i, c = program[i];
+  program.forEach(p => p.state = '');
+  if (b.dataset.a === 'inc') c.arg = Math.min(9, c.arg+1);
+  if (b.dataset.a === 'dec') c.arg = Math.max(1, c.arg-1);
+  if (b.dataset.a === 'del') program.splice(i,1);
+  if (b.dataset.a === 'up' && i > 0) [program[i-1], program[i]] = [program[i], program[i-1]];
+  renderProg(); renderLock();
+});
+$('missions').addEventListener('click', e => { const b = e.target.closest('.mchip'); if (b && !running) loadLevel(+b.dataset.i); });
+$('sendBtn').addEventListener('click', run);
+$('clearBtn').addEventListener('click', () => { program = []; renderProg(); renderLock(); });
+$('resetBtn').addEventListener('click', () => loadLevel(li));
+$('newMapBtn').addEventListener('click', () => { sandboxSeed = Math.floor(Math.random()*1e6); loadLevel(li); });
+$('againBtn').addEventListener('click', () => loadLevel(li));
+$('nextBtn').addEventListener('click', () => loadLevel(Math.min(li+1, LEVELS.length-1)));
+$('fast').addEventListener('change', e => store.set('mro.fast', e.target.checked));
+function setTab(code){
+  showCode = code;
+  $('tabBlocks').setAttribute('aria-selected', !code); $('tabCode').setAttribute('aria-selected', code);
+  $('prog').hidden = code; $('code').hidden = !code;
+}
+$('tabBlocks').addEventListener('click', () => setTab(false));
+$('tabCode').addEventListener('click', () => setTab(true));
+
+new ResizeObserver(resize).observe($('mapwrap'));
+resize();
+loadLevel(0);
+// Example plan so the first view shows how a sequence looks
+program = [{type:'forward',arg:5},{type:'left'},{type:'forward',arg:1},{type:'right'}];
+renderProg(); renderLock();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
