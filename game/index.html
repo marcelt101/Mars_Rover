@@ -108,12 +108,14 @@
             <div class="chip" id="cTubes"><span class="k">Tubes</span><span class="v" id="hTubes">0/8</span></div>
             <div class="chip"><span class="k" id="hScoreK">Team science</span><span class="v" id="hScore">0</span></div>
             <div class="chip" id="cRegion"><span class="k">Location</span><span class="v" id="hRegion">Base station</span></div>
+            <div class="chip" id="cWx"><span class="k">Weather</span><span class="v" id="hWx">–</span></div>
           </div>
           <div class="mapbtns">
             <button class="mbtn" id="zoomIn" aria-label="Zoom in">+</button>
             <button class="mbtn" id="zoomOut" aria-label="Zoom out">−</button>
             <button class="mbtn" id="centerBtn" aria-label="Follow my rover">◎</button>
             <button class="mbtn" id="bigBtn" aria-label="Big map (M)" title="Big map (M)">⛶</button>
+            <button class="mbtn" id="healthBtn" aria-label="Rover health (H)" title="Rover health (H)">✚</button>
           </div>
           <canvas class="mini" id="mini" aria-label="Overview map. Click to look there."></canvas>
           <div class="win" id="win" hidden>
@@ -156,6 +158,7 @@
         <div class="panel" id="planPanel">
           <div class="ph"><h3 class="t" id="planTitle">Today's plan</h3><span class="count" id="count">0 / 12</span></div>
           <div class="palette" id="palette"></div>
+          <div class="relaybar" id="relayBar"></div>
           <div class="tabs" role="tablist" id="tabs">
             <button class="tab" role="tab" id="tabBlocks" aria-selected="true">Blocks</button>
             <button class="tab" role="tab" id="tabCode" aria-selected="false">Python</button>
@@ -178,6 +181,7 @@
             <div><strong id="ulTitle">Uplink: Earth to Mars</strong> <span id="ulSub">Real signals take 4 to 24 minutes.</span></div>
             <div class="ulbar"><span id="ulBar"></span></div>
           </div>
+          <div id="wxCard"></div>
           <div id="solCard"></div>
           <p class="teamline" id="teamLine"></p>
           <div class="nudges" id="nudges"></div>
@@ -190,6 +194,10 @@
           <div class="tubes" id="tubes"></div>
         </div>
 
+        <div class="panel" id="labPanel" hidden>
+          <div class="ph"><h3 class="t">Lab and base</h3><span class="count">shared by the team</span></div>
+          <div id="labBody"></div>
+        </div>
         <div class="panel" id="findsPanel" hidden>
           <div class="ph"><h3 class="t">Finds</h3><span class="count">flagged sites, best first</span></div>
           <ul class="finds" id="finds"></ul>

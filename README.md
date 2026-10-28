@@ -1,6 +1,6 @@
 # Mars Rover Ops
 
-A co-op browser game where you plan rover commands, send them to Mars, and watch the rovers carry them out. Up to 6 players, each on their own device. Set in real places on Mars: Jezero Crater (Perseverance) and Gusev Crater (Spirit).
+A co-op browser game where you plan rover commands, send them to Mars, and watch the rovers carry them out. Up to 6 players, each on their own device. Set in real places: Jezero Crater (Perseverance) and Gusev Crater (Spirit) on Mars, and Hadley Rille on the Moon (Apollo 15).
 
 **Play now: https://marcelt101.github.io/Mars_Rover/**
 
@@ -10,7 +10,7 @@ No install needed. Works in Chrome, Edge, Firefox and Safari on PCs, Chromebooks
 
 | Link | What it is |
 |---|---|
-| [`/game/`](https://marcelt101.github.io/Mars_Rover/game/) | **Version 2**: team play, profiles, collecting, perks, two maps |
+| [`/game/`](https://marcelt101.github.io/Mars_Rover/game/) | **Version 2**: team play, profiles, collecting, perks, three maps |
 | [`/v1/`](https://marcelt101.github.io/Mars_Rover/v1/) | **Version 1**: single-player Jezero Expedition, kept as it was (also on the `v1` branch) |
 | [`/classic/`](https://marcelt101.github.io/Mars_Rover/classic/) | The original five small grid missions |
 
@@ -29,8 +29,8 @@ The devices find each other through the free PeerJS service, then talk directly.
 | Role | Ages | How you plan |
 |---|---|---|
 | **Cadet** | 4–7 | Picture buttons only. Each arrow is one square. Tap GO. No reading needed. |
-| **Explorer** | 8–12 | Blocks with numbers: drive, turn, scan, analyze, drill, charge. |
-| **Specialist** | 13+ | Python with `for` loops, up to 40 moves per sol. |
+| **Explorer** | 8–12 | Blocks with numbers: drive, turn, scan, analyze, drill, charge. The Repeat block holds other blocks, and more smart blocks come with the relay kit. |
+| **Specialist** | 13+ | Python with `for`, `while`, `if`/`elif`/`else`, `def` and rover sensors. Up to 40 moves per sol. |
 
 ## Rovers
 
@@ -42,6 +42,9 @@ The devices find each other through the free PeerJS service, then talk directly.
 | Science | Explorer, Specialist | Analyze identifies every signal within 2 squares |
 | Hauler | Explorer, Specialist | 4 extra sample tubes |
 | Excavator | Explorer, Specialist | `dig()` clears a rock or sand trap in front, never gets stuck |
+| Lab | Explorer, Specialist (team games) | Stays at the station. Catalogs the team's samples and builds base upgrades |
+
+On the Moon the ground rovers are Apollo Lunar Roving Vehicles, the station is the Lunar Module, and the helicopter stays home (there is no air to fly in).
 
 ## Getting started
 
@@ -56,14 +59,42 @@ New players can take the optional **tutorial** from the start screen. It has dif
 - **Undo** (or Ctrl+Z).
 - **Sol report** after every sol, with **plan stars** (worked, efficient, smart) and a tip for writing better plans and code.
 
+## Team chain: find → drill → lab
+
+The Scout finds and flags a site, a teammate drills it, and the Lab catalogs the sample when it reaches the station. The **Mars Catalog** lists every sample with everyone who helped. The Lab turns samples into materials and builds base upgrades that help the whole team:
+
+| Upgrade | Costs | Does |
+|---|---|---|
+| Radio tower | 3 metal | Signals reach the rovers 25% faster |
+| Solar farm | 2 glass, 2 metal | Every rover charges 10% more each night |
+| Garage | 3 bricks, 1 metal | Wheels and solar panels wear half as fast |
+| Greenhouse | 3 water, 2 bricks | Everyone earns 10% more XP |
+
+Without a Lab player, samples are cataloged automatically.
+
+## Satellite relay kit
+
+Unlocks at the second rank (Rover Driver). Programs can then keep running for more than one sol, with help from the relay satellite, which also maps the area around the rover when a long program starts.
+
+- **Explorers** always have *Repeat*. The kit adds *If on a signal*, *If worth drilling*, *If path clear*, *Until full or low battery*, plus *Go to signal*, *Go home* and **Run for 2 sols**. Click a smart block to put new blocks inside it.
+- **Specialists** get `rover.go_to_signal()`, `rover.go_home()` and `for sol in rover.mission(2):` (1 to 3 sols).
+- **Recipes** give ready-made programs to start from (*Signal hunter*, *Survey square*, *Careful driver*, *Home run*).
+- **AutoNav safety:** the rover finds a new route when *Go to signal* or *Go home* meets a rock, stops a program before it would hit something, and pauses at low battery to recharge overnight. A `while` loop stops after 30 rounds.
+- While a program runs, press **Send** with an empty plan to let it continue, make a new plan to replace it, or tap **Cancel program**.
+
+## Weather and rover health
+
+- A **weather station** report each sol, with a forecast for the next 2 sols. Dust storms are rare and short: rovers see 1 square less and the solar panels charge half. The Moon has no weather.
+- **Rover health (H):** battery, tubes, wheels, dusty panels, temperature, signal and instruments. Cadets see a simple face. Driving onto the station repairs everything for free.
+
 ## Collecting and progress
 
 - **Inventory:** press **I** (or **E**) any time, like Minecraft and Minetest.
 - **Mineral cards** with real facts, rarities and rare shiny versions. Team finds go to everyone.
 - **Mars history:** find Perseverance's backshell, the Ingenuity helicopter, and the Spirit rover where it got stuck.
-- **54 stickers**, **39 mission patches** (including coding ones like *Hello, Mars*, *Perfect Plan* and *Loop in a Loop*), **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
+- **54 stickers**, **47 mission patches** (including coding ones like *Hello, Mars*, *Perfect Plan*, *Loop in a Loop*, *Smart Rover* and *Mission Control*), **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
 - **Signal delay:** each sol's commands take 5–10 seconds to reach Mars with the stock antenna. Better radio makes it 30% faster, the High-gain antenna twice as fast. Cadets get both automatically as they rank up.
-- Finishing Jezero unlocks Gusev for the team.
+- Finishing Jezero unlocks Gusev, and finishing Gusev unlocks the Moon.
 - Progress is saved in each device's browser. **Parents and saves** on the start screen has a backup code to move or restore profiles, and a switch to unlock all maps.
 
 ## Keys
@@ -75,6 +106,8 @@ New players can take the optional **tutorial** from the start screen. It has dif
 | S or ↓ | Back |
 | Space | Drill (Dig for Cadets) |
 | Q / R / G / C | Scan / Analyze / Dig (Excavator) / Charge |
+| Q, 1–8 (Lab) | Catalog, make materials, build upgrades |
+| H | Rover health |
 | Backspace | Remove the last step |
 | Ctrl+Z | Undo |
 | Enter | Send or Ready (Ctrl+Enter in the Python editor) |
@@ -104,6 +137,33 @@ rover.charge()      # +15% battery
 
 for i in range(3):
     rover.forward(2)
+
+# sensors work in if / elif / else / while
+if rover.sense_ahead() == "clear":   # "rock", "clear", "sand", "signal", "edge"
+    rover.forward(1)
+elif rover.battery() < 30:
+    rover.charge()
+else:
+    rover.turn_right()
+# also: signal_here(), signal_nearby(), worth_drilling(), tubes_full(), storm(), at_home()
+
+def check():
+    rover.analyze()
+    if rover.worth_drilling():
+        rover.drill()
+
+# satellite relay kit (second rank)
+for sol in rover.mission(2):          # runs on this sol and the next
+    rover.scan()
+    while not rover.tubes_full() and rover.battery() > 40:
+        rover.go_to_signal()
+        check()
+    rover.go_home()
+
+# Lab job
+lab.catalog()
+lab.make("metal")                    # "water", "metal", "bricks", "glass"
+lab.build("radio_tower")             # "solar_farm", "radio_tower", "garage", "greenhouse"
 ```
 
 ## For developers
@@ -112,7 +172,7 @@ Plain HTML, CSS and JavaScript. No build step.
 
 - `game/js/data.js`: roles, rovers, commands, cards, patches, perks, ranks, maps
 - `game/js/world.js`: map generation and the terrain picture
-- `game/js/sim.js`: the rules. The host runs every rover's plan at the same time and records a timeline
+- `game/js/sim.js`: the rules. The host runs every rover's plan at the same time and records a timeline. Also the Python parser and the program runner for the relay kit (programs live on the rover, so they carry across sols)
 - `game/js/net.js`: host-as-server networking (PeerJS / WebRTC)
 - `game/js/profile.js`: profiles, rewards, saves
 - `game/js/render.js`: the map, rovers and effects

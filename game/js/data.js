@@ -6,7 +6,7 @@ MR.VERSION = 2;
 MR.MW = 64; MR.MH = 44; MR.BASE = 32;
 MR.MAX_PLAYERS = 6;
 
-MR.T = {FLOOR:0, BED:1, DUNE:2, DELTA:3, CHAN:4, RIM:5, HILL:6, CLIFF:7, PLATE:8};
+MR.T = {FLOOR:0, BED:1, DUNE:2, DELTA:3, CHAN:4, RIM:5, HILL:6, CLIFF:7, PLATE:8, RILLE:9};
 MR.TER = [
   {name:'Crater floor', cost:2},
   {name:'Bedrock', cost:2},
@@ -17,6 +17,7 @@ MR.TER = [
   {name:'Hills', cost:5, hilly:true},
   {name:'Cliffs', block:'the slope is too steep'},
   {name:'Layered plateau', cost:2},
+  {name:'Rille canyon', block:'the rille is a deep canyon'},
 ];
 
 MR.DIRS = [[0,-1],[1,0],[0,1],[-1,0]];
@@ -45,6 +46,7 @@ MR.JOBS = {
   science:   {label:'Science', roles:['explorer','specialist'], desc:'Analyze identifies every signal within 2 squares.'},
   hauler:    {label:'Hauler', roles:['explorer','specialist'], desc:'Carries 4 extra sample tubes.'},
   excavator: {label:'Excavator', roles:['explorer','specialist'], desc:'Dig clears a rock or sand trap in front. It never gets stuck.'},
+  lab:       {label:'Lab', roles:['explorer','specialist'], desc:"Stays at the station. Catalogs the team's samples and turns them into water, metal, bricks and glass to build base upgrades."},
 };
 MR.defaultJob = role => role === 'cadet' ? 'buggy' : 'scout';
 
@@ -58,9 +60,56 @@ MR.CMDS = {
   drill:   {label:'Drill', icon:'⊛', cat:'sci', cost:'8%', py:'drill'},
   dig:     {label:'Dig', icon:'▲', cat:'build', cost:'6%', py:'dig', jobs:['excavator']},
   charge:  {label:'Charge', icon:'ϟ', cat:'power', cost:'+15%', py:'charge'},
+  go_signal: {label:'Go to signal', icon:'⌖', cat:'move', cost:'2% / square', py:'go_to_signal', macro:'go_signal', relay:true},
+  go_home:   {label:'Go home', icon:'⌂', cat:'move', cost:'2% / square', py:'go_home', macro:'go_home', relay:true},
+  catalog: {label:'Catalog samples', icon:'▤', cat:'sci', cost:'free', lab:'catalog', jobs:['lab']},
+  make_water:  {label:'Make water', icon:'≈', cat:'build', cost:'from salts', lab:'make', mat:'water', jobs:['lab']},
+  make_metal:  {label:'Make metal', icon:'⚙', cat:'build', cost:'from meteorites', lab:'make', mat:'metal', jobs:['lab']},
+  make_bricks: {label:'Make bricks', icon:'▦', cat:'build', cost:'from clay, basalt', lab:'make', mat:'bricks', jobs:['lab']},
+  make_glass:  {label:'Make glass', icon:'◇', cat:'build', cost:'from silica, basalt', lab:'make', mat:'glass', jobs:['lab']},
+  build_solar_farm:  {label:'Build solar farm', icon:'☼', cat:'power', cost:'2 glass, 2 metal', lab:'build', up:'solar_farm', jobs:['lab']},
+  build_radio_tower: {label:'Build radio tower', icon:'⌁', cat:'power', cost:'3 metal', lab:'build', up:'radio_tower', jobs:['lab']},
+  build_garage:      {label:'Build garage', icon:'⌂', cat:'power', cost:'3 bricks, 1 metal', lab:'build', up:'garage', jobs:['lab']},
+  build_greenhouse:  {label:'Build greenhouse', icon:'❦', cat:'power', cost:'3 water, 2 bricks', lab:'build', up:'greenhouse', jobs:['lab']},
 };
-MR.PY2CMD = Object.fromEntries(Object.entries(MR.CMDS).map(([k, v]) => [v.py, k]));
-MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','drill']
+/* Satellite relay kit: smart blocks and programs that run for more than one sol. Unlocks at the second rank. */
+MR.relayOK = r => !!r && r.role !== 'cadet' && r.job !== 'lab' && (r.rank|0) >= 1;
+MR.BLOCKS = {
+  repeat:     {label:'Repeat', icon:'⟲', arg:true, def:3, max:10, py:n => `for i in range(${n}):`, desc:'Repeat the blocks inside'},
+  if_signal:  {label:'If on a signal', icon:'?', cond:{c:'signal_here'}, py:() => 'if rover.signal_here():', desc:'Only if the rover is on a mystery signal'},
+  if_worth:   {label:'If worth drilling', icon:'◈', cond:{c:'worth'}, py:() => 'if rover.worth_drilling():', desc:'Only if Analyze found something good here'},
+  if_clear:   {label:'If path clear', icon:'⇡', cond:{c:'ahead', op:'==', v:'clear'}, py:() => 'if rover.sense_ahead() == "clear":', desc:'Only if the square ahead is safe'},
+  until_full: {label:'Until full or low battery', icon:'⧗', cond:{c:'and', a:{c:'not', a:{c:'tubes_full'}}, b:{c:'bat', op:'>', v:40}}, loop:true, relay:true, py:() => 'while not rover.tubes_full() and rover.battery() > 40:', desc:'Keep going until the tubes are full or the battery is down to 40% (at most 30 times)'},
+};
+/* Ready-made programs. Blocks for Explorers, Python for Specialists. */
+MR.RECIPES = [
+  {id:'hunter', name:'Signal hunter', icon:'⌖', desc:'Scan, visit each signal, analyze it, drill the good ones, then go home. Runs again the next sol.', relay:true, sols:2,
+    blocks:[{type:'scan'}, {type:'until_full', body:[{type:'go_signal'},{type:'analyze'},{type:'if_worth', body:[{type:'drill'}]}]}, {type:'go_home'}],
+    py:'from mars import rover\n\nfor sol in rover.mission(2):\n    rover.scan()\n    while not rover.tubes_full() and rover.battery() > 40:\n        rover.go_to_signal()\n        rover.analyze()\n        if rover.worth_drilling():\n            rover.drill()\n    rover.go_home()\n'},
+  {id:'survey', name:'Survey square', icon:'▢', desc:'Drive a big square and scan at every corner.', sols:1,
+    blocks:[{type:'repeat', arg:4, body:[{type:'forward', arg:4},{type:'scan'},{type:'right'}]}],
+    py:'from mars import rover\n\nfor i in range(4):\n    rover.forward(4)\n    rover.scan()\n    rover.turn_right()\n'},
+  {id:'careful', name:'Careful driver', icon:'⇡', desc:'Drive ahead only while the way is clear. Turns at rocks.', sols:1,
+    blocks:[{type:'repeat', arg:8, body:[{type:'if_clear', body:[{type:'forward', arg:1}]}]}, {type:'scan'}],
+    py:'from mars import rover\n\nfor i in range(10):\n    if rover.sense_ahead() == "clear":\n        rover.forward(1)\n    else:\n        rover.turn_right()\nrover.scan()\n'},
+  {id:'homerun', name:'Home run', icon:'⌂', desc:'Find the way back to the station and unload.', relay:true, sols:1,
+    blocks:[{type:'go_home'}], py:'from mars import rover\n\nrover.go_home()\n'},
+];
+MR.PY2CMD = Object.fromEntries(Object.entries(MR.CMDS).filter(([, v]) => v.py).map(([k, v]) => [v.py, k]));
+/* The Python line for a command (rover.forward(3), lab.make("water"), ...). */
+MR.pyOf = (type, arg) => { const c = MR.CMDS[type]; if (!c) return '';
+  if (c.lab === 'catalog') return 'lab.catalog()'; if (c.lab === 'make') return `lab.make("${c.mat}")`; if (c.lab === 'build') return `lab.build("${c.up}")`;
+  return `rover.${c.py}(${c.arg ? (arg || 1) : ''})`; };
+/* Lab: which samples make which material (science-only finds are never processed), and the base upgrades. */
+MR.MATS = {water:{name:'Water', from:{salts:2, clay:1}}, metal:{name:'Metal', from:{meteorite:2, olivine:1}},
+  bricks:{name:'Bricks', from:{clay:1, basalt:1, carbonate:1, breccia:1, moon_basalt:1}}, glass:{name:'Glass', from:{silica:2, glass:2, basalt:1}}};
+MR.UPGRADES = {
+  solar_farm:  {name:'Solar farm', icon:'☼', cost:{glass:2, metal:2}, desc:'Every rover charges 10% more each night.'},
+  radio_tower: {name:'Radio tower', icon:'⌁', cost:{metal:3}, desc:'Signals reach the rovers 25% faster.'},
+  garage:      {name:'Garage', icon:'⌂', cost:{bricks:3, metal:1}, desc:'Wheels and solar panels wear half as fast.'},
+  greenhouse:  {name:'Greenhouse', icon:'❦', cost:{water:3, bricks:2}, desc:'Everyone earns 10% more XP.'},
+};
+MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','drill'] : job === 'lab' ? Object.keys(MR.CMDS).filter(k => MR.CMDS[k].lab)
   : Object.keys(MR.CMDS).filter(k => !MR.CMDS[k].jobs || MR.CMDS[k].jobs.includes(job));
 
 MR.RARITY = {
@@ -92,6 +141,18 @@ MR.CARDS = {
     fact:"The cone-shaped shell that protected Perseverance as it fell through the Martian air in 2021. Ingenuity photographed it lying in the sand."},
   art_ingenuity: {name:'Ingenuity helicopter', rar:'A', color:'#d0d6dc', pts:100, maps:['jezero'], artifact:true,
     fact:'The first aircraft to fly on another planet. It made 72 flights before a broken rotor blade ended its mission in January 2024. It is still standing where it last landed.'},
+  moon_basalt: {name:'Mare basalt', kid:'Moon lava rock', rar:'C', color:'#5f6066', pts:5, maps:['moon'],
+    fact:"Dark lava rock that flooded the Moon's giant basins more than 3 billion years ago. The dark patches you can see on the Moon are basalt."},
+  breccia: {name:'Breccia', kid:'Smashed rock', rar:'U', color:'#a9a39a', pts:30, maps:['moon'],
+    fact:'Rock made of broken pieces glued back together by meteorite impacts. Most of the Moon is covered in it.'},
+  glass: {name:'Green glass beads', kid:'Green glass', rar:'R', color:'#7ccf8a', pts:70, maps:['moon'],
+    fact:'Tiny green glass beads from volcanic fire fountains. The Apollo 15 astronauts found them near Hadley Rille in 1971.'},
+  anorthosite: {name:'Genesis Rock (anorthosite)', kid:'Moon crystal', rar:'L', color:'#f1efe8', pts:120, maps:['moon'],
+    fact:"Apollo 15's most famous find: a piece of the Moon's ancient crust, about 4 billion years old, picked up at Spur crater."},
+  art_retro: {name:'Laser retroreflector', rar:'A', color:'#c9ced4', pts:100, maps:['moon'], artifact:true,
+    fact:'Apollo astronauts left mirrors on the Moon. Scientists still bounce lasers off them today to measure the distance to the Moon to within a few millimeters.'},
+  art_feather: {name:'Hammer and feather', rar:'A', color:'#e6e2da', pts:100, maps:['moon'], artifact:true,
+    fact:'Commander Dave Scott dropped a hammer and a falcon feather at the same moment. With no air, they hit the ground together, just as Galileo predicted.'},
   art_spirit: {name:'Spirit rover', rar:'A', color:'#d8d2c4', pts:100, maps:['gusev'], artifact:true,
     fact:'Spirit got stuck in soft sand at a spot called Troy in 2009 and sent its last message in 2010. It is still parked there today.'},
 };
@@ -121,14 +182,22 @@ MR.PATCHES = [
   {id:'life_clue', name:'Life Clue', icon:'❋', desc:'Find organic molecules', test:s => s.organics >= 1},
   {id:'jezero', name:'Jezero Expedition', icon:'J', desc:'Complete a Jezero expedition', test:s => (s.exp.jezero||0) >= 1},
   {id:'gusev', name:'Gusev Expedition', icon:'G', desc:'Complete a Gusev expedition', test:s => (s.exp.gusev||0) >= 1},
+  {id:'moonwalker', name:'Moonwalker', icon:'☾', desc:'Complete an expedition on the Moon', test:s => (s.exp.moon||0) >= 1},
+  {id:'genesis', name:'Genesis', icon:'◇', desc:'Find the Genesis Rock', test:s => s.genesis >= 1},
   {id:'full_crew', name:'Full Crew', icon:'⁂', desc:'Play a team game with 3 or more players', test:s => s.crew3 >= 1},
   {id:'team_player', name:'Team Player', icon:'⇄', desc:'Finish 5 team expeditions', test:s => s.teamWins >= 5},
   {id:'hello_mars', name:'Hello, Mars', icon:'›', desc:'Send your first Python program', test:s => s.programs >= 1},
   {id:'perfect_plan', name:'Perfect Plan', icon:'★', desc:'Get 3 plan stars in one sol', test:s => s.stars3 >= 1},
   {id:'master_planner', name:'Master Planner', icon:'✬', desc:'Get 3 plan stars 10 times', test:s => s.stars3 >= 10},
   {id:'loop_in_loop', name:'Loop in a Loop', icon:'⟲', desc:'Run a for loop inside another for loop', test:s => s.nested >= 1},
+  {id:'mission_control', name:'Mission Control', icon:'⌁', desc:'Run a program for 2 or more sols with the relay satellite', test:s => s.missions >= 1},
+  {id:'smart_rover', name:'Smart Rover', icon:'◇', desc:'Send a program that uses a sensor', test:s => s.sensors >= 1},
   {id:'pathfinder', name:'Pathfinder', icon:'⚐', desc:'Flag 10 sites for the team', test:s => s.sitesFound >= 10},
   {id:'trailblazer', name:'Trailblazer', icon:'⚑', desc:'Teammates drill 5 sites you found', test:s => s.sitesShared >= 5},
+  {id:'archivist', name:'Archivist', icon:'▤', desc:'Catalog 10 samples in the Lab', test:s => s.cataloged >= 10},
+  {id:'builder', name:'Base Builder', icon:'⌂', desc:'Build a base upgrade', test:s => s.builds >= 1},
+  {id:'storm_survivor', name:'Storm Survivor', icon:'≋', desc:'Keep working through a dust storm', test:s => s.stormSols >= 1},
+  {id:'lucky_gust', name:'Lucky Gust', icon:'∿', desc:'Have your solar panels cleaned by the wind', test:s => s.cleaned >= 1},
   {id:'graduate', name:'Mission Trainee', icon:'✎', desc:'Finish the tutorial', test:s => s.tutorial >= 1},
   {id:'marathon', name:'Marathon', icon:'∞', desc:'Drive or fly 500 squares', test:s => s.squares + s.flown >= 500},
   {id:'treasure100', name:'Treasure Legend', icon:'♛', desc:'Find 100 treasures', test:s => s.treasures >= 100},
@@ -174,6 +243,7 @@ MR.PERKS = {
   sharp_eyes:  {name:'Sharp eyes', tier:'Common', rank:2, icon:'◉', desc:'See 1 square farther and scan 1 square wider.', real:'Perseverance has 23 cameras, more than any Mars mission before it.'},
   supercam:    {name:'SuperCam laser', tier:'Rare', rank:3, icon:'✶', desc:'Analyze also zaps signals up to 3 squares straight ahead.', real:'SuperCam zaps rocks with a laser from up to 7 meters away and reads the glow.'},
   big_battery: {name:'Big battery', tier:'Rare', rank:4, icon:'▮', desc:'The battery holds 150% instead of 100%.', real:'Rovers store energy in lithium-ion batteries, like a phone but much tougher.'},
+  dust_wiper:  {name:'Dust wiper', tier:'Common', rank:5, icon:'⌇', desc:'Dust builds up on your solar panels half as fast.', real:'Opportunity lasted 15 years partly because Martian winds kept cleaning its panels.'},
   better_radio: {name:'Better radio', tier:'Common', rank:1, icon:'≋', desc:'Your commands reach the rover 30% faster.', real:'Rovers usually talk to Earth through orbiters like Mars Reconnaissance Orbiter, using a UHF radio.'},
   hg_antenna:  {name:'High-gain antenna', tier:'Rare', rank:3, icon:'⌔', desc:'Your commands reach the rover twice as fast.', real:"Perseverance's high-gain antenna can talk straight to Earth without an orbiter."},
 };
@@ -189,6 +259,7 @@ MR.uplinkMs = (st, r) => {
   const antenna = r && (r.role === 'cadet' ? r.rank >= 3 : (r.perks || []).includes('hg_antenna'));
   if (radio) ms *= .7;
   if (antenna) ms *= .5;
+  if (st.lab && st.lab.built && st.lab.built.radio_tower) ms *= .75;
   const q = new URLSearchParams(location.search).get('uplink');
   return ms * (q != null ? Math.max(0, +q) : 1);
 };
@@ -226,14 +297,29 @@ MR.MAPS = {
     par:26, parCadet:14,
   },
 };
-MR.MAP_ORDER = ['jezero','gusev'];
+MR.MAPS.moon = {
+  name:'Moon: Hadley Rille', rover:'Apollo 15 Lunar Roving Vehicle', year:'1971', unlock:'gusev', airless:true,
+  blurb:'Drive the Apollo Lunar Roving Vehicle beside a winding canyon. Grey dust, sharp craters, Earth in the sky, and no air at all.',
+  station:{x:30, y:20}, startDir:1,
+  labels:[{t:'HADLEY RILLE', x:19, y:9},{t:'MOUNT HADLEY DELTA', x:35, y:40.5},{t:'SPUR CRATER', x:39, y:33.2},{t:'ST. GEORGE', x:24, y:33.5},{t:'APENNINE MOUNTAINS', x:57, y:22},{t:'FALCON (LUNAR MODULE)', x:31, y:17.5}],
+  regions:['Mare plains','Bright highland rock','Soft regolith','Mare plains','Rille floor','Apennine Mountains','Mount Hadley Delta','Cliffs','Ejecta','Hadley Rille'],
+  goals:(n) => [
+    {t:'Drill the Genesis Rock (anorthosite)', kind:'col', res:'anorthosite', of:1},
+    {t:'Drill green glass beads', kind:'col', res:'glass', of:1},
+    {t:'Drill breccia', kind:'col', res:'breccia', of:1},
+    {t:`Bring ${2+n} samples to the Lunar Module`, kind:'deliver', of:2+n},
+  ],
+  par:22, parCadet:14,
+};
+MR.MAPS.jezero.regions.push('Crater rim'); MR.MAPS.gusev.regions.push('Crater rim');
+MR.MAP_ORDER = ['jezero','gusev','moon'];
 MR.parOf = st => st.goals.some(g => g.kind === 'treasure') ? MR.MAPS[st.map].parCadet : MR.MAPS[st.map].par;
 MR.cadetGoals = n => [{t:`Find ${3+2*n} treasures`, kind:'treasure', of:3+2*n}];
 
 const KEYS = 'More keys: I or E opens your inventory, T talks to the team, Tab looks at the next rover, Shift + WASD moves the camera, F follows your rover, M makes the map big, + and − zoom, Esc closes windows.';
 MR.HOW = {
   cadet:['Tap the picture buttons to plan your moves. Each arrow is one square.','Press the big GO button and watch your rover.','Land on a sparkly gem and dig to find treasure!','Press I to open your treasure chest.','Keys: W or ↑ goes forward, A and D turn, Space digs, Backspace removes, Enter is GO. M makes the map big.'],
-  explorer:['Build a plan of up to 12 blocks, then press Send (or Ready in a team game).','Scan shows mystery signals (?). Drive onto one, Analyze it, then Drill to fill a sample tube.','Dunes use more power and can hide sand traps. If you get stuck, Back up 1 square.','Drive onto the station to unload samples and recharge. Each night the solar panels add 30%.','Keys like a PC game: W A S D (or arrows) drive, Q scan, R analyze, Space drill, G dig, C charge. Pressing W again adds a square. Backspace removes, Enter sends.', KEYS],
-  specialist:['Write your plan in Python. Supports rover commands and for loops, up to 40 moves per sol.','Only 6 sample tubes and weaker solar (20% a night). Analyze before you Drill.','Drive onto the station to unload samples and recharge.','Ctrl+Enter sends your program. Click outside the editor to use W A S D, Q, R, Space, G and C to add lines.', KEYS],
+  explorer:['Build a plan of up to 12 blocks, then press Send (or Ready in a team game).','Scan shows mystery signals (?). Drive onto one, Analyze it, then Drill to fill a sample tube.','Dunes use more power and can hide sand traps. If you get stuck, Back up 1 square.','Drive onto the station to unload samples and recharge. Each night the solar panels add 30%.','Smart blocks hold other blocks: click Repeat to put new blocks inside it. At the second rank the satellite relay kit adds If blocks, Until full or low battery, Go to signal, Go home, and plans that run for 2 sols.','Keys like a PC game: W A S D (or arrows) drive, Q scan, R analyze, Space drill, G dig, C charge. Pressing W again adds a square. Backspace removes, Enter sends.', KEYS],
+  specialist:['Write your plan in Python. Supports rover commands and for loops, up to 40 moves per sol. while, if, elif, else and def work with the rover sensors (see the sensor list).','At the second rank the satellite relay kit adds rover.go_to_signal(), rover.go_home() and for sol in rover.mission(2): for programs that run for several sols.','Only 6 sample tubes and weaker solar (20% a night). Analyze before you Drill.','Drive onto the station to unload samples and recharge.','Ctrl+Enter sends your program. Click outside the editor to use W A S D, Q, R, Space, G and C to add lines.', KEYS],
 };
 })();

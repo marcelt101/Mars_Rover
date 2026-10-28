@@ -79,12 +79,33 @@ function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w
 function drawRock(c, cx, cy, Rd, pts, shade){
   const path = (ox,oy,rad) => { c.beginPath(); pts.forEach((p,i) => { const a=i/pts.length*Math.PI*2, X=ox+Math.cos(a)*rad*p, Y=oy+Math.sin(a)*rad*p; i?c.lineTo(X,Y):c.moveTo(X,Y); }); c.closePath(); };
   c.fillStyle='rgba(45,15,6,0.38)'; path(cx+Rd*.22, cy+Rd*.3, Rd); c.fill();
-  const v = Math.round(88+shade*40); c.fillStyle=`rgb(${v+22},${Math.round(v*.62)},${Math.round(v*.45)})`; path(cx, cy, Rd); c.fill();
+  const v = Math.round(88+shade*40), grey = R.view && MR.MAPS[R.view.map].airless;
+  c.fillStyle = grey ? `rgb(${v+30},${v+28},${v+24})` : `rgb(${v+22},${Math.round(v*.62)},${Math.round(v*.45)})`; path(cx, cy, Rd); c.fill();
   c.fillStyle='rgba(255,225,200,0.17)'; path(cx-Rd*.2, cy-Rd*.22, Rd*.55); c.fill();
 }
 
+function drawLM(c, sx, sy, s){
+  const cx = sx + s/2, cy = sy + s/2;
+  c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(cx + s*.08, cy + s*.1, s*.45, s*.4, 0, 0, Math.PI*2); c.fill();
+  c.strokeStyle = '#c9ced4'; c.lineWidth = s*.03; [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([x, y]) => { c.beginPath(); c.moveTo(cx + x*s*.18, cy + y*s*.18); c.lineTo(cx + x*s*.4, cy + y*s*.4); c.stroke();
+    c.fillStyle = '#d8b25a'; c.beginPath(); c.arc(cx + x*s*.4, cy + y*s*.4, s*.05, 0, Math.PI*2); c.fill(); });
+  c.fillStyle = '#d8a845'; c.beginPath(); for (let k = 0; k < 8; k++) { const an = k/8*Math.PI*2 + Math.PI/8; c.lineTo(cx + Math.cos(an)*s*.26, cy + Math.sin(an)*s*.26); } c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(120,80,20,.6)'; c.lineWidth = s*.01; c.stroke();
+  c.fillStyle = '#b9bdc2'; rr(c, cx - s*.14, cy - s*.16, s*.28, s*.28, s*.04); c.fill();
+  c.fillStyle = '#2d2f33'; c.beginPath(); c.moveTo(cx - s*.08, cy - s*.16); c.lineTo(cx + s*.08, cy - s*.16); c.lineTo(cx, cy - s*.06); c.closePath(); c.fill();
+  c.fillStyle = '#e6e8ea'; c.beginPath(); c.arc(cx + s*.07, cy + s*.04, s*.05, 0, Math.PI*2); c.fill();
+}
+function drawUpgrades(c, ts){
+  const L = R.view.lab; if (!L || !L.built) return; const S = MR.MAPS[R.view.map].station, at = (dx, dy) => [(S.x + dx - R.cam.x)*ts, (S.y + dy - R.cam.y)*ts];
+  if (L.built.solar_farm) { const [x, y] = at(-2.6, 2.4); for (let k = 0; k < 3; k++) { c.fillStyle = '#24456a'; c.fillRect(x + k*ts*.55, y, ts*.48, ts*.7); c.strokeStyle = 'rgba(140,190,240,.5)'; c.lineWidth = 1; c.strokeRect(x + k*ts*.55, y, ts*.48, ts*.7); } }
+  if (L.built.radio_tower) { const [x, y] = at(2.6, -1.4); c.strokeStyle = '#c9ced4'; c.lineWidth = Math.max(1.5, ts*.06); c.beginPath(); c.moveTo(x, y + ts*.9); c.lineTo(x, y - ts*.2); c.stroke(); c.fillStyle = '#e6ecf1'; c.beginPath(); c.arc(x, y - ts*.25, ts*.18, 0, Math.PI*2); c.fill(); }
+  if (L.built.garage) { const [x, y] = at(-1.9, -1.6); c.fillStyle = '#8d949c'; c.fillRect(x, y, ts*1.1, ts*.8); c.fillStyle = '#5d636a'; c.fillRect(x + ts*.25, y + ts*.35, ts*.6, ts*.45); }
+  if (L.built.greenhouse) { const [x, y] = at(2.7, 2.7); const g = c.createRadialGradient(x - ts*.15, y - ts*.15, 2, x, y, ts*.6); g.addColorStop(0, 'rgba(210,255,220,.95)'); g.addColorStop(1, 'rgba(90,170,110,.85)'); c.fillStyle = g; c.beginPath(); c.arc(x, y, ts*.55, 0, Math.PI*2); c.fill(); c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1; c.stroke(); }
+}
 function drawStation(c, t, ts){
   const S = MR.MAPS[R.view.map].station, sx = (S.x-R.cam.x)*ts, sy = (S.y-R.cam.y)*ts, s = ts*2;
+  drawUpgrades(c, ts);
+  if (MR.MAPS[R.view.map].airless) return drawLM(c, sx, sy, s);
   c.fillStyle='rgba(40,14,6,0.35)'; c.fillRect(sx+s*.08, sy+s*.1, s*.92, s*.92);
   c.fillStyle='#9aa3ab'; c.fillRect(sx+s*.06, sy+s*.06, s*.88, s*.88);
   c.strokeStyle='rgba(240,191,90,0.9)'; c.lineWidth=Math.max(1.5,ts*.05); c.setLineDash([ts*.14,ts*.1]); c.strokeRect(sx+s*.12, sy+s*.12, s*.76, s*.76); c.setLineDash([]);
@@ -224,6 +245,30 @@ function drawGroundRover(c, r, a, t, s, lod){
   c.strokeStyle = '#8d949c'; c.lineWidth = s*.02; c.beginPath(); c.moveTo(-.21*s, .22*s); c.lineTo(-.21*s, .5*s); c.stroke();
   c.fillStyle = col; c.beginPath(); c.moveTo(-.21*s, .5*s); c.lineTo(-.03*s, .44*s); c.lineTo(-.21*s, .38*s); c.closePath(); c.fill();
 }
+/* Apollo Lunar Roving Vehicle, seen from above: open frame, wire-mesh wheels, two astronauts, umbrella antenna. */
+function drawLRV(c, r, a, t, s, lod){
+  const col = MR.colorHex(r.color);
+  [[-.33, -.3], [.33, -.3], [-.33, .32], [.33, .32]].forEach(([x, y]) => {
+    c.fillStyle = '#3a3c40'; rr(c, x*s - .09*s, y*s - .13*s, .18*s, .26*s, .07*s); c.fill();
+    if (lod >= 1) { c.strokeStyle = 'rgba(200,204,210,.55)'; c.lineWidth = s*.012; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(x*s - .08*s, y*s + k*.045*s); c.lineTo(x*s + .08*s, y*s + k*.045*s); c.stroke(); } }
+    c.fillStyle = '#d9822b'; c.fillRect(x*s - .1*s, y*s - .15*s, .2*s, .04*s); });
+  c.strokeStyle = '#c0c4c9'; c.lineWidth = s*.035; c.strokeRect(-.27*s, -.36*s, .54*s, .72*s);
+  c.beginPath(); c.moveTo(-.27*s, 0); c.lineTo(.27*s, 0); c.stroke();
+  c.fillStyle = '#d8b25a'; rr(c, -.2*s, -.42*s, .4*s, .12*s, .02*s); c.fill();
+  c.fillStyle = '#d8b25a'; rr(c, -.18*s, .26*s, .36*s, .12*s, .02*s); c.fill();
+  [-.11, .11].forEach(x => { c.fillStyle = '#4a4e55'; rr(c, x*s - .08*s, -.08*s, .16*s, .2*s, .03*s); c.fill();
+    c.fillStyle = '#f4f4f2'; c.beginPath(); c.arc(x*s, 0, .075*s, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#d9a640'; c.beginPath(); c.arc(x*s, -.035*s, .045*s, Math.PI, 0); c.fill(); });
+  c.strokeStyle = '#a7aeb6'; c.lineWidth = s*.02; c.beginPath(); c.moveTo(.18*s, -.3*s); c.lineTo(.24*s, -.5*s); c.stroke();
+  c.fillStyle = 'rgba(220,222,226,.85)'; c.beginPath(); c.arc(.24*s, -.52*s, .1*s, 0, Math.PI*2); c.fill();
+  if (lod >= 1) { c.strokeStyle = 'rgba(120,124,130,.7)'; c.lineWidth = s*.008; for (let k = 0; k < 6; k++) { const an = k/6*Math.PI*2; c.beginPath(); c.moveTo(.24*s, -.52*s); c.lineTo(.24*s + Math.cos(an)*.1*s, -.52*s + Math.sin(an)*.1*s); c.stroke(); } }
+  c.fillStyle = '#2d2f33'; rr(c, -.25*s, -.48*s, .1*s, .07*s, .015*s); c.fill();
+  if (r.job === 'hauler') { (r.tubes || []).slice(0, 6).forEach((id, k) => { c.fillStyle = MR.CARDS[id].color; c.fillRect(-.15*s + k*.05*s, .28*s, .035*s, .08*s); }); }
+  if (r.job === 'excavator') { c.fillStyle = '#c9ced4'; rr(c, -.3*s, -.6*s, .6*s, .1*s, .02*s); c.fill(); }
+  c.strokeStyle = '#8d949c'; c.lineWidth = s*.02; c.beginPath(); c.moveTo(-.26*s, .34*s); c.lineTo(-.26*s, .6*s); c.stroke();
+  c.fillStyle = col; c.beginPath(); c.moveTo(-.26*s, .6*s); c.lineTo(-.08*s, .54*s); c.lineTo(-.26*s, .48*s); c.closePath(); c.fill();
+  if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.05; c.beginPath(); c.arc(0, -.55*s, s*.09, t/60, t/60 + 4); c.stroke(); }
+}
 function drawBuggy(c, r, a, t, s, lod){
   const col = MR.colorHex(r.color);
   [[-.31, -.25], [.31, -.25], [-.31, .27], [.31, .27]].forEach(([x, y]) => wheel(c, x*s, y*s, .2*s, .27*s, lod));
@@ -250,6 +295,25 @@ function drawHeli(c, r, a, t, s, lod){
   c.fillStyle = '#24456a'; rr(c, -.09*s, -.06*s, .18*s, .12*s, .015*s); c.fill();
   if (lod >= 1) { c.strokeStyle = 'rgba(140,190,240,.5)'; c.lineWidth = s*.01; c.beginPath(); c.moveTo(0, -.06*s); c.lineTo(0, .06*s); c.moveTo(-.09*s, 0); c.lineTo(.09*s, 0); c.stroke(); }
 }
+R.drawPreview = (cv, r) => {
+  const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+  const g = c.createRadialGradient(cv.width/2, cv.height/2, 10, cv.width/2, cv.height/2, cv.width*.7); g.addColorStop(0, '#b5603d'); g.addColorStop(1, '#5a2a1a');
+  c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
+  const s = cv.width*.62; c.save(); c.translate(cv.width/2, cv.height/2);
+  const moon = R.view && MR.MAPS[R.view.map].airless;
+  if (r.job === 'heli') drawHeli(c, r, {}, performance.now(), s, 2); else if (r.job === 'buggy') drawBuggy(c, r, {}, 0, s, 2); else if (r.job === 'lab') drawLab(c, r, s, 2); else if (moon) drawLRV(c, r, {}, 0, s, 2); else drawGroundRover(c, r, {}, 0, s, 2);
+  if ((r.dust || 0) > 10) { c.fillStyle = `rgba(200,140,90,${Math.min(.5, r.dust/200)})`; c.beginPath(); c.arc(0, 0, s*.45, 0, Math.PI*2); c.fill(); }
+  c.restore();
+};
+function drawLab(c, r, s, lod){
+  const col = MR.colorHex(r.color);
+  c.fillStyle = '#dcd6ca'; rr(c, -.3*s, -.3*s, .6*s, .6*s, .08*s); c.fill();
+  c.fillStyle = col; c.fillRect(-.3*s, -.06*s, .6*s, .06*s);
+  c.fillStyle = '#9fd3c8'; c.beginPath(); c.arc(-.1*s, -.13*s, .09*s, 0, Math.PI*2); c.fill();
+  c.strokeStyle = '#8d949c'; c.lineWidth = .04*s; c.lineCap = 'round'; c.beginPath(); c.moveTo(.12*s, .1*s); c.lineTo(.26*s, -.12*s); c.lineTo(.38*s, -.02*s); c.stroke(); c.lineCap = 'butt';
+  c.fillStyle = '#c9ced4'; c.beginPath(); c.arc(.38*s, -.02*s, .05*s, 0, Math.PI*2); c.fill();
+  if (lod >= 1) { c.fillStyle = '#5d636a'; for (let k = 0; k < 3; k++) { c.fillRect(-.22*s + k*.1*s, .12*s, .06*s, .1*s); } }
+}
 function drawRover(c, r, a, t, ts, ghost){
   const s = ts*.92, cx = (a.px-R.cam.x+.5)*ts, cy = (a.py-R.cam.y+.5)*ts, heli = r.job === 'heli', lod = ts < 20 ? 0 : ts < 32 ? 1 : 2;
   c.save(); c.translate(cx, cy);
@@ -258,7 +322,8 @@ function drawRover(c, r, a, t, ts, ghost){
   else { c.fillStyle='rgba(40,12,4,0.32)'; c.beginPath(); c.ellipse(s*.06,s*.08,s*.5,s*.5,0,0,Math.PI*2); c.fill(); }
   c.rotate(a.ang*Math.PI/180);
   if (a.busy || a.wob > 0) c.translate((Math.random()-.5)*s*.03, (Math.random()-.5)*s*.03);
-  if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
+  const moon = R.view && MR.MAPS[R.view.map].airless;
+  if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod); else if (moon) drawLRV(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
   c.restore();
 }
 /* Guidance: a dashed search circle (or a bouncing marker) when on screen, an arrow at the edge when not. */
@@ -374,6 +439,21 @@ R.frame = t => {
     c.fillStyle = 'rgba(10,14,19,.9)'; c.beginPath(); c.arc(x, y - rad*1.6 - rad*.4, rad, 0, Math.PI*2); c.fill(); c.lineWidth = 2.5; c.stroke();
     c.fillStyle = m.kind === 'danger' ? '#ff7b6c' : '#f0bf5a'; c.font = `${Math.round(rad*1.15)}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(icon, x, y - rad*2 + 1); });
   if (!R.running) drawHints(c, t, ts);
+  if (MR.MAPS[R.view.map].airless) {   // Earth hanging in the black sky
+    const ex = R.VW - 96, ey = 66, er = 20, g2 = c.createRadialGradient(ex - 6, ey - 6, 2, ex, ey, er);
+    g2.addColorStop(0, '#9fd0ff'); g2.addColorStop(.7, '#2f6fbf'); g2.addColorStop(1, '#173a6b');
+    c.fillStyle = 'rgba(0,0,0,.6)'; c.beginPath(); c.arc(ex, ey, er + 10, 0, Math.PI*2); c.fill();
+    c.fillStyle = g2; c.beginPath(); c.arc(ex, ey, er, 0, Math.PI*2); c.fill();
+    c.fillStyle = 'rgba(96,170,90,.85)'; c.beginPath(); c.ellipse(ex - 5, ey + 2, 7, 5, .5, 0, Math.PI*2); c.fill(); c.beginPath(); c.ellipse(ex + 7, ey - 6, 4, 3, 0, 0, Math.PI*2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(ex + 3, ey + 9, 9, 2.5, -.2, 0, Math.PI*2); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.arc(ex + 8, ey, er, -Math.PI/2, Math.PI/2); c.fill();
+    c.font = `600 10px 'IBM Plex Mono', monospace`; c.textAlign = 'center'; c.fillStyle = 'rgba(230,236,241,.8)'; c.fillText('EARTH', ex, ey + er + 14);
+  }
+  if (R.view.wx && R.view.wx.storm) {   // dusty haze and blowing streaks during a storm
+    c.fillStyle = 'rgba(196,120,70,0.28)'; c.fillRect(0, 0, R.VW, R.VH);
+    c.strokeStyle = 'rgba(240,190,150,0.22)'; c.lineWidth = 1.5;
+    for (let k = 0; k < 60; k++) { const x = ((k*97 + t*.25) % (R.VW + 200)) - 100, y = (k*53) % R.VH; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 60, y + 8); c.stroke(); }
+  }
   rovers.forEach(r => { const a = R.anim[r.pid]; if (a) drawNameFlag(c, r, a, ts); });
   c.font = `600 ${Math.max(11, Math.round(ts*.42))}px 'Chakra Petch', sans-serif`; c.textAlign='center'; c.textBaseline='middle';
   MR.MAPS[R.view.map].labels.forEach(l => { const X=(l.x-cam.x)*ts, Y=(l.y-cam.y)*ts; if (X<-200||X>R.VW+200||Y<-40||Y>R.VH+40) return;

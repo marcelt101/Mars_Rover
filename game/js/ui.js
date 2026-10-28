@@ -198,6 +198,7 @@ function nextChest(){
 }
 UI.notify = (notices, cadet) => {
   notices.forEach(n => {
+    const p0relay = () => (MR.Store.current() || {}).role === 'specialist' ? 'New in Python: rover.go_to_signal(), rover.go_home() and for sol in rover.mission(2):' : 'New smart blocks: If…, Until full or low battery, Go to signal, Go home, and plans that run for 2 sols.';
     if (n.k === 'card' || n.k === 'shiny') {
       const c = MR.CARDS[n.id];
       if (cadet) UI.chest(n.id, n.k === 'shiny');
@@ -206,6 +207,7 @@ UI.notify = (notices, cadet) => {
     else if (n.k === 'credit') UI.toast('⚑', '#58cfbe', 'Discovery credit!', `A teammate drilled ${n.site || 'a site'} you found. +15 XP`);
     else if (n.k === 'patch') { const pt = MR.PATCHES.find(x => x.id === n.id); UI.toast(pt.icon, '#f0bf5a', `Patch earned: ${pt.name}`, pt.desc); }
     else if (n.k === 'rank') UI.toast('★', '#58cfbe', `Rank up: ${MR.RANKS[n.rank].name}!`, cadet ? `Next expedition you can plan ${MR.CADET_LEN(n.rank)} pictures.` : 'Check your inventory (I) for new perks.', 6000);
+    else if (n.k === 'relay') UI.toast('⌁', '#58cfbe', 'Satellite relay kit unlocked!', p0relay(), 8000);
     else if (n.k === 'perk') { const pk = MR.PERKS[n.id]; UI.toast(pk.icon, '#f0bf5a', `New perk: ${pk.name}`, pk.desc, 6000); }
   });
   UI.renderMe();

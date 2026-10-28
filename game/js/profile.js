@@ -7,7 +7,7 @@ const load = (k, d) => { try { const v = localStorage.getItem(k); return v == nu
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 const blankStats = () => ({squares:0, flown:0, samples:0, delivered:0, scans:0, identified:0, stuck:0, freed:0, bumps:0, treasures:0,
-  cleared:0, loops:0, clean:0, shinies:0, artifacts:0, organics:0, exp:{}, crew3:0, teamWins:0, xpFrac:0, stickerKinds:0, cardKinds:0, tutorial:0, programs:0, nested:0, stars3:0, sitesFound:0, sitesShared:0});
+  cleared:0, loops:0, clean:0, shinies:0, artifacts:0, organics:0, exp:{}, crew3:0, teamWins:0, xpFrac:0, stickerKinds:0, cardKinds:0, tutorial:0, programs:0, nested:0, stars3:0, sitesFound:0, sitesShared:0, stormSols:0, cleaned:0, cataloged:0, builds:0, missions:0, sensors:0});
 
 MR.Store = {
   db: load(KEY, {list:[], current:null}),
@@ -45,7 +45,7 @@ MR.playerSummary = p => ({pid:p.id, name:p.name, color:p.color, role:p.role, job
 
 /* Turn the events of one sol into rewards for this player. Returns a list of notices. */
 MR.applyRewards = (p, myPid, events, ctx) => {
-  const s = p.stats, out = [], rank0 = MR.rankOf(p.xp);
+  const s = p.stats, out = [], rank0 = MR.rankOf(p.xp), xp0 = p.xp;
   const addXp = n => { p.xp += n; };
   const addCard = (id, shiny) => {
     const c = p.cards[id] || (p.cards[id] = {n:0, shiny:0});
@@ -66,6 +66,7 @@ MR.applyRewards = (p, myPid, events, ctx) => {
     switch (e.t) {
       case 'move': if (me) { if (e.fly) s.flown++; else s.squares++; s.xpFrac += .5; s.sitesFound += (e.sigs || []).length; } break;
       case 'bump': if (me) s.bumps++; break;
+      case 'night': (e.charges || []).forEach(c => { if (c.pid === myPid && c.cleaned) s.cleaned++; }); break;
       case 'stuck': if (me) s.stuck++; break;
       case 'free': if (me) { s.freed++; addXp(10); } break;
       case 'scan': if (me) { s.scans++; addXp(2); s.sitesFound += (e.sigs || []).length; } break;
@@ -76,6 +77,7 @@ MR.applyRewards = (p, myPid, events, ctx) => {
           addXp(MR.RARITY[MR.CARDS[e.res].rar].xp + (e.treasure ? 15 : 0));
           if (e.treasure) { s.treasures++; sticker(); } else s.samples++;
           if (e.res === 'organics') s.organics++;
+          if (e.res === 'anorthosite') s.genesis = (s.genesis || 0) + 1;
           if (e.shiny) { addCard(e.res, true); s.shinies++; }
           if (e.site && p.cards[e.res]) p.cards[e.res].where = `${e.site}, ${MR.MAPS[ctx.map] ? MR.MAPS[ctx.map].name : ''}`;
         } else if (e.res === 'organics') s.organics++;
@@ -84,6 +86,9 @@ MR.applyRewards = (p, myPid, events, ctx) => {
       case 'artifact': addCard(e.res, false); s.artifacts++; addXp(me ? 80 : 30); sticker(.1); break;
       case 'dock': if (me && e.n) { s.delivered += e.n; addXp(10*e.n); sticker(); } break;
       case 'dig': if (me && e.what !== 'none') { s.cleared++; addXp(5); } break;
+      case 'catalog': if (me) { s.cataloged += e.entries.length; addXp(8 * e.entries.length); }
+        else e.entries.forEach(x => { if (x.by === myPid || x.driller === myPid) addXp(3); }); break;
+      case 'build': addXp(20); if (me) s.builds++; break;
       case 'win':
         s.exp[ctx.map] = (s.exp[ctx.map]||0) + 1; addXp(120);
         if (ctx.players > 1) s.teamWins++;
@@ -92,15 +97,18 @@ MR.applyRewards = (p, myPid, events, ctx) => {
         break;
     }
   });
-  if (ctx.planInfo) { if (ctx.planInfo.loops) s.loops++; if (ctx.planInfo.clean) s.clean++; if (ctx.planInfo.python) s.programs++; if (ctx.planInfo.nested) s.nested++; }
+  if (ctx.storm && events.some(e => e.pid === myPid && (e.t === 'move' || e.t === 'scan' || e.t === 'drill'))) s.stormSols++;
+  if (ctx.planInfo) { if (ctx.planInfo.loops) s.loops++; if (ctx.planInfo.clean) s.clean++; if (ctx.planInfo.python) s.programs++; if (ctx.planInfo.nested) s.nested++; if (ctx.planInfo.sols >= 2) s.missions++; if (ctx.planInfo.sensors) s.sensors++; }
   if (ctx.code) { addXp(5 * ctx.code.stars); if (ctx.code.stars === 3) s.stars3++; if (ctx.code.stars) out.push({k:'stars', n:ctx.code.stars}); }
   if (s.xpFrac >= 1) { addXp(Math.floor(s.xpFrac)); s.xpFrac -= Math.floor(s.xpFrac); }
+  if (ctx.greenhouse && p.xp > xp0) p.xp += Math.round((p.xp - xp0) * .1);
   s.stickerKinds = Object.keys(p.stickers).length;
   s.cardKinds = MR.CARD_ORDER.filter(id => p.cards[id] && (p.cards[id].n || p.cards[id].shiny)).length;
   MR.PATCHES.forEach(pt => { if (!p.patches[pt.id] && pt.test(s)) { p.patches[pt.id] = Date.now(); addXp(25); out.push({k:'patch', id:pt.id}); } });
   const rank1 = MR.rankOf(p.xp);
   if (rank1 > rank0) {
     out.push({k:'rank', rank:rank1});
+    if (p.role !== 'cadet' && rank0 < 1 && rank1 >= 1) out.push({k:'relay'});
     Object.entries(MR.PERKS).forEach(([k, pk]) => { if (p.role !== 'cadet' && pk.rank > rank0 && pk.rank <= rank1) {
       out.push({k:'perk', id:k});
       if ((p.perks||[]).length < MR.ROLES[p.role].slots) p.perks = [...(p.perks||[]), k];

@@ -65,16 +65,34 @@ function terGusev(w, seed){
   }
 }
 
+function terMoon(w, seed){
+  const nA = makeNoise(seed+11), nB = makeNoise(seed+23);
+  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
+    let t = T.FLOOR;
+    if (nB(x/5+40, y/5) > .62) t = T.BED;
+    const hd = ((x-35)/14)**2 + ((y-39)/6.5)**2 + (nA(x/5,y/5)-.5)*.5;
+    if (hd < 1) t = (hd < .5 && nA(x/2.5+9, y/2.5) > .62) ? T.CLIFF : T.HILL;
+    const md = ((x-52)/9)**2 + ((y-5)/6)**2 + (nA(x/4,y/4)-.5)*.5;
+    if (md < 1) t = md < .45 ? T.CLIFF : T.HILL;
+    if (x > 59 + (nA(x/3, y/3)-.5)*4) t = T.RIM;
+    const sd = Math.hypot(x-24, y-35);
+    if (sd < 3.6 + (nA(x,y)-.5)*.4) t = sd > 2.3 ? T.RIM : T.CHAN;
+    const cx = 17 + 4.2*Math.sin(y/5.5) + y*.12 + (nA(3, y/4)-.5)*1.5;
+    if (Math.abs(x - cx) < 1.15 && y < 33) t = T.RILLE;
+    w.ter[y*MW+x] = t;
+  }
+  w.rilleX = y => 17 + 4.2*Math.sin(y/5.5) + y*.12;
+}
 MR.genWorld = function (map, seed, cadetGems) {
   const w = blankWorld(map, seed, cadetGems), r = mulberry32(seed), M = MR.MAPS[map];
-  if (map === 'gusev') terGusev(w, seed); else terJezero(w, seed);
+  if (map === 'gusev') terGusev(w, seed); else if (map === 'moon') terMoon(w, seed); else terJezero(w, seed);
   const S = M.station;
   for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
     const i = y*MW+x, t = w.ter[i];
     if (MR.nearStation(map,x,y,3) || MR.TER[t].block) continue;
-    const p = [.03,.06,.008,.045,.01,0,.05,0,.02][t];
+    const p = [.03,.06,.008,.045,.01,0,.05,0,.02,0][t];
     if (r() < p) w.obs[i] = 'R';
-    else if ((t === T.FLOOR || t === T.BED) && r() < .009) w.obs[i] = 'C';
+    else if ((t === T.FLOOR || t === T.BED) && r() < (map === 'moon' ? .03 : .009)) w.obs[i] = 'C';
   }
   for (let y=S.y-2;y<=S.y+3;y++) for (let x=S.x-2;x<=S.x+3;x++) if (MR.inb(x,y)) { const i=y*MW+x; if (w.ter[i] !== T.BED) w.ter[i] = T.FLOOR; w.obs[i] = ''; }
   const free = i => !w.obs[i] && !w.res[i] && !MR.TER[w.ter[i]].block;
@@ -84,7 +102,13 @@ MR.genWorld = function (map, seed, cadetGems) {
   const nearest = (tx, ty, id) => { for (let rad=0; rad<12; rad++) for (let y=ty-rad;y<=ty+rad;y++) for (let x=tx-rad;x<=tx+rad;x++) {
     if (!MR.inb(x,y)) continue; const i=y*MW+x; if (free(i)) { w.res[i] = id; w.obs[i] = 'A'; return i; } } return -1; };
   const isT = (...ts) => (x,y,t) => ts.includes(t);
-  if (map === 'gusev') {
+  if (map === 'moon') {
+    nearest(36, 24, 'art_retro'); nearest(26, 23, 'art_feather');
+    place('anorthosite', 3, (x,y,t) => t === T.HILL && Math.hypot(x-39, y-34) < 7);
+    place('glass', 3, (x,y,t) => !MR.TER[t].block && y < 33 && Math.abs(x - w.rilleX(y)) > 1.5 && Math.abs(x - w.rilleX(y)) < 4.5);
+    place('breccia', 5, isT(T.HILL, T.BED));
+    place('moon_basalt', 12, isT(T.FLOOR));
+  } else if (map === 'gusev') {
     nearest(36, 32, 'art_spirit');
     place('silica', 3, (x,y,t) => Math.hypot(x-41,y-28) < 6.5 && Math.hypot(x-41,y-28) > 2);
     place('carbonate', 3, isT(T.HILL));
@@ -106,7 +130,7 @@ MR.genWorld = function (map, seed, cadetGems) {
     place('basalt', 12, isT(T.FLOOR, T.BED));
   }
   if (cadetGems) {
-    const kinds = map === 'gusev' ? ['olivine','salts','silica','meteorite','carbonate','basalt'] : ['olivine','clay','salts','meteorite','carbonate','basalt'];
+    const kinds = map === 'moon' ? ['moon_basalt','breccia','glass'] : map === 'gusev' ? ['olivine','salts','silica','meteorite','carbonate','basalt'] : ['olivine','clay','salts','meteorite','carbonate','basalt'];
     let k = 0, g = 0;
     while (k < 10 && g++ < 4000) {
       const x = Math.floor(r()*MW), y = Math.floor(r()*MH), i = y*MW+x, d = Math.hypot(x-S.x, y-S.y);
@@ -163,12 +187,13 @@ MR.cloneWorld = w => {
 
 /* Terrain picture (static parts only: ground, textures, craters). */
 const COLS = {
-  jezero:[[181,96,61],[150,78,51],[210,140,92],[160,104,80],[138,76,54],[108,56,41],[150,92,66],[96,54,40],[196,150,118]],
-  gusev: [[166,98,68],[136,80,58],[204,142,98],[160,104,80],[128,74,54],[104,58,44],[156,96,68],[94,56,42],[204,170,140]],
+  jezero:[[181,96,61],[150,78,51],[210,140,92],[160,104,80],[138,76,54],[108,56,41],[150,92,66],[96,54,40],[196,150,118],[70,40,30]],
+  gusev: [[166,98,68],[136,80,58],[204,142,98],[160,104,80],[128,74,54],[104,58,44],[156,96,68],[94,56,42],[204,170,140],[70,40,30]],
+  moon:  [[104,103,100],[146,144,138],[124,122,118],[112,110,106],[96,95,92],[150,148,143],[138,136,131],[118,116,112],[160,158,152],[44,44,46]],
 };
 /* The terrain picture: a height map lit from the north-west (hillshading), so craters, the delta,
    dunes, hills and the crater rim look like an orbital photo, with soft edges when zoomed out. */
-const HEIGHT = [0, .15, .12, .7, -.45, 1.9, 1.1, 2.1, 1.0];
+const HEIGHT = [0, .15, .12, .7, -.45, 1.9, 1.1, 2.1, 1.0, -1.9];
 MR.bakeTerrain = function (w) {
   const r = mulberry32(w.seed+99), nz = makeNoise(w.seed+5), nd = makeNoise(w.seed+61), TC = COLS[w.map] || COLS.jezero;
   const S = 10, PW = MW*S, PH = MH*S;
@@ -181,7 +206,7 @@ MR.bakeTerrain = function (w) {
   const dune = new Float32Array(N), delta = new Float32Array(N);
   for (let i=0;i<N;i++) { dune[i] = w.ter[i] === T.DUNE ? 1 : 0; delta[i] = w.ter[i] === T.DELTA ? 1 : 0; }
   const craters = []; for (let i=0;i<N;i++) if (w.obs[i] === 'C') craters.push({x:i % MW + .5, y:((i/MW)|0) + .5, R:.42 + r()*.1, fresh:r() < .6});
-  for (let k=0;k<45;k++) { const x = r()*MW, y = r()*MH, t = w.ter[Math.floor(y)*MW + Math.floor(x)]; if (t === T.FLOOR || t === T.BED || t === T.DELTA) craters.push({x, y, R:.06 + r()*.08, fresh:r() < .25, deco:true}); }
+  for (let k=0;k<(w.map === 'moon' ? 160 : 45);k++) { const x = r()*MW, y = r()*MH, t = w.ter[Math.floor(y)*MW + Math.floor(x)]; if (t === T.FLOOR || t === T.BED || t === T.DELTA || (w.map === 'moon' && t === T.HILL)) craters.push({x, y, R:.06 + r()*(w.map === 'moon' ? .12 : .08), fresh:r() < .25, deco:true}); }
   const wind = .6, wc = Math.cos(wind), ws = Math.sin(wind);
   const H = new Float32Array((PW+2)*(PH+2)), at = (px, py) => (py+1)*(PW+2) + px+1;
   for (let py=-1;py<=PH;py++) for (let px=-1;px<=PW;px++) {

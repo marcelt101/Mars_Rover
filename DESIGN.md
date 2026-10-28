@@ -130,7 +130,9 @@ Robot playtest after batch 1: a beginner following the hints finishes 93% of exp
 
 **Batch 2 (original list):** code stars and the coding badge ladder; realistic rovers with visible perks; tap-the-map planning, hint clouds, markers, recipes, sol summary; Scout flags and the Finds list; more realistic generated terrain (hillshading, craters, delta, dunes).
 
-**Batch 3:** team chain (find → drill → lab), Mars Catalog and base upgrades; satellite relay kit (multi-sol programs, blocks for Explorers and Python for Specialists, with mission recipes); gentle weather and forecasts; rover health dashboard (battery, tubes, wheels, dusty panels, temperature, signal, instruments; a simple face for Cadets; the station repairs everything for free); Moon map with the Apollo Lunar Roving Vehicle.
+**Batch 3 (done):** team chain (find → drill → lab), Mars Catalog and base upgrades; satellite relay kit (multi-sol programs, blocks for Explorers and Python for Specialists, with mission recipes); gentle weather and forecasts; rover health dashboard (battery, tubes, wheels, dusty panels, temperature, signal, instruments; a simple face for Cadets; the station repairs everything for free); Moon map with the Apollo Lunar Roving Vehicle.
+
+Batch 3 details: the Lab job (team games) catalogs samples, makes water/metal/bricks/glass and builds the radio tower, solar farm, garage and greenhouse. The relay kit unlocks at rank 2: Explorer smart blocks (Repeat, If…, Until full or low battery, Go to signal, Go home, Run for 2 sols) nest 2 levels deep; Specialist Python adds `while`, `if`/`elif`/`else`, `def`, sensors, `go_to_signal()`, `go_home()` and `rover.mission(N)`. Programs run on the rover with a budget of 60 actions per sol; AutoNav re-routes macros around new rocks, stops before collisions, and pauses at low battery. Weather storms are scheduled 2 sols ahead, never before sol 6, about 1 sol in 12.
 
 ## Next revision (v3): real NASA maps
 
@@ -151,4 +153,4 @@ Everything in the main game is real science: cards, facts, maps and rover histor
 - Its own "Mars Legends" card set, patches and museum shelf, always marked as science fiction.
 - A real-science counterpart next to it: fossil traces of ancient microbes, which is what Perseverance is actually looking for.
 
-Later updates: survival, Meridiani / Gale / North Polar / Moon maps, Epic and Ultimate perks, Engineer coding perks (`sense_ahead()`, `if`, `while`, `def`), map editor, installable app.
+Later updates: survival, Meridiani / Gale / North Polar / Moon maps, Epic and Ultimate perks, map editor, installable app.
