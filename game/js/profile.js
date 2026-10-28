@@ -1,0 +1,99 @@
+/* Profiles, collections, XP, patches and saves. Everything is stored in this browser. */
+(function () {
+const MR = window.MR;
+const SLOT = (new URLSearchParams(location.search).get('slot') || '').replace(/[^a-z0-9]/gi, '');
+const KEY = 'mr2.profiles' + SLOT, TEAM = 'mr2.team' + SLOT, SET = 'mr2.settings' + SLOT;
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+const blankStats = () => ({squares:0, flown:0, samples:0, delivered:0, scans:0, identified:0, stuck:0, freed:0, bumps:0, treasures:0,
+  cleared:0, loops:0, clean:0, shinies:0, artifacts:0, organics:0, exp:{}, crew3:0, teamWins:0, xpFrac:0});
+
+MR.Store = {
+  db: load(KEY, {list:[], current:null}),
+  team: load(TEAM, {unlocked:['jezero'], allMaps:false}),
+  settings: load(SET, {fast:false, sound:true}),
+  save(){ save(KEY, this.db); save(TEAM, this.team); save(SET, this.settings); },
+  profiles(){ return this.db.list; },
+  current(){ return this.db.list.find(p => p.id === this.db.current) || null; },
+  select(id){ this.db.current = id; this.save(); },
+  create({name, color, role}){
+    const p = {id:'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:String(name).trim().slice(0,16) || 'Rover',
+      color, role, job:MR.defaultJob(role), xp:0, cards:{}, patches:{}, perks:[], stats:blankStats(), created:Date.now()};
+    this.db.list.push(p); this.db.current = p.id; this.save(); return p;
+  },
+  remove(id){ this.db.list = this.db.list.filter(p => p.id !== id); if (this.db.current === id) this.db.current = null; this.save(); },
+  unlocked(){ return this.team.allMaps ? MR.MAP_ORDER.slice() : MR.MAP_ORDER.filter(m => this.team.unlocked.includes(m)); },
+  unlock(maps){ let changed = false; (maps||[]).forEach(m => { if (MR.MAPS[m] && !this.team.unlocked.includes(m)) { this.team.unlocked.push(m); changed = true; } }); if (changed) this.save(); return changed; },
+  exportCode(){ const json = JSON.stringify({v:2, profiles:this.db.list, team:this.team}); return 'MR2:' + btoa(unescape(encodeURIComponent(json))); },
+  importCode(code){
+    const raw = String(code).trim().replace(/^MR2:/, '');
+    const data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if (!data || !Array.isArray(data.profiles)) throw new Error('bad');
+    data.profiles.forEach(p => { p.stats = {...blankStats(), ...(p.stats||{})}; const i = this.db.list.findIndex(q => q.id === p.id); if (i >= 0) this.db.list[i] = p; else this.db.list.push(p); });
+    if (data.team) this.unlock(data.team.unlocked);
+    this.save(); return data.profiles.length;
+  },
+};
+MR.Store.db.list.forEach(p => { p.stats = {...blankStats(), ...(p.stats||{})}; p.cards = p.cards || {}; p.patches = p.patches || {}; p.perks = p.perks || []; });
+
+MR.rankInfo = p => { const r = MR.rankOf(p.xp), cur = MR.RANKS[r], next = MR.RANKS[r+1];
+  return {rank:r, name:cur.name, next: next ? next.name : null, frac: next ? (p.xp - cur.xp)/(next.xp - cur.xp) : 1, toNext: next ? next.xp - p.xp : 0}; };
+MR.ownedPerks = p => p.role === 'cadet' ? [] : Object.keys(MR.PERKS).filter(k => MR.rankOf(p.xp) >= MR.PERKS[k].rank);
+MR.equippedPerks = p => { const own = MR.ownedPerks(p), slots = MR.ROLES[p.role].slots; return (p.perks||[]).filter(k => own.includes(k)).slice(0, slots); };
+MR.playerSummary = p => ({pid:p.id, name:p.name, color:p.color, role:p.role, job:p.job, rank:MR.rankOf(p.xp), perks:MR.equippedPerks(p)});
+
+/* Turn the events of one sol into rewards for this player. Returns a list of notices. */
+MR.applyRewards = (p, myPid, events, ctx) => {
+  const s = p.stats, out = [], rank0 = MR.rankOf(p.xp);
+  const addXp = n => { p.xp += n; };
+  const addCard = (id, shiny) => {
+    const c = p.cards[id] || (p.cards[id] = {n:0, shiny:0});
+    const isNew = c.n === 0 && !shiny, newShiny = shiny && !c.shiny;
+    if (shiny) c.shiny++; else c.n++;
+    if (isNew) out.push({k:'card', id}); if (newShiny) out.push({k:'shiny', id});
+  };
+  events.forEach(e => {
+    const me = e.pid === myPid;
+    switch (e.t) {
+      case 'move': if (me) { if (e.fly) s.flown++; else s.squares++; s.xpFrac += .5; } break;
+      case 'bump': if (me) s.bumps++; break;
+      case 'stuck': if (me) s.stuck++; break;
+      case 'free': if (me) { s.freed++; addXp(10); } break;
+      case 'scan': if (me) { s.scans++; addXp(2); } break;
+      case 'analyze': if (me) { const n = e.cells.filter(c => c.res !== 'basalt').length; s.identified += n; addXp(4*n); } break;
+      case 'drill':
+        addCard(e.res, false);
+        if (me) {
+          addXp(MR.RARITY[MR.CARDS[e.res].rar].xp + (e.treasure ? 15 : 0));
+          if (e.treasure) s.treasures++; else s.samples++;
+          if (e.res === 'organics') s.organics++;
+          if (e.shiny) { addCard(e.res, true); s.shinies++; }
+        } else if (e.res === 'organics') s.organics++;
+        break;
+      case 'artifact': addCard(e.res, false); s.artifacts++; addXp(me ? 80 : 30); break;
+      case 'dock': if (me && e.n) { s.delivered += e.n; addXp(10*e.n); } break;
+      case 'dig': if (me && e.what !== 'none') { s.cleared++; addXp(5); } break;
+      case 'win':
+        s.exp[ctx.map] = (s.exp[ctx.map]||0) + 1; addXp(120);
+        if (ctx.players > 1) s.teamWins++;
+        if (ctx.players >= 3) s.crew3++;
+        out.push({k:'win'});
+        break;
+    }
+  });
+  if (ctx.planInfo) { if (ctx.planInfo.loops) s.loops++; if (ctx.planInfo.clean) s.clean++; }
+  if (s.xpFrac >= 1) { addXp(Math.floor(s.xpFrac)); s.xpFrac -= Math.floor(s.xpFrac); }
+  MR.PATCHES.forEach(pt => { if (!p.patches[pt.id] && pt.test(s)) { p.patches[pt.id] = Date.now(); addXp(25); out.push({k:'patch', id:pt.id}); } });
+  const rank1 = MR.rankOf(p.xp);
+  if (rank1 > rank0) {
+    out.push({k:'rank', rank:rank1});
+    Object.entries(MR.PERKS).forEach(([k, pk]) => { if (p.role !== 'cadet' && pk.rank > rank0 && pk.rank <= rank1) {
+      out.push({k:'perk', id:k});
+      if ((p.perks||[]).length < MR.ROLES[p.role].slots) p.perks = [...(p.perks||[]), k];
+    } });
+  }
+  MR.Store.save();
+  return out;
+};
+})();

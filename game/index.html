@@ -3,1123 +3,207 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Jezero Expedition</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<title>Mars Rover Ops</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
-<style>
-/* Mission-control console around a scrolling orbital map of Jezero Crater: map + objectives left, command console + log right */
-:root{
-  --bg:#0e1319; --panel:#151c24; --raise:#1c2530; --line:#29343f; --fg:#e6ecf1; --muted:#8fa0b0; --soft:#c3ced8;
-  --signal:#58cfbe; --sci:#f0bf5a; --build:#e8844f; --power:#86d48f; --bad:#ff7b6c;
-  --display:'Chakra Petch','Segoe UI',system-ui,sans-serif;
-  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
-  color-scheme:dark;
-}
-[hidden]{display:none!important}
-html,body{background:var(--bg)}
-body{color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
-button,textarea{font:inherit;color:inherit}
-button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
-.app{max-width:1360px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 48px;display:flex;flex-direction:column;gap:16px}
-
-.top{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center;justify-content:space-between}
-.brand{display:flex;gap:12px;align-items:center;min-width:0}
-.mark{width:40px;height:40px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#e89a6c,#b4532f 55%,#6d2c18);box-shadow:0 0 0 3px var(--bg),0 0 0 4px var(--line)}
-h1{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.04em;text-transform:uppercase;margin:0;line-height:1.1}
-.sub{margin:2px 0 0;color:var(--muted);font-size:14px}
-.roles{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;flex-wrap:wrap}
-.role{background:none;border:1px solid transparent;border-radius:7px;padding:6px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
-.role b{font-family:var(--display);font-weight:600;letter-spacing:.04em;font-size:15px}
-.role small{color:var(--muted);font-size:12px}
-.role[aria-checked="true"]{background:var(--raise);border-color:var(--signal)}
-.role:hover{background:var(--raise)}
-.role:disabled{opacity:.5;cursor:not-allowed}
-
-.grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(300px,1fr);gap:16px;align-items:start}
-@media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
-.col{display:flex;flex-direction:column;gap:12px;min-width:0}
-
-.mapbox{position:relative;width:100%;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#5a2a1a;line-height:0;user-select:none;-webkit-user-select:none}
-#map{display:block;touch-action:none;cursor:grab}
-#map.dragging{cursor:grabbing}
-.hud{position:absolute;left:10px;top:10px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none;line-height:1.3;max-width:calc(100% - 70px)}
-.chip{background:rgba(14,19,25,.82);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:4px 9px;display:flex;flex-direction:column;backdrop-filter:blur(4px)}
-.chip .k{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.chip .v{font-family:var(--display);font-weight:600;font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.chip.bat{min-width:120px}
-.batbar{height:6px;border-radius:3px;background:var(--raise);overflow:hidden;margin-top:3px}
-.batbar span{display:block;height:100%;background:var(--power);transition:width .25s ease}
-.batbar span.low{background:var(--bad)}
-.mapbtns{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;line-height:1}
-.mbtn{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(14,19,25,.82);cursor:pointer;font-size:18px;display:grid;place-items:center}
-.mbtn:hover{border-color:var(--muted)}
-.mini{position:absolute;right:10px;bottom:10px;width:168px;height:115px;border-radius:6px;border:1px solid rgba(255,255,255,.15);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4)}
-@media (max-width:560px){.mini{width:112px;height:77px}}
-.disc{position:absolute;left:10px;bottom:10px;max-width:min(340px,calc(100% - 140px));background:rgba(21,28,36,.95);border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.4;display:flex;gap:12px;align-items:flex-start;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.45)}
-@media (max-width:560px){.disc{max-width:calc(100% - 20px);bottom:96px}}
-.disc .gem{width:36px;height:36px;flex:none;border-radius:8px;transform:rotate(45deg) scale(.78);box-shadow:inset -6px -6px 0 rgba(0,0,0,.18),inset 4px 4px 0 rgba(255,255,255,.25)}
-.disc h4{margin:0;font-family:var(--display);font-size:17px;letter-spacing:.02em}
-.disc p{margin:2px 0 0;font-size:13.5px;color:var(--soft)}
-.disc .pts{font-family:var(--mono);font-size:12px;color:var(--sci)}
-.win{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,19,.72);line-height:1.45;padding:16px}
-.win .card{background:var(--panel);border:1px solid var(--signal);border-radius:12px;padding:20px 24px;text-align:center;max-width:360px;display:flex;flex-direction:column;gap:8px;align-items:center}
-.win h3{font-family:var(--display);font-size:24px;margin:0;text-transform:uppercase;letter-spacing:.04em}
-.win .big{font-size:34px;color:var(--sci);letter-spacing:6px}
-.win .big i{font-style:normal;color:var(--line)}
-.win p{margin:0;color:var(--soft)}
-.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-
-.maptools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
-.btn{background:var(--raise);border:1px solid var(--line);border-radius:7px;padding:8px 14px;cursor:pointer;font-size:14px}
-.btn:hover:not(:disabled){border-color:var(--muted)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn.primary{background:var(--signal);border-color:var(--signal);color:#06201c;font-weight:600}
-.toggle{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:14px;cursor:pointer}
-.legend{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:13px}
-.legend span{display:inline-flex;gap:6px;align-items:center}
-.legend i{width:11px;height:11px;border-radius:2px;display:inline-block}
-details.how{font-size:14px;color:var(--soft)}
-details.how summary{cursor:pointer;color:var(--muted)}
-details.how ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
-
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.ph{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-h3.t{font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:0}
-.count{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
-.pal{display:grid;grid-template-columns:28px 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;text-align:left;background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:7px 8px;cursor:pointer}
-.pal:hover:not(:disabled){border-color:var(--muted)}
-.pal:disabled{opacity:.45;cursor:not-allowed}
-.ic{grid-row:span 2;width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:17px;font-weight:600;color:#0b1015;font-family:var(--body)}
-.pal .lb{font-weight:500;font-size:14px;line-height:1.15}
-.pal small{color:var(--muted);font-family:var(--mono);font-size:11px}
-.cat-move .ic{background:var(--signal)} .cat-sci .ic{background:var(--sci)} .cat-power .ic{background:var(--power)}
-
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
-.tab{background:none;border:0;border-bottom:2px solid transparent;padding:6px 10px;cursor:pointer;color:var(--muted);font-size:14px;margin-bottom:-1px}
-.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--signal)}
-.prog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;min-height:60px}
-.prog .empty{color:var(--muted);font-size:14px;padding:14px 10px;border:1px dashed var(--line);border-radius:8px;text-align:center}
-.cmd{display:flex;align-items:center;gap:8px;background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:5px 6px 5px 8px;transition:border-color .15s,opacity .2s,background .15s}
-.cmd .num{font-family:var(--mono);font-size:12px;color:var(--muted);width:18px;text-align:right;font-variant-numeric:tabular-nums}
-.cmd .ic{grid-row:auto;width:24px;height:24px;font-size:15px}
-.cmd .lb{flex:1;min-width:0;font-size:14px}
-.cmd.active{border-color:var(--signal);background:#1f3236}
-.cmd.done{opacity:.6}
-.cmd.skipped{opacity:.35;text-decoration:line-through}
-.arg{display:flex;align-items:center;gap:2px}
-.arg b{font-family:var(--mono);min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
-.mini-b{width:26px;height:26px;border-radius:6px;border:1px solid var(--line);background:var(--panel);cursor:pointer;display:grid;place-items:center;font-size:15px;line-height:1;padding:0}
-.mini-b:hover:not(:disabled){border-color:var(--muted)}
-.mini-b:disabled{opacity:.4;cursor:not-allowed}
-.code{margin:0;background:#0b1015;border:1px solid var(--line);border-radius:8px;padding:12px;font-family:var(--mono);font-size:13px;line-height:1.6;overflow-x:auto;white-space:pre;min-height:60px}
-.code .c{color:var(--muted)} .code .f{color:var(--signal)} .code .n{color:var(--sci)}
-.editor{width:100%;box-sizing:border-box;min-height:230px;resize:vertical;background:#0b1015;border:1px solid var(--line);border-radius:8px;padding:12px;font-family:var(--mono);font-size:13.5px;line-height:1.6;tab-size:4;white-space:pre;overflow:auto}
-.err{font-family:var(--mono);font-size:12.5px;color:var(--bad);margin:0}
-.ok{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin:0}
-.uplink{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
-.uplink strong{color:var(--fg);font-weight:500}
-.ulbar{height:6px;border-radius:3px;background:var(--raise);overflow:hidden}
-.ulbar span{display:block;height:100%;width:0;background:repeating-linear-gradient(90deg,var(--signal) 0 10px,#3a9e91 10px 14px)}
-.actions{display:flex;gap:8px}
-.actions .primary{flex:1;padding:11px 14px;font-size:15px;font-family:var(--display);letter-spacing:.06em;text-transform:uppercase}
-.running{font-family:var(--mono);font-size:12.5px;color:var(--signal);margin:0}
-
-.cadet{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.cbtn{aspect-ratio:1;max-height:120px;border-radius:16px;border:2px solid var(--line);background:var(--raise);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em}
-.cbtn span{font-size:40px;line-height:1}
-.cbtn:active{transform:scale(.96)}
-.cbtn.go{border-color:var(--signal)} .cbtn.go span{color:var(--signal)}
-.cbtn.drill{grid-column:span 3;aspect-ratio:auto;height:84px;max-height:none;flex-direction:row;gap:12px;border-color:var(--sci);font-size:20px}
-.cbtn.drill span{color:var(--sci)}
-.hint{color:var(--muted);font-size:13px;margin:0}
-
-.goals{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
-.goals li{display:flex;gap:9px;align-items:center;font-size:14px}
-.goals .box{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--muted);flex:none;display:grid;place-items:center;font-size:11px;line-height:1}
-.goals li.done .box{background:var(--power);border-color:var(--power);color:var(--bg)}
-.goals li.done .t{color:var(--muted);text-decoration:line-through}
-.goals .cnt{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-.tubes{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.tube{width:14px;height:34px;border-radius:7px 7px 4px 4px;border:1.5px solid var(--line);background:var(--raise);position:relative;overflow:hidden}
-.tube i{position:absolute;left:0;right:0;bottom:0;height:70%}
-.tubes .lbl{font-size:13px;color:var(--muted);margin-left:4px}
-.found{display:flex;flex-wrap:wrap;gap:6px}
-.fchip{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
-.fchip i{width:9px;height:9px;border-radius:2px;transform:rotate(45deg);display:inline-block}
-
-.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;font-size:13.5px}
-.log li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:baseline;min-width:0}
-.log .tag{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
-.log .good{color:var(--power)} .log .bad{color:var(--bad)} .log .warn{color:var(--sci)} .log .info{color:var(--soft)}
-@media (prefers-reduced-motion:reduce){.cbtn:active{transform:none}}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div class="app">
   <header class="top">
-    <div class="brand">
+    <button class="brand" id="homeBtn" aria-label="Back to the start screen">
       <span class="mark" aria-hidden="true"></span>
-      <div>
-        <h1>Jezero Expedition</h1>
-        <p class="sub">Drive a rover across the real Jezero Crater, where NASA's Perseverance explores today.</p>
-      </div>
-    </div>
-    <div class="roles" id="roles" role="radiogroup" aria-label="Crew role">
-      <button class="role" role="radio" data-role="cadet"><b>Cadet</b><small>Ages 4–7 · drive live</small></button>
-      <button class="role" role="radio" data-role="explorer"><b>Explorer</b><small>Ages 8–12 · plan with blocks</small></button>
-      <button class="role" role="radio" data-role="specialist"><b>Specialist</b><small>Ages 13+ · write Python</small></button>
+      <span><h1>Mars Rover Ops</h1><p class="sub">Plan, send, explore. Real places on Mars, played together.</p></span>
+    </button>
+    <div class="topright">
+      <button class="btn" id="invBtn" hidden>Inventory <kbd>I</kbd></button>
+      <button class="mechip" id="meBtn" hidden></button>
     </div>
   </header>
 
-  <main class="grid">
-    <section class="col">
-      <div class="mapbox" id="mapbox">
-        <canvas id="map" role="img" aria-label="Scrolling map of Jezero Crater with the rover, base station, dunes, delta and science targets"></canvas>
-        <div class="hud" id="hud">
-          <div class="chip" id="cSol"><span class="k">Sol</span><span class="v" id="hSol">1</span></div>
-          <div class="chip bat" id="cBat"><span class="k">Battery <span id="hBatTxt">100%</span></span><div class="batbar"><span id="hBat" style="width:100%"></span></div></div>
-          <div class="chip" id="cTubes"><span class="k">Tubes</span><span class="v" id="hTubes">0/8</span></div>
-          <div class="chip"><span class="k" id="hScoreK">Science</span><span class="v" id="hScore">0</span></div>
-          <div class="chip"><span class="k">Location</span><span class="v" id="hRegion">Base station</span></div>
+  <!-- HOME -->
+  <section class="screen" id="scrHome">
+    <div class="ph"><h2>Who's playing?</h2><span class="muted">Each player picks their own profile on their own device.</span></div>
+    <div class="profiles" id="profiles"></div>
+    <div class="modes" id="modes">
+      <div class="panel mode">
+        <h3 class="t">Play solo</h3>
+        <p>Explore on your own. Good for practice.</p>
+        <button class="btn primary big" id="soloBtn">Play solo</button>
+      </div>
+      <div class="panel mode">
+        <h3 class="t">Host a team game</h3>
+        <p>This device runs the game. Up to 6 players join with a code.</p>
+        <button class="btn primary big" id="hostBtn">Host</button>
+      </div>
+      <div class="panel mode">
+        <h3 class="t">Join a team game</h3>
+        <p>Type the code from the host's screen, or scan its QR code.</p>
+        <div class="row"><input class="input" id="joinCode" placeholder="MARS-XXXX" maxlength="9" autocomplete="off" autocapitalize="characters" style="flex:1;font-family:var(--mono);letter-spacing:.08em"><button class="btn primary" id="joinBtn">Join</button></div>
+        <p class="err" id="joinErr" hidden></p>
+      </div>
+    </div>
+    <div class="links">
+      <button id="parentsBtn">Parents and saves</button>
+      <a href="../v1/">Play version 1</a>
+      <a href="../classic/">Classic missions</a>
+    </div>
+  </section>
+
+  <!-- LOBBY -->
+  <section class="screen" id="scrLobby" hidden>
+    <div class="lobby">
+      <div class="col">
+        <div class="panel" id="roomPanel">
+          <div class="ph"><h3 class="t">Room code</h3><span class="count" id="netStatus"></span></div>
+          <div class="roomcode" id="roomCode">MARS-····</div>
+          <div class="row" style="align-items:flex-start;gap:16px">
+            <div class="qr" id="qr"></div>
+            <p class="muted" style="margin:0;flex:1;min-width:160px" id="roomHelp">On the other devices, open this game, pick a profile, tap <b>Join</b> and type the code. Or scan the QR code with the camera.</p>
+          </div>
         </div>
-        <div class="mapbtns">
-          <button class="mbtn" id="zoomIn" aria-label="Zoom in">+</button>
-          <button class="mbtn" id="zoomOut" aria-label="Zoom out">−</button>
-          <button class="mbtn" id="centerBtn" aria-label="Center on rover">◎</button>
+        <div class="panel" id="soloPanel" hidden>
+          <h3 class="t">Solo expedition</h3>
+          <p class="muted" style="margin:0">Pick your rover and a map, then start.</p>
         </div>
-        <canvas class="mini" id="mini" aria-label="Overview map. Click to jump there."></canvas>
-        <div class="disc" id="disc" hidden>
-          <div class="gem" id="discGem"></div>
-          <div><h4 id="discName"></h4><p id="discFact"></p><span class="pts" id="discPts"></span></div>
+        <div class="panel">
+          <div class="ph"><h3 class="t">Crew</h3><span class="count" id="crewCount"></span></div>
+          <ul class="crew" id="crewList"></ul>
         </div>
-        <div class="win" id="win" hidden>
-          <div class="card">
-            <h3>Expedition complete</h3>
-            <div class="big" id="winStars"></div>
-            <p id="winText"></p>
-            <div class="row">
-              <button class="btn" id="keepBtn">Keep exploring</button>
-              <button class="btn primary" id="againBtn">New expedition</button>
+      </div>
+      <div class="col">
+        <div class="panel">
+          <h3 class="t">Your rover</h3>
+          <div class="jobs" id="jobPick"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3 class="t">Map</h3><span class="count" id="mapNote"></span></div>
+          <div class="maps" id="mapPick"></div>
+        </div>
+        <div class="row">
+          <button class="btn primary big" id="startBtn">Start expedition</button>
+          <button class="btn" id="leaveLobbyBtn">Leave</button>
+          <span class="muted" id="lobbyWait"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section class="screen" id="scrGame" hidden>
+    <div class="grid">
+      <div class="col">
+        <div class="crewbar" id="crewBar"></div>
+        <div class="mapbox" id="mapbox">
+          <canvas id="map" aria-label="Map of Mars with the team's rovers"></canvas>
+          <div class="hud">
+            <div class="chip" id="cSol"><span class="k">Sol</span><span class="v" id="hSol">1</span></div>
+            <div class="chip bat" id="cBat"><span class="k">Battery <span id="hBatTxt">100%</span></span><div class="batbar"><span id="hBat" style="width:100%"></span></div></div>
+            <div class="chip" id="cTubes"><span class="k">Tubes</span><span class="v" id="hTubes">0/8</span></div>
+            <div class="chip"><span class="k" id="hScoreK">Team science</span><span class="v" id="hScore">0</span></div>
+            <div class="chip" id="cRegion"><span class="k">Location</span><span class="v" id="hRegion">Base station</span></div>
+          </div>
+          <div class="mapbtns">
+            <button class="mbtn" id="zoomIn" aria-label="Zoom in">+</button>
+            <button class="mbtn" id="zoomOut" aria-label="Zoom out">−</button>
+            <button class="mbtn" id="centerBtn" aria-label="Follow my rover">◎</button>
+          </div>
+          <canvas class="mini" id="mini" aria-label="Overview map. Click to look there."></canvas>
+          <div class="win" id="win" hidden>
+            <div class="card">
+              <h3>Expedition complete</h3>
+              <div class="big" id="winStars"></div>
+              <p id="winText"></p>
+              <div class="row" style="justify-content:center">
+                <button class="btn" id="keepBtn">Keep exploring</button>
+                <button class="btn primary" id="againBtn">New expedition</button>
+              </div>
             </div>
           </div>
         </div>
+        <div class="maptools">
+          <label class="toggle"><input type="checkbox" id="fast"> Fast mode</label>
+          <label class="toggle"><input type="checkbox" id="sound"> Sound</label>
+          <button class="btn" id="leaveGameBtn">Leave game</button>
+          <span class="muted" id="gameNet"></span>
+        </div>
+        <details class="how"><summary>How to play</summary><ul id="howList"></ul></details>
       </div>
 
-      <div class="maptools">
-        <button class="btn" id="newBtn">New expedition</button>
-        <label class="toggle"><input type="checkbox" id="fast"> Fast mode</label>
-        <label class="toggle"><input type="checkbox" id="sound"> Sound</label>
-        <div class="legend">
-          <span><i style="background:#cf8a5b"></i>Dunes (slow, sand traps)</span>
-          <span><i style="background:#a3664c"></i>Delta (old lakebed)</span>
-          <span><i style="background:#6e3a2a"></i>Crater rim (too steep)</span>
+      <div class="col">
+        <div class="panel" id="cadetPanel" hidden>
+          <div class="ph"><h3 class="t">Your plan</h3><span class="count" id="cadetCount"></span></div>
+          <div class="seq" id="seq"></div>
+          <div class="cadet">
+            <button class="cbtn" data-pic="left" aria-label="Turn left">↶</button>
+            <button class="cbtn" data-pic="forward" aria-label="Go one square">↑</button>
+            <button class="cbtn" data-pic="right" aria-label="Turn right">↷</button>
+            <button class="cbtn dig" data-pic="drill" aria-label="Dig for treasure">⛏</button>
+          </div>
+          <div class="cadetgo">
+            <button class="gobtn" id="goBtn">GO!</button>
+            <button class="trash" id="trashBtn" aria-label="Start over">✕</button>
+          </div>
         </div>
-      </div>
-      <details class="how" id="how">
-        <summary>How to play</summary>
-        <ul id="howList"></ul>
-      </details>
-    </section>
 
-    <section class="col">
-      <div class="panel" id="cadetPanel">
-        <div class="ph"><h3 class="t">Drive the rover</h3></div>
-        <div class="cadet">
-          <button class="cbtn" data-live="left" aria-label="Turn left"><span>↶</span>Left</button>
-          <button class="cbtn go" data-live="forward" aria-label="Go forward"><span>↑</span>Go</button>
-          <button class="cbtn" data-live="right" aria-label="Turn right"><span>↷</span>Right</button>
-          <button class="cbtn drill" data-live="drill" aria-label="Drill for treasure"><span>⊛</span>Dig for treasure</button>
+        <div class="panel" id="planPanel">
+          <div class="ph"><h3 class="t" id="planTitle">Today's plan</h3><span class="count" id="count">0 / 12</span></div>
+          <div class="palette" id="palette"></div>
+          <div class="tabs" role="tablist" id="tabs">
+            <button class="tab" role="tab" id="tabBlocks" aria-selected="true">Blocks</button>
+            <button class="tab" role="tab" id="tabCode" aria-selected="false">Python</button>
+          </div>
+          <ol class="prog" id="prog"></ol>
+          <pre class="code" id="code" hidden></pre>
+          <textarea class="editor" id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Python program" hidden></textarea>
+          <p class="err" id="err" hidden></p>
+          <p class="running" id="runLine" hidden></p>
+          <div class="actions">
+            <button class="btn primary" id="sendBtn">Send to Mars</button>
+            <button class="btn" id="clearBtn">Clear</button>
+          </div>
         </div>
-        <p class="hint">Drive onto a sparkly gem and press Dig. Keyboard: arrow keys and space bar.</p>
-      </div>
 
-      <div class="panel" id="planPanel">
-        <div class="ph"><h3 class="t" id="planTitle">Today's sequence</h3><span class="count" id="count">0 / 12</span></div>
-        <div class="palette" id="palette"></div>
-        <div class="tabs" role="tablist" id="tabs">
-          <button class="tab" role="tab" id="tabBlocks" aria-selected="true">Blocks</button>
-          <button class="tab" role="tab" id="tabCode" aria-selected="false">Python</button>
+        <div class="panel" id="statusPanel">
+          <div class="uplink" id="uplink" hidden>
+            <div><strong>Uplink: Earth to Mars</strong> <span>Real signals take 4 to 24 minutes.</span></div>
+            <div class="ulbar"><span id="ulBar"></span></div>
+          </div>
+          <p class="teamline" id="teamLine"></p>
+          <button class="btn" id="forceBtn" hidden>Start without waiting</button>
         </div>
-        <ol class="prog" id="prog"></ol>
-        <pre class="code" id="code" hidden></pre>
-        <textarea class="editor" id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Python command sequence" hidden></textarea>
-        <p class="err" id="err" hidden></p>
-        <p class="running" id="runLine" hidden></p>
-        <div class="uplink" id="uplink" hidden>
-          <div><strong>Uplink: Earth to Mars</strong> <span>Real signals take 4 to 24 minutes.</span></div>
-          <div class="ulbar"><span id="ulBar"></span></div>
-        </div>
-        <div class="actions">
-          <button class="btn primary" id="sendBtn">Send to Mars</button>
-          <button class="btn" id="clearBtn">Clear</button>
-        </div>
-      </div>
 
-      <div class="panel">
-        <div class="ph"><h3 class="t">Objectives</h3><span class="count" id="solCount"></span></div>
-        <ul class="goals" id="goals"></ul>
-        <div class="tubes" id="tubes"></div>
-        <div class="found" id="found"></div>
-      </div>
+        <div class="panel">
+          <div class="ph"><h3 class="t">Objectives</h3><span class="count" id="solCount"></span></div>
+          <ul class="goals" id="goals"></ul>
+          <div class="tubes" id="tubes"></div>
+        </div>
 
-      <div class="panel">
-        <div class="ph"><h3 class="t">Mission log</h3></div>
-        <ol class="log" id="log"></ol>
+        <div class="panel">
+          <div class="ph"><h3 class="t">Mission log</h3></div>
+          <div class="chatrow" id="chatRow"><input class="input" id="chatIn" maxlength="120" placeholder="Say something to the team (T)" autocomplete="off"><button class="btn" id="chatSend">Send</button></div>
+          <ol class="log" id="log"></ol>
+        </div>
       </div>
-    </section>
-  </main>
+    </div>
+  </section>
 </div>
 
-<script>
-(() => {
-const MW = 64, MH = 44, BASE = 32;
-const T = {FLOOR:0, BED:1, DUNE:2, DELTA:3, CHAN:4, RIM:5};
-const TCOL = [[181,96,61],[150,78,51],[210,140,92],[160,104,80],[138,76,54],[108,56,41]];
-const DIRS = [[0,-1],[1,0],[0,1],[-1,0]];
-const DIRNAME = ['North','East','South','West'];
-const STATION = {x:34, y:22};
-const START = {x:33, y:22, dir:3};
-const APEX = {x:10, y:13};
+<div class="tip" id="tip" hidden></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="chest" id="chest" hidden></div>
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
 
-const RES = {
-  clay:      {name:'Clay', kid:'Mud rock!', color:'#5fb7a8', pts:30, fact:"Clay forms when water soaks rock for a long time. Jezero's delta is full of it, which is why Perseverance landed here."},
-  carbonate: {name:'Carbonate', kid:'Lake rock!', color:'#e8dab0', pts:40, fact:'Carbonates form at the edges of lakes. On Earth they can lock away traces of tiny living things.'},
-  organics:  {name:'Organic molecules', kid:'Life clue!', color:'#b48ce8', pts:120, fact:'Carbon-based molecules are the building blocks of life. Not proof of life, but a big clue. Perseverance found organics in Jezero rocks.'},
-  olivine:   {name:'Olivine', kid:'Green crystal!', color:'#9cc35a', pts:30, fact:"A green volcanic crystal. Séítah's olivine rock formed as a thick layer of magma slowly cooled."},
-  salts:     {name:'Water-bearing salts', kid:'Water salt!', color:'#7fb2ff', pts:50, fact:'Salt crystals with water locked inside. Future astronauts could bake drinking water out of them.'},
-  meteorite: {name:'Iron-nickel meteorite', kid:'Space metal!', color:'#c2c9d1', pts:60, fact:'A chunk of metal that fell from space. Rovers have found several on Mars. Future builders could use the metal.'},
-  basalt:    {name:'Basalt', kid:'Rock', color:'#7a645a', pts:5, fact:'Dark volcanic rock, the most common rock on Mars. Not really worth a sample tube.'},
-};
-const ROLES = {
-  cadet:      {live:true, fog:false, tubes:0,  maxCmd:0,  uplink:0,    solar:0,  par:0},
-  explorer:   {live:false, fog:false, tubes:8, maxCmd:12, uplink:1800, solar:30, par:8},
-  specialist: {live:false, fog:true,  tubes:6, maxCmd:40, uplink:2600, solar:20, par:10, code:true},
-};
-const CMDS = {
-  forward:{label:'Forward', icon:'↑', cat:'move', arg:true, cost:'2% / square', py:'forward'},
-  back:   {label:'Back', icon:'↓', cat:'move', arg:true, cost:'2% / square', py:'backward'},
-  left:   {label:'Turn left', icon:'↶', cat:'move', cost:'1%', py:'turn_left'},
-  right:  {label:'Turn right', icon:'↷', cat:'move', cost:'1%', py:'turn_right'},
-  scan:   {label:'Scan', icon:'◎', cat:'sci', cost:'5%', py:'scan'},
-  analyze:{label:'Analyze', icon:'◈', cat:'sci', cost:'2%', py:'analyze'},
-  drill:  {label:'Drill', icon:'⊛', cat:'sci', cost:'8%', py:'drill'},
-  charge: {label:'Charge', icon:'ϟ', cat:'power', cost:'+15%', py:'charge'},
-};
-const PY2CMD = Object.fromEntries(Object.entries(CMDS).map(([k,v]) => [v.py, k]));
-const LABELS = [
-  {t:'JEZERO DELTA', x:15, y:12},
-  {t:'NERETVA VALLIS', x:6, y:6.2},
-  {t:'SÉÍTAH', x:23, y:31},
-  {t:'CRATER RIM', x:6, y:24},
-  {t:'MÁAZ PLAINS', x:44, y:30},
-];
-const HOW = {
-  cadet:['Press Go to drive one square. Left and Right turn the rover.','Drive onto a sparkly gem and press Dig for treasure.','Find 5 treasures to finish. Rocks just make the rover bump.'],
-  explorer:['Build a plan of up to 12 commands, then press Send to Mars.','Scan shows mystery signals (?) nearby. Drive onto one, Analyze to learn what it is, then Drill to fill a sample tube.','Dunes use double power and can hide sand traps. If you get stuck, Back up 1 square.','Drive onto the base station to unload samples and fully recharge. Each night the solar panels add 30%.'],
-  specialist:['Write your plan in Python. Supports rover commands and for loops, up to 40 actions per sol.','Dust limits your view to 3 squares until you Scan or drive closer.','Only 6 sample tubes and weaker solar power (20% per night). Analyze before you Drill so you do not waste tubes on basalt.','Drive onto the base station to unload samples and fully recharge.'],
-};
-
-const $ = id => document.getElementById(id);
-const canvas = $('map'), ctx = canvas.getContext('2d');
-const mini = $('mini'), mctx = mini.getContext('2d');
-const store = {
-  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-};
-let role = store.get('jz.role','explorer'); if (!ROLES[role]) role = 'explorer';
-let ROLE = ROLES[role];
-$('fast').checked = store.get('jz.fast', false);
-$('sound').checked = store.get('jz.sound', true);
-
-let worldSeed, W, R, S, fx = [], tracks = [], plan = [], running = false, contAfterWin = false, terrainImg, miniImg;
-let VW = 800, VH = 500, dpr = 1, cam = {x:0, y:0, ts:32, follow:true}, region = '';
-let discTimer = null, showCode = false;
-
-/* ---------- utilities ---------- */
-function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function makeNoise(seed){
-  const r = mulberry32(seed), P = 256, g = new Float32Array(P*P);
-  for (let i=0;i<P*P;i++) g[i] = r();
-  const at = (x,y) => g[(((y%P)+P)%P)*P + (((x%P)+P)%P)];
-  const sm = t => t*t*(3-2*t);
-  const v = (x,y) => { const xi=Math.floor(x), yi=Math.floor(y), xf=sm(x-xi), yf=sm(y-yi);
-    const a=at(xi,yi), b=at(xi+1,yi), c=at(xi,yi+1), d=at(xi+1,yi+1);
-    return a+(b-a)*xf+(c-a)*yf+(a-b-c+d)*xf*yf; };
-  return (x,y) => v(x,y)*.6 + v(x*2.1+17,y*2.1)*.3 + v(x*4.3,y*4.3+31)*.1;
-}
-function distSeg(px,py,ax,ay,bx,by){ const dx=bx-ax, dy=by-ay, t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy))); return Math.hypot(px-ax-t*dx, py-ay-t*dy); }
-const inb = (x,y) => x>=0 && y>=0 && x<MW && y<MH;
-const onStation = (x,y) => x>=STATION.x && x<=STATION.x+1 && y>=STATION.y && y<=STATION.y+1;
-const nearStation = (x,y,d) => Math.abs(x-(STATION.x+.5))<=d && Math.abs(y-(STATION.y+.5))<=d;
-const grid = v => [...Array(MH)].map(() => Array(MW).fill(v));
-function speed(){ return $('fast').checked ? .33 : 1; }
-function tween(ms, f){
-  ms *= speed();
-  return new Promise(res => { const t0 = performance.now();
-    (function step(t){ const k = Math.min(1,(t-t0)/ms); f(k<.5?2*k*k:1-((-2*k+2)**2)/2); if (k<1) requestAnimationFrame(step); else res(); })(t0); });
-}
-const wait = ms => new Promise(r => setTimeout(r, ms*speed()));
-function addFx(o){ o.t0 = performance.now(); o.dur *= speed(); fx.push(o); }
-function esc(s){ return String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-
-let actx = null;
-function beep(f, d=.08, type='sine', v=.06){
-  if (!$('sound').checked) return;
-  try { actx = actx || new (window.AudioContext||window.webkitAudioContext)();
-    const o = actx.createOscillator(), g = actx.createGain(); o.type = type; o.frequency.value = f;
-    g.gain.setValueAtTime(v, actx.currentTime); g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime+d);
-    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime+d); } catch(e){}
-}
-const sfx = {
-  move:()=>beep(200,.05,'triangle',.03), bump:()=>beep(110,.2,'square',.04), scan:()=>beep(520,.3,'sine',.04),
-  good:()=>{beep(660,.1);setTimeout(()=>beep(880,.16),90)}, win:()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.2),i*120)),
-};
-
-/* ---------- world ---------- */
-function genWorld(seed){
-  const r = mulberry32(seed), nA = makeNoise(seed+11), nB = makeNoise(seed+23);
-  const w = {ter:grid(0), obs:grid(null), res:grid(null), trap:grid(false), seen:grid(!ROLE.fog), sig:grid(false), known:grid(false), drilled:grid(false), trapSeen:grid(false)};
-  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
-    const nr = nA(x/6, y/6);
-    const d = Math.hypot((x-56)*.95, (y-40)*1.25);
-    let t = T.FLOOR;
-    const chan = x < 12 && distSeg(x,y,0,5,APEX.x,APEX.y) < 1.1 + nr*.7;
-    if (d > 52 + nr*4 && !chan) t = T.RIM;
-    else {
-      const ax = x-APEX.x, ay = y-APEX.y, ad = Math.hypot(ax,ay), ang = Math.atan2(ay,ax)*180/Math.PI;
-      if (ad < 14 + nr*5 && ang > -55 && ang < 80) t = T.DELTA;
-      if (chan) t = T.CHAN;
-      const sx = (x-23)/10.5, sy = (y-31)/6.2;
-      if (sx*sx + sy*sy < 1 + (nB(x/4,y/4)-.5)*.7) t = T.DUNE;
-      if (t === T.FLOOR && nB(x/5+40, y/5) > .6) t = T.BED;
-    }
-    w.ter[y][x] = t;
-  }
-  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
-    const t = w.ter[y][x];
-    if (nearStation(x,y,3) || t === T.RIM) continue;
-    const p = [.03,.06,.008,.045,.01,0][t];
-    if (r() < p) w.obs[y][x] = 'R';
-    else if ((t === T.FLOOR || t === T.BED) && r() < .009) w.obs[y][x] = 'C';
-  }
-  for (let y=STATION.y-2;y<=STATION.y+3;y++) for (let x=STATION.x-2;x<=STATION.x+3;x++) if (inb(x,y)) { if (w.ter[y][x] !== T.BED) w.ter[y][x] = T.FLOOR; w.obs[y][x] = null; }
-  const free = (x,y) => !w.obs[y][x] && !w.res[y][x] && w.ter[y][x] !== T.RIM && !nearStation(x,y,2);
-  const place = (id, n, pred) => { let k=0, g=0; while (k<n && g++<6000) {
-    const x = Math.floor(r()*MW), y = Math.floor(r()*MH);
-    if (!free(x,y) || !pred(x,y,w.ter[y][x])) continue; w.res[y][x] = id; k++; } };
-  const apexD = (x,y) => Math.hypot(x-APEX.x, y-APEX.y);
-  place('clay', 6, (x,y,t) => t === T.DELTA);
-  place('carbonate', 4, (x,y,t) => t === T.DELTA && apexD(x,y) > 10);
-  place('organics', 2, (x,y,t) => t === T.DELTA && apexD(x,y) > 5 && apexD(x,y) < 12);
-  place('olivine', 5, (x,y,t) => t === T.DUNE);
-  place('salts', 4, (x,y,t) => t === T.FLOOR || t === T.BED);
-  place('meteorite', 3, (x,y,t) => t === T.FLOOR);
-  if (role === 'cadet') {
-    const kinds = ['clay','olivine','salts','meteorite','carbonate'];
-    place('__near', 8, (x,y) => { const dd = Math.hypot(x-STATION.x, y-STATION.y); return dd > 3 && dd < 10; });
-    for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) if (w.res[y][x] === '__near') w.res[y][x] = kinds[Math.floor(r()*kinds.length)];
-    for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) if (w.res[y][x]) { w.sig[y][x] = true; w.known[y][x] = true; }
-  } else {
-    place('basalt', 12, (x,y,t) => t === T.FLOOR || t === T.BED);
-    for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) if (w.ter[y][x] === T.DUNE && !w.res[y][x] && !w.obs[y][x] && r() < .1) w.trap[y][x] = true;
-  }
-  return w;
-}
-
-function drawRock(g, cx, cy, R, pts, shade){
-  const path = (ox,oy,rad) => { g.beginPath(); pts.forEach((p,i) => { const a=i/pts.length*Math.PI*2, X=ox+Math.cos(a)*rad*p, Y=oy+Math.sin(a)*rad*p; i?g.lineTo(X,Y):g.moveTo(X,Y); }); g.closePath(); };
-  g.fillStyle='rgba(45,15,6,0.38)'; path(cx+R*.22, cy+R*.3, R); g.fill();
-  const v = Math.round(88+shade*40);
-  g.fillStyle=`rgb(${v+22},${Math.round(v*.62)},${Math.round(v*.45)})`; path(cx, cy, R); g.fill();
-  g.fillStyle='rgba(255,225,200,0.17)'; path(cx-R*.2, cy-R*.22, R*.55); g.fill();
-}
-function bake(){
-  const r = mulberry32(worldSeed+99), nz = makeNoise(worldSeed+5);
-  const cv = document.createElement('canvas'); cv.width = MW*BASE; cv.height = MH*BASE;
-  const g = cv.getContext('2d');
-  const sm = document.createElement('canvas'); sm.width = MW; sm.height = MH;
-  const sg = sm.getContext('2d'), img = sg.createImageData(MW, MH);
-  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
-    const c = TCOL[W.ter[y][x]], v = (nz(x/3,y/3)-.5)*28, i = (y*MW+x)*4;
-    img.data[i] = c[0]+v; img.data[i+1] = c[1]+v*.7; img.data[i+2] = c[2]+v*.5; img.data[i+3] = 255;
-  }
-  sg.putImageData(img,0,0);
-  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
-  g.drawImage(sm, 0, 0, cv.width, cv.height);
-  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
-    const X = x*BASE, Y = y*BASE, t = W.ter[y][x];
-    if (t === T.DUNE) {
-      for (let k=0;k<3;k++) { const yy = Y+7+k*9+r()*3, bend = -5+r()*3;
-        g.strokeStyle='rgba(255,225,190,0.24)'; g.lineWidth=2; g.beginPath(); g.moveTo(X+1,yy); g.quadraticCurveTo(X+16,yy+bend,X+31,yy); g.stroke();
-        g.strokeStyle='rgba(95,40,20,0.16)'; g.beginPath(); g.moveTo(X+1,yy+2.5); g.quadraticCurveTo(X+16,yy+bend+2.5,X+31,yy+2.5); g.stroke(); }
-    } else if (t === T.BED) {
-      g.strokeStyle='rgba(70,25,12,0.32)'; g.lineWidth=1;
-      for (let k=0;k<2;k++) { g.beginPath(); let px=X+r()*32, py=Y+r()*32; g.moveTo(px,py); for (let s=0;s<3;s++){ px+=(r()-.5)*16; py+=(r()-.5)*16; g.lineTo(px,py);} g.stroke(); }
-    } else if (t === T.DELTA) {
-      const slope = (nz(x/8+50,y/8)-.5)*6;
-      for (let k=0;k<4;k++) { const yy = Y+4+k*8;
-        g.strokeStyle = k%2 ? 'rgba(255,232,212,0.13)' : 'rgba(70,30,20,0.17)'; g.lineWidth = 2.5;
-        g.beginPath(); g.moveTo(X,yy); g.lineTo(X+32,yy+slope); g.stroke(); }
-    } else if (t === T.RIM) {
-      for (let k=0;k<4;k++) { g.fillStyle = r()<.45 ? 'rgba(255,200,170,0.10)' : 'rgba(35,12,6,0.22)';
-        g.beginPath(); g.ellipse(X+r()*32, Y+r()*32, 4+r()*9, 3+r()*6, r()*3, 0, Math.PI*2); g.fill(); }
-      [[1,0],[0,1],[-1,0],[0,-1]].forEach(([dx,dy]) => { const nx=x+dx, ny=y+dy;
-        if (inb(nx,ny) && W.ter[ny][nx] !== T.RIM) { g.fillStyle='rgba(30,10,4,0.28)';
-          if (dx===1) g.fillRect(X+BASE,Y,5,BASE); if (dx===-1) g.fillRect(X-5,Y,5,BASE);
-          if (dy===1) g.fillRect(X,Y+BASE,BASE,5); if (dy===-1) g.fillRect(X,Y-5,BASE,5);
-          g.fillStyle='rgba(255,210,180,0.12)';
-          if (dx===1) g.fillRect(X+BASE-4,Y,4,BASE); if (dy===1) g.fillRect(X,Y+BASE-4,BASE,4); } });
-    } else if (t === T.CHAN) {
-      g.fillStyle='rgba(55,22,12,0.14)'; g.fillRect(X,Y,BASE,BASE);
-      g.strokeStyle='rgba(255,230,210,0.12)'; g.lineWidth=1.5; g.beginPath(); g.moveTo(X,Y+10+r()*12); g.bezierCurveTo(X+10,Y+r()*32,X+22,Y+r()*32,X+32,Y+10+r()*12); g.stroke();
-    }
-  }
-  for (let i=0;i<30000;i++) { g.fillStyle = r()<.5 ? 'rgba(255,210,180,0.16)' : 'rgba(55,18,8,0.2)'; const s = r()*1.8+.5; g.fillRect(r()*cv.width, r()*cv.height, s, s); }
-  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
-    const o = W.obs[y][x]; if (!o) continue;
-    const X = x*BASE, Y = y*BASE;
-    if (o === 'R') {
-      const n = 1 + Math.floor(r()*2.4);
-      for (let i=0;i<n;i++) drawRock(g, X+16+(r()-.5)*(n>1?13:5), Y+16+(r()-.5)*(n>1?13:5), (n>1?5.5:8.5)+r()*3.5, [...Array(8)].map(()=>.72+r()*.36), r());
-    } else {
-      const cx = X+16, cy = Y+16, Rr = 11.5+r()*2;
-      const gr = g.createRadialGradient(cx+2,cy+3,1,cx,cy,Rr);
-      gr.addColorStop(0,'#5e2716'); gr.addColorStop(.75,'#7f3820'); gr.addColorStop(1,'#a85232');
-      g.fillStyle=gr; g.beginPath(); g.arc(cx,cy,Rr,0,Math.PI*2); g.fill();
-      g.strokeStyle='rgba(245,190,150,0.45)'; g.lineWidth=2; g.beginPath(); g.arc(cx,cy,Rr,Math.PI*.55,Math.PI*1.95); g.stroke();
-    }
-  }
-  return cv;
-}
-function bakeMini(){
-  const c = document.createElement('canvas'); c.width = MW*4; c.height = MH*4;
-  const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.drawImage(terrainImg, 0, 0, c.width, c.height);
-  return c;
-}
-
-/* ---------- game state ---------- */
-function regionAt(x,y){
-  if (onStation(x,y) || nearStation(x,y,2)) return 'Base station';
-  return ['Crater floor','Máaz bedrock','Séítah dunes','Jezero delta','Neretva Vallis','Crater rim'][W.ter[y][x]];
-}
-function reveal(cx, cy, r, mark){
-  let sigs = 0, traps = 0;
-  for (let y=cy-r;y<=cy+r;y++) for (let x=cx-r;x<=cx+r;x++) {
-    if (!inb(x,y) || (x-cx)**2 + (y-cy)**2 > r*r+1) continue;
-    W.seen[y][x] = true;
-    if (mark) {
-      if (W.res[y][x] && !W.sig[y][x] && !W.drilled[y][x]) { W.sig[y][x] = true; sigs++; }
-      if (W.trap[y][x] && !W.trapSeen[y][x]) { W.trapSeen[y][x] = true; traps++; }
-    }
-  }
-  return {sigs, traps};
-}
-function newGame(seed){
-  worldSeed = seed ?? Math.floor(Math.random()*1e6);
-  ROLE = ROLES[role];
-  W = genWorld(worldSeed);
-  R = {x:START.x, y:START.y, dir:START.dir, ang:START.dir*90, px:START.x, py:START.y, bat:100, stuck:false, tubes:[], busy:null};
-  S = {sol:1, score:0, col:{}, delivered:0, found:0, won:false};
-  fx = []; tracks = []; contAfterWin = false;
-  terrainImg = bake(); miniImg = bakeMini();
-  if (ROLE.fog) reveal(R.x, R.y, 3, false);
-  region = regionAt(R.x, R.y);
-  cam.follow = true; snapCam();
-  $('win').hidden = true; $('disc').hidden = true; $('log').innerHTML = '';
-  $('err').hidden = true; $('runLine').hidden = true;
-  if (role === 'cadet') log('info', 'Rover ready! Find 5 sparkly treasures.');
-  else log('info', `Rover ready at the base station in Jezero Crater, facing west. The delta is about 20 squares west. Battery 100%.`);
-  plan = [{type:'scan'},{type:'forward',arg:4}];
-  if (!$('editor').dataset.touched) $('editor').value = DEFAULT_PY;
-  renderAll();
-}
-const DEFAULT_PY = `from mars import rover
-
-# The delta is west of the station.
-rover.scan()
-for i in range(2):
-    rover.forward(3)
-rover.analyze()
-`;
-
-function spend(n, what){
-  if (ROLE.live) return true;
-  if (R.bat < n) { log('bad', `Not enough power to ${what}. The rover is waiting. Add Charge, or wait for tonight's sunlight.`); return false; }
-  R.bat -= n; renderHUD(); return true;
-}
-function goals(){
-  if (role === 'cadet') return [{t:'Find 5 treasures', n:S.found, of:5}];
-  return [
-    {t:'Drill clay on the delta', n:S.col.clay||0, of:1},
-    {t:'Drill olivine in Séítah', n:S.col.olivine||0, of:1},
-    {t:'Find organic molecules', n:S.col.organics||0, of:1},
-    {t:'Bring 3 samples to the station', n:S.delivered, of:3},
-  ];
-}
-const goalsDone = () => goals().every(g => g.n >= g.of);
-
-/* ---------- commands ---------- */
-async function drive(n, sgn){
-  for (let k=0;k<n;k++) {
-    if (R.stuck && sgn > 0) { log('bad','The wheels are stuck in soft sand. Use Back 1 to get free.'); sfx.bump(); return false; }
-    const nx = R.x + DIRS[R.dir][0]*sgn, ny = R.y + DIRS[R.dir][1]*sgn;
-    const bump = async msg => { addFx({type:'hazard', x:nx, y:ny, dur:1400}); sfx.bump();
-      if (inb(nx,ny)) W.seen[ny][nx] = true;
-      if (ROLE.live) { const a0=R.px, b0=R.py; await tween(160, k => { const s=Math.sin(k*Math.PI)*.15; R.px=a0+DIRS[R.dir][0]*sgn*s; R.py=b0+DIRS[R.dir][1]*sgn*s; }); R.px=R.x; R.py=R.y; return true; }
-      log('bad', msg); return false; };
-    if (!inb(nx,ny)) return bump('Edge of the map. The rover stopped.');
-    const ter = W.ter[ny][nx], ob = W.obs[ny][nx];
-    if (ter === T.RIM) return bump('Hazard avoidance: the crater rim is too steep. The rover stopped itself.');
-    if (ob) return bump(`Hazard avoidance: ${ob==='R'?'a rock':'a crater'} ${sgn>0?'ahead':'behind'}. The rover stopped itself.`);
-    const dune = ter === T.DUNE;
-    if (!spend(dune ? 4 : 2, 'drive')) return false;
-    const x0 = R.x, y0 = R.y;
-    await tween((ROLE.live ? 260 : 380) * (dune ? 1.5 : 1), k => { R.px = x0+(nx-x0)*k; R.py = y0+(ny-y0)*k; });
-    sfx.move();
-    tracks.push([x0,y0,nx,ny]); R.x = nx; R.y = ny;
-    if (ROLE.fog) reveal(nx, ny, 3, false);
-    if (R.stuck && sgn < 0) { R.stuck = false; log('good','Free! The rover backed out of the sand trap.'); }
-    const reg = regionAt(nx, ny);
-    if (reg !== region) { region = reg; if (!ROLE.live) log('info', `Entering ${reg}.`); }
-    if (W.trap[ny][nx]) {
-      R.stuck = true; W.trapSeen[ny][nx] = true; addFx({type:'hazard', x:nx, y:ny, dur:1600}); sfx.bump();
-      log('bad','Soft sand! The wheels dug in and the rover is stuck, just like Spirit in 2009. Back up 1 square to escape.');
-      renderHUD(); return false;
-    }
-    if (onStation(nx, ny)) dock();
-    renderHUD();
-  }
-  return true;
-}
-function dock(){
-  if (ROLE.live) return;
-  const changed = R.tubes.length || R.bat < 100;
-  if (R.tubes.length) {
-    const pts = R.tubes.reduce((s,id) => s + RES[id].pts, 0);
-    S.delivered += R.tubes.length; S.score += pts;
-    log('good', `Docked: unloaded ${R.tubes.length} sample${R.tubes.length>1?'s':''} for ${pts} science points.`);
-    R.tubes = []; sfx.good();
-  }
-  if (R.bat < 100) { R.bat = 100; log('good','Docked: battery recharged to 100%.'); }
-  if (changed) renderSide();
-}
-async function turn(sgn){
-  if (R.stuck) { log('bad','Cannot turn while stuck in sand. Back up 1 square first.'); sfx.bump(); return false; }
-  if (!spend(1, 'turn')) return false;
-  const a0 = R.ang;
-  await tween(ROLE.live ? 200 : 300, k => R.ang = a0 + 90*sgn*k);
-  R.dir = (R.dir + sgn + 4) % 4; R.ang = a0 + 90*sgn;
-  renderHUD(); return true;
-}
-async function scan(){
-  if (!spend(5, 'scan')) return false;
-  addFx({type:'ring', x:R.x, y:R.y, dur:1100, r:4.6}); sfx.scan();
-  await wait(700);
-  const {sigs, traps} = reveal(R.x, R.y, 4, true);
-  const parts = [];
-  if (sigs) parts.push(`${sigs} mystery signal${sigs>1?'s':''}`);
-  if (traps) parts.push(`${traps} sand trap${traps>1?'s':''}`);
-  log(sigs ? 'good' : 'info', parts.length ? `Scan found ${parts.join(' and ')}.` : 'Scan complete. Nothing new within 4 squares.');
-  await wait(250); return true;
-}
-async function analyze(){
-  if (!spend(2, 'analyze')) return false;
-  addFx({type:'beam', x:R.x, y:R.y, dur:800}); await wait(800);
-  const id = W.res[R.y][R.x];
-  if (!id || W.drilled[R.y][R.x]) { log('info','Spectrometer: ordinary basalt bedrock. Nothing special here.'); return true; }
-  W.sig[R.y][R.x] = true; W.known[R.y][R.x] = true;
-  if (id === 'basalt') log('warn','Spectrometer: basalt. Common volcanic rock, probably not worth a sample tube.');
-  else { log('good', `Spectrometer: ${RES[id].name}! Worth ${RES[id].pts} points. Drill to collect it.`); sfx.good(); }
-  return true;
-}
-async function drill(){
-  const id = W.res[R.y][R.x];
-  if (W.drilled[R.y][R.x]) { log('warn','Already drilled here.'); return true; }
-  if (!id) {
-    if (ROLE.live) { sfx.bump(); return true; }
-    if (!spend(2, 'drill')) return false;
-    addFx({type:'dust', x:R.x, y:R.y, dur:700, parts:dustParts()}); await wait(700);
-    log('info','Drilled ordinary rock. Nothing worth keeping.'); return true;
-  }
-  if (!ROLE.live && R.tubes.length >= ROLE.tubes) { log('warn','All sample tubes are full. Drive onto the base station to unload.'); return true; }
-  if (!spend(8, 'drill')) return false;
-  R.busy = 'drill'; addFx({type:'dust', x:R.x, y:R.y, dur:1000, parts:dustParts()});
-  await wait(ROLE.live ? 700 : 1000); R.busy = null;
-  W.drilled[R.y][R.x] = true; W.sig[R.y][R.x] = true; W.known[R.y][R.x] = true;
-  S.col[id] = (S.col[id]||0) + 1;
-  if (ROLE.live) { S.found++; S.score += 1; addFx({type:'confetti', x:R.x, y:R.y, dur:1400, parts:confetti()}); }
-  else R.tubes.push(id);
-  sfx.good();
-  showDiscovery(id);
-  log(id === 'basalt' ? 'warn' : 'good', ROLE.live ? `Found ${RES[id].kid}` : `Sample sealed: ${RES[id].name}. Tubes used: ${R.tubes.length}/${ROLE.tubes}.`);
-  renderSide(); renderHUD(); return true;
-}
-async function charge(){
-  addFx({type:'sun', x:R.x, y:R.y, dur:1100}); await wait(1100);
-  const b = R.bat; R.bat = Math.min(100, R.bat + 15);
-  log('good', `Solar charging: battery ${b}% to ${R.bat}%.`); renderHUD(); return true;
-}
-function dustParts(){ return [...Array(16)].map(()=>({a:Math.random()*Math.PI*2, v:.25+Math.random()*.45, s:.03+Math.random()*.04})); }
-function confetti(){ const cols=['#58cfbe','#f0bf5a','#b48ce8','#86d48f','#7fb2ff','#ff7b6c']; return [...Array(28)].map(()=>({a:Math.random()*Math.PI*2, v:.6+Math.random()*1.1, s:.05+Math.random()*.05, c:cols[Math.floor(Math.random()*cols.length)]})); }
-async function exec(a){
-  switch (a.type) {
-    case 'forward': return drive(a.arg, 1);
-    case 'back': return drive(a.arg, -1);
-    case 'left': return turn(-1);
-    case 'right': return turn(1);
-    case 'scan': return scan();
-    case 'analyze': return analyze();
-    case 'drill': return drill();
-    case 'charge': return charge();
-  }
-}
-
-function showDiscovery(id){
-  const d = RES[id];
-  $('discGem').style.background = d.color;
-  $('discName').textContent = ROLE.live ? d.kid : d.name;
-  $('discFact').textContent = ROLE.live ? '' : d.fact;
-  $('discFact').hidden = ROLE.live;
-  $('discPts').textContent = ROLE.live ? '' : `+${d.pts} points when delivered to the station`;
-  $('disc').hidden = false;
-  clearTimeout(discTimer); discTimer = setTimeout(() => $('disc').hidden = true, ROLE.live ? 2600 : 9000);
-}
-
-function checkWin(){
-  if (S.won || !goalsDone()) return false;
-  S.won = true;
-  let html, text;
-  if (ROLE.live) { html = '★★★'; text = 'You found 5 treasures on Mars! Keep exploring for more.'; }
-  else {
-    const s = S.sol <= ROLE.par ? 3 : S.sol <= Math.ceil(ROLE.par*1.5) ? 2 : 1;
-    html = '★'.repeat(s) + `<i>${'★'.repeat(3-s)}</i>`;
-    text = `All objectives done on sol ${S.sol} with ${S.score} science points. Target for 3 stars: ${ROLE.par} sols.`;
-    const best = store.get('jz.best', {}); if (!best[role] || S.score > best[role]) { best[role] = S.score; store.set('jz.best', best); }
-  }
-  $('winStars').innerHTML = html; $('winText').textContent = text;
-  log('good', 'Expedition complete!'); sfx.win();
-  setTimeout(() => { if (!contAfterWin) $('win').hidden = false; }, 600);
-  return true;
-}
-
-/* ---------- running plans ---------- */
-async function runActions(actions){
-  if (running || !actions.length) return;
-  running = true; renderLock();
-  log('info', `Uplinking ${actions.length} command${actions.length>1?'s':''} for sol ${S.sol}.`);
-  $('uplink').hidden = false;
-  await tween(ROLE.uplink, k => $('ulBar').style.width = (k*100)+'%');
-  $('uplink').hidden = true; $('ulBar').style.width = '0';
-  cam.follow = true;
-  for (let i=0;i<actions.length;i++) {
-    const a = actions[i];
-    if (a.planIndex != null) { plan.forEach((p,j) => p.state = j < a.planIndex ? 'done' : j === a.planIndex ? 'active' : ''); renderProg(); }
-    if (a.line != null) { $('runLine').hidden = false; $('runLine').textContent = `Running line ${a.line}: rover.${CMDS[a.type].py}(${a.arg ?? ''})`; }
-    const ok = await exec(a);
-    if (checkWin()) break;
-    if (ok === false) {
-      if (a.planIndex != null) { plan.forEach((p,j) => p.state = j < a.planIndex ? 'done' : j === a.planIndex ? 'done' : 'skipped'); renderProg(); }
-      const left = actions.length - i - 1;
-      if (left) log('warn', `${left} remaining command${left>1?'s were':' was'} skipped for safety.`);
-      break;
-    }
-  }
-  if (plan.length) { plan.forEach(p => { if (p.state === 'active') p.state = 'done'; }); renderProg(); }
-  $('runLine').hidden = true;
-  log('info','Downlink received. The sun is setting.');
-  S.sol++;
-  const b = R.bat; R.bat = Math.min(100, R.bat + ROLE.solar);
-  log('info', `Night passes. Solar panels charged the battery from ${b}% to ${R.bat}%. Ready for sol ${S.sol}.`);
-  running = false; renderAll();
-}
-function sendPlan(){
-  if (ROLE.code) {
-    const res = parsePy($('editor').value);
-    if (res.error) { $('err').hidden = false; $('err').textContent = res.error; return; }
-    $('err').hidden = true;
-    if (!res.actions.length) { $('err').hidden = false; $('err').textContent = 'No rover commands found. Try rover.forward(2).'; return; }
-    runActions(res.actions);
-  } else {
-    runActions(plan.map((p,i) => ({type:p.type, arg:p.arg, planIndex:i})));
-  }
-}
-async function live(type){
-  if (running || !ROLE.live) return;
-  running = true; cam.follow = true;
-  await exec({type, arg:1});
-  checkWin(); running = false; renderSide();
-}
-
-/* ---------- tiny Python interpreter ---------- */
-function parsePy(src){
-  const lines = src.replace(/\t/g,'    ').split('\n');
-  const root = []; const stack = [{ind:0, body:root}]; let pending = null;
-  for (let i=0;i<lines.length;i++) {
-    const n = i+1, raw = lines[i].replace(/#.*$/, ''), text = raw.trim();
-    if (!text) continue;
-    const ind = raw.length - raw.trimStart().length;
-    if (pending) {
-      if (ind <= pending.hdr) return {error:`Line ${n}: the lines inside a for loop must be indented.`};
-      pending.ind = ind; stack.push(pending); pending = null;
-    } else {
-      while (stack.length > 1 && ind < stack[stack.length-1].ind) stack.pop();
-      if (ind !== stack[stack.length-1].ind) return {error:`Line ${n}: the indentation does not line up.`};
-    }
-    if (/^(from|import)\b/.test(text)) continue;
-    let m = text.match(/^for\s+\w+\s+in\s+range\(\s*(\d+)\s*\)\s*:$/);
-    if (m) { const node = {loop:+m[1], body:[]}; if (node.loop > 20) return {error:`Line ${n}: loops can repeat at most 20 times.`};
-      stack[stack.length-1].body.push(node); pending = {hdr:ind, body:node.body}; continue; }
-    if (/^for\b/.test(text)) return {error:`Line ${n}: write loops like this: for i in range(3):`};
-    m = text.match(/^rover\.(\w+)\(\s*(\d*)\s*\)$/);
-    if (!m) return {error:`Line ${n}: I don't understand "${text}". Try rover.forward(2).`};
-    const type = PY2CMD[m[1]];
-    if (!type) return {error:`Line ${n}: the rover has no command called ${m[1]}(). Try: ${Object.values(CMDS).map(c=>c.py).join(', ')}.`};
-    if (CMDS[type].arg) { if (!m[2]) return {error:`Line ${n}: ${m[1]}() needs a number of squares, like rover.${m[1]}(3).`}; if (+m[2] < 1 || +m[2] > 20) return {error:`Line ${n}: use a number from 1 to 20.`}; }
-    else if (m[2]) return {error:`Line ${n}: ${m[1]}() does not take a number.`};
-    stack[stack.length-1].body.push({type, arg: CMDS[type].arg ? +m[2] : undefined, line:n});
-  }
-  if (pending) return {error:'The last for loop has nothing inside it.'};
-  const out = [];
-  const expand = body => { for (const s of body) { if (s.loop) { for (let k=0;k<s.loop;k++) expand(s.body); } else out.push(s); if (out.length > ROLE.maxCmd) return; } };
-  expand(root);
-  if (out.length > ROLE.maxCmd) return {error:`That plan has more than ${ROLE.maxCmd} actions. The rover can only do ${ROLE.maxCmd} per sol.`};
-  return {actions: out.map(s => ({...s}))};
-}
-
-/* ---------- drawing ---------- */
-function snapCam(){ const [vw,vh] = viewTiles(); cam.x = R.px+.5-vw/2; cam.y = R.py+.5-vh/2; clampCam(); }
-function viewTiles(){ return [VW/cam.ts, VH/cam.ts]; }
-function minTs(){ return Math.max(VW/MW, VH/MH); }
-function clampCam(){ const [vw,vh] = viewTiles(); cam.x = Math.max(0, Math.min(MW-vw, cam.x)); cam.y = Math.max(0, Math.min(MH-vh, cam.y)); }
-function zoom(f){
-  const [vw,vh] = viewTiles(), cx = cam.x+vw/2, cy = cam.y+vh/2;
-  cam.ts = Math.max(minTs(), Math.min(64, cam.ts*f));
-  const [nw,nh] = viewTiles(); cam.x = cx-nw/2; cam.y = cy-nh/2; clampCam();
-}
-
-function drawStation(t, ts){
-  const sx = (STATION.x-cam.x)*ts, sy = (STATION.y-cam.y)*ts, s = ts*2;
-  ctx.fillStyle='rgba(40,14,6,0.35)'; ctx.fillRect(sx+s*.08, sy+s*.1, s*.92, s*.92);
-  ctx.fillStyle='#9aa3ab'; ctx.fillRect(sx+s*.06, sy+s*.06, s*.88, s*.88);
-  ctx.strokeStyle='rgba(240,191,90,0.9)'; ctx.lineWidth=Math.max(1.5,ts*.05); ctx.setLineDash([ts*.14,ts*.1]);
-  ctx.strokeRect(sx+s*.12, sy+s*.12, s*.76, s*.76); ctx.setLineDash([]);
-  ctx.fillStyle='#24456a';
-  ctx.fillRect(sx+s*.14, sy+s*.18, s*.24, s*.64); ctx.fillRect(sx+s*.62, sy+s*.18, s*.24, s*.64);
-  ctx.strokeStyle='rgba(140,190,240,0.5)'; ctx.lineWidth=1;
-  for (let k=1;k<4;k++){ ctx.beginPath(); ctx.moveTo(sx+s*.14, sy+s*(.18+k*.16)); ctx.lineTo(sx+s*.38, sy+s*(.18+k*.16)); ctx.moveTo(sx+s*.62, sy+s*(.18+k*.16)); ctx.lineTo(sx+s*.86, sy+s*(.18+k*.16)); ctx.stroke(); }
-  const g = ctx.createRadialGradient(sx+s*.45, sy+s*.42, s*.02, sx+s*.5, sy+s*.5, s*.16);
-  g.addColorStop(0,'#ffffff'); g.addColorStop(1,'#c9ced4');
-  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(sx+s*.5, sy+s*.5, s*.15, 0, Math.PI*2); ctx.fill();
-  const blink = Math.sin(t/400) > 0;
-  ctx.fillStyle = blink ? '#58cfbe' : '#2a6b62'; ctx.beginPath(); ctx.arc(sx+s*.5, sy+s*.5, s*.035, 0, Math.PI*2); ctx.fill();
-}
-function drawMarker(x, y, t, ts){
-  const cx = (x-cam.x+.5)*ts, cy = (y-cam.y+.5)*ts, id = W.res[y][x];
-  if (W.drilled[y][x]) {
-    ctx.fillStyle='#2b130b'; ctx.beginPath(); ctx.arc(cx,cy,ts*.09,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle = RES[id].color; ctx.globalAlpha=.7; ctx.lineWidth=Math.max(1.5,ts*.05); ctx.beginPath(); ctx.arc(cx,cy,ts*.22,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
-    return;
-  }
-  if (!W.sig[y][x]) return;
-  if (ROLE.live) {
-    const bob = Math.sin(t/300 + x)*ts*.04, r = ts*.26;
-    ctx.fillStyle='rgba(40,14,6,0.3)'; ctx.beginPath(); ctx.ellipse(cx, cy+r*.9, r*.8, r*.25, 0, 0, Math.PI*2); ctx.fill();
-    ctx.save(); ctx.translate(cx, cy+bob);
-    ctx.fillStyle = RES[id].color; ctx.beginPath(); ctx.moveTo(0,-r); ctx.lineTo(r*.85,-r*.25); ctx.lineTo(0,r); ctx.lineTo(-r*.85,-r*.25); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(0,-r); ctx.lineTo(r*.85,-r*.25); ctx.lineTo(0,-r*.1); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.moveTo(0,r); ctx.lineTo(-r*.85,-r*.25); ctx.lineTo(0,-r*.1); ctx.closePath(); ctx.fill();
-    const tw = (Math.sin(t/180 + x*3 + y) + 1)/2;
-    ctx.fillStyle=`rgba(255,255,255,${tw})`; const sp = ts*.08*tw + ts*.02;
-    ctx.beginPath(); ctx.moveTo(r*.7,-r*1.1-sp); ctx.lineTo(r*.7+sp*.3,-r*1.1); ctx.lineTo(r*.7,-r*1.1+sp); ctx.lineTo(r*.7-sp*.3,-r*1.1); ctx.closePath(); ctx.fill();
-    ctx.restore(); return;
-  }
-  const r = ts*.24;
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.PI/4);
-  if (W.known[y][x]) {
-    ctx.fillStyle = RES[id].color; ctx.fillRect(-r*.75,-r*.75,r*1.5,r*1.5);
-    ctx.strokeStyle='rgba(14,19,25,0.8)'; ctx.lineWidth=Math.max(1,ts*.04); ctx.strokeRect(-r*.75,-r*.75,r*1.5,r*1.5);
-  } else {
-    const p = .5+.5*Math.sin(t/280 + x + y);
-    ctx.fillStyle=`rgba(14,19,25,${.55+.2*p})`; ctx.fillRect(-r*.8,-r*.8,r*1.6,r*1.6);
-    ctx.strokeStyle=`rgba(240,191,90,${.6+.4*p})`; ctx.lineWidth=Math.max(1.5,ts*.06); ctx.strokeRect(-r*.8,-r*.8,r*1.6,r*1.6);
-  }
-  ctx.restore();
-  if (!W.known[y][x] && ts >= 20) {
-    ctx.fillStyle='#f0bf5a'; ctx.font=`700 ${Math.round(ts*.3)}px 'IBM Plex Mono', monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('?', cx, cy+1);
-  }
-}
-function drawTrap(x, y, ts){
-  const cx = (x-cam.x+.5)*ts, cy = (y-cam.y+.5)*ts;
-  ctx.strokeStyle='rgba(70,25,10,0.65)'; ctx.lineWidth=Math.max(1.5,ts*.05); ctx.beginPath();
-  for (let a=0;a<Math.PI*5;a+=.3) { const rr = a/(Math.PI*5)*ts*.36; const X = cx+Math.cos(a)*rr, Y = cy+Math.sin(a)*rr; a ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y); }
-  ctx.stroke();
-}
-function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-function drawRover(t, ts){
-  const s = ts*.9, cx = (R.px-cam.x+.5)*ts, cy = (R.py-cam.y+.5)*ts;
-  ctx.save(); ctx.translate(cx,cy);
-  ctx.fillStyle='rgba(40,12,4,0.35)'; ctx.beginPath(); ctx.ellipse(s*.05,s*.07,s*.46,s*.48,0,0,Math.PI*2); ctx.fill();
-  ctx.rotate(R.ang*Math.PI/180);
-  if (R.busy || R.stuck) ctx.translate((Math.random()-.5)*s*.02, (Math.random()-.5)*s*.02);
-  ctx.fillStyle='#24272c';
-  [-.33,0,.33].forEach(wy => [-.38,.38].forEach(wx => { rr(wx*s-s*.08, wy*s-s*.1, s*.16, s*.2, s*.04); ctx.fill(); }));
-  ctx.strokeStyle='#8d949c'; ctx.lineWidth=s*.04;
-  ctx.beginPath(); ctx.moveTo(-.38*s,-.33*s); ctx.lineTo(-.38*s,.33*s); ctx.moveTo(.38*s,-.33*s); ctx.lineTo(.38*s,.33*s); ctx.stroke();
-  ctx.fillStyle='#ebe6dc'; rr(-s*.27,-s*.32,s*.54,s*.64,s*.07); ctx.fill();
-  ctx.fillStyle='#24456a'; rr(-s*.22,-s*.02,s*.44,s*.28,s*.03); ctx.fill();
-  ctx.strokeStyle='rgba(140,190,240,0.45)'; ctx.lineWidth=s*.015;
-  for (let i=1;i<4;i++){ ctx.beginPath(); ctx.moveTo(-s*.22+i*s*.11,-s*.02); ctx.lineTo(-s*.22+i*s*.11,s*.26); ctx.stroke(); }
-  ctx.fillStyle='#c9ced4'; ctx.beginPath(); ctx.arc(0,-s*.18,s*.1,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#58cfbe'; ctx.beginPath(); ctx.arc(0,-s*.22,s*.045,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle='#8d949c'; ctx.lineWidth=s*.035; ctx.beginPath(); ctx.moveTo(s*.2,-s*.2); ctx.lineTo(s*.3,-s*.42); ctx.stroke();
-  ctx.fillStyle='#c9ced4'; ctx.beginPath(); ctx.arc(s*.3,-s*.44,s*.05,0,Math.PI*2); ctx.fill();
-  if (R.busy === 'drill') { ctx.strokeStyle='#f0bf5a'; ctx.lineWidth=s*.05; ctx.beginPath(); ctx.arc(s*.3,-s*.44,s*.09,t/60,t/60+4); ctx.stroke(); }
-  ctx.restore();
-}
-function drawFx(t, ts){
-  fx = fx.filter(f => t - f.t0 < f.dur);
-  fx.forEach(f => {
-    const k = Math.max(0,(t-f.t0)/f.dur), cx = (f.x-cam.x+.5)*ts, cy = (f.y-cam.y+.5)*ts;
-    if (f.type === 'hazard') {
-      const a = .5+.5*Math.sin(k*Math.PI*6);
-      ctx.strokeStyle=`rgba(255,123,108,${.4+.6*a})`; ctx.lineWidth=ts*.08;
-      ctx.strokeRect(cx-ts*.44, cy-ts*.44, ts*.88, ts*.88);
-    } else if (f.type === 'ring') {
-      ctx.strokeStyle=`rgba(88,207,190,${1-k})`; ctx.lineWidth=ts*.08;
-      ctx.beginPath(); ctx.arc(cx,cy,k*f.r*ts,0,Math.PI*2); ctx.stroke();
-      ctx.fillStyle=`rgba(88,207,190,${(1-k)*.08})`; ctx.fill();
-    } else if (f.type === 'beam') {
-      ctx.strokeStyle=`rgba(255,90,90,${Math.sin(k*Math.PI)})`; ctx.lineWidth=ts*.04;
-      ctx.beginPath(); ctx.moveTo(cx, cy-ts*.5); ctx.lineTo(cx+Math.sin(k*20)*ts*.2, cy); ctx.stroke();
-      ctx.fillStyle=`rgba(255,120,120,${Math.sin(k*Math.PI)*.5})`; ctx.beginPath(); ctx.arc(cx+Math.sin(k*20)*ts*.2, cy, ts*.08, 0, Math.PI*2); ctx.fill();
-    } else if (f.type === 'dust' || f.type === 'confetti') {
-      f.parts.forEach(p => { ctx.fillStyle = f.type === 'dust' ? `rgba(236,190,150,${(1-k)*.8})` : p.c; ctx.globalAlpha = f.type === 'confetti' ? 1-k : 1;
-        ctx.beginPath(); ctx.arc(cx+Math.cos(p.a)*p.v*k*ts, cy+Math.sin(p.a)*p.v*k*ts + (f.type==='confetti'?k*k*ts*.8:0), p.s*ts, 0, Math.PI*2); ctx.fill(); });
-      ctx.globalAlpha = 1;
-    } else if (f.type === 'sun') {
-      const g = ctx.createRadialGradient(cx,cy,ts*.1,cx,cy,ts*1.4);
-      g.addColorStop(0,`rgba(255,230,140,${.55*Math.sin(k*Math.PI)})`); g.addColorStop(1,'rgba(255,230,140,0)');
-      ctx.fillStyle=g; ctx.fillRect(cx-ts*1.5,cy-ts*1.5,ts*3,ts*3);
-    }
-  });
-}
-
-let drag = null;
-function frame(t){
-  requestAnimationFrame(frame);
-  if (!W) return;
-  if (cam.follow && !drag) { const [vw,vh] = viewTiles(); const tx = R.px+.5-vw/2, ty = R.py+.5-vh/2; cam.x += (tx-cam.x)*.12; cam.y += (ty-cam.y)*.12; }
-  clampCam();
-  const ts = cam.ts, [vw,vh] = viewTiles();
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(terrainImg, cam.x*BASE, cam.y*BASE, vw*BASE, vh*BASE, 0, 0, VW, VH);
-  const x0 = Math.max(0, Math.floor(cam.x)), y0 = Math.max(0, Math.floor(cam.y)), x1 = Math.min(MW-1, Math.ceil(cam.x+vw)), y1 = Math.min(MH-1, Math.ceil(cam.y+vh));
-  if (ts >= 22) {
-    ctx.strokeStyle='rgba(255,230,210,0.07)'; ctx.lineWidth=1; ctx.beginPath();
-    for (let x=x0;x<=x1+1;x++){ const X = Math.round((x-cam.x)*ts)+.5; ctx.moveTo(X,0); ctx.lineTo(X,VH); }
-    for (let y=y0;y<=y1+1;y++){ const Y = Math.round((y-cam.y)*ts)+.5; ctx.moveTo(0,Y); ctx.lineTo(VW,Y); }
-    ctx.stroke();
-  }
-  drawStation(t, ts);
-  ctx.lineCap='round';
-  ctx.strokeStyle='rgba(70,25,12,0.38)'; ctx.lineWidth=ts*.09; ctx.setLineDash([ts*.07,ts*.06]);
-  tracks.forEach(([ax,ay,bx,by]) => {
-    if (Math.max(ax,bx) < x0-1 || Math.min(ax,bx) > x1+1 || Math.max(ay,by) < y0-1 || Math.min(ay,by) > y1+1) return;
-    const dx=bx-ax, dy=by-ay, ox=-dy*.28*ts, oy=dx*.28*ts;
-    [[ox,oy],[-ox,-oy]].forEach(([a,b]) => { ctx.beginPath(); ctx.moveTo((ax-cam.x+.5)*ts+a,(ay-cam.y+.5)*ts+b); ctx.lineTo((bx-cam.x+.5)*ts+a,(by-cam.y+.5)*ts+b); ctx.stroke(); });
-  });
-  ctx.setLineDash([]); ctx.lineCap='butt';
-  for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) {
-    if (!W.seen[y][x]) continue;
-    if (W.trapSeen[y][x]) drawTrap(x, y, ts);
-    if (W.res[y][x]) drawMarker(x, y, t, ts);
-  }
-  drawFx(t, ts);
-  drawRover(t, ts);
-  if (ROLE.fog) {
-    ctx.fillStyle='rgba(16,11,9,0.8)';
-    for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) if (!W.seen[y][x]) ctx.fillRect(Math.floor((x-cam.x)*ts), Math.floor((y-cam.y)*ts), Math.ceil(ts)+1, Math.ceil(ts)+1);
-  }
-  ctx.font = `600 ${Math.max(11, Math.round(ts*.42))}px 'Chakra Petch', sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-  LABELS.forEach(l => { const X=(l.x-cam.x)*ts, Y=(l.y-cam.y)*ts; if (X<-200||X>VW+200||Y<-40||Y>VH+40) return;
-    ctx.fillStyle='rgba(20,8,4,0.55)'; ctx.fillText(l.t, X+1, Y+1.5); ctx.fillStyle='rgba(255,240,225,0.78)'; ctx.fillText(l.t, X, Y); });
-  // minimap
-  const mw = mini.width, mh = mini.height;
-  mctx.setTransform(1,0,0,1,0,0); mctx.imageSmoothingEnabled = true;
-  mctx.drawImage(miniImg, 0, 0, mw, mh);
-  const sxm = mw/MW, sym = mh/MH;
-  mctx.fillStyle='#e6ecf1'; mctx.fillRect(STATION.x*sxm, STATION.y*sym, 2*sxm, 2*sym);
-  if (!ROLE.live) for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) if (W.sig[y][x] && !W.drilled[y][x]) { mctx.fillStyle = W.known[y][x] ? RES[W.res[y][x]].color : '#f0bf5a'; mctx.fillRect(x*sxm, y*sym, Math.max(2,sxm), Math.max(2,sym)); }
-  mctx.strokeStyle='rgba(255,255,255,0.85)'; mctx.lineWidth=1; mctx.strokeRect(cam.x*sxm+.5, cam.y*sym+.5, vw*sxm-1, vh*sym-1);
-  const pulse = 2.5 + Math.sin(t/200)*1;
-  mctx.fillStyle='#58cfbe'; mctx.beginPath(); mctx.arc((R.px+.5)*sxm, (R.py+.5)*sym, pulse, 0, Math.PI*2); mctx.fill();
-}
-
-function resize(){
-  const box = $('mapbox');
-  VW = Math.max(200, box.clientWidth);
-  VH = Math.round(Math.max(300, Math.min(620, VW*.62)));
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.style.width = VW+'px'; canvas.style.height = VH+'px';
-  canvas.width = Math.round(VW*dpr); canvas.height = Math.round(VH*dpr);
-  const mr = mini.getBoundingClientRect();
-  mini.width = Math.max(1, Math.round(mr.width*dpr)); mini.height = Math.max(1, Math.round(mr.height*dpr));
-  if (!cam.init) { cam.ts = VW > 700 ? 32 : 26; cam.init = true; }
-  cam.ts = Math.max(minTs(), cam.ts);
-  if (R) clampCam();
-}
-
-/* ---------- UI ---------- */
-function log(kind, text){
-  const el = document.createElement('li');
-  el.innerHTML = `<span class="tag">${ROLE.live ? 'ROVER' : 'SOL '+S.sol}</span><span class="${kind}">${esc(text)}</span>`;
-  const lg = $('log'); lg.prepend(el);
-  while (lg.children.length > 80) lg.lastChild.remove();
-}
-function renderRoles(){
-  document.querySelectorAll('.role').forEach(b => { b.setAttribute('aria-checked', b.dataset.role === role); b.disabled = running; });
-  $('howList').innerHTML = HOW[role].map(h => `<li>${esc(h)}</li>`).join('');
-}
-function renderHUD(){
-  const live = ROLE.live;
-  $('cSol').hidden = live; $('cBat').hidden = live; $('cTubes').hidden = live;
-  $('hSol').textContent = S.sol;
-  $('hBatTxt').textContent = R.bat + '%';
-  $('hBat').style.width = R.bat + '%';
-  $('hBat').classList.toggle('low', R.bat < 25);
-  $('hTubes').textContent = `${R.tubes.length}/${ROLE.tubes}`;
-  $('hScoreK').textContent = live ? 'Treasures' : 'Science';
-  $('hScore').textContent = live ? S.found : S.score;
-  $('hRegion').textContent = region + (R.stuck ? ' · STUCK' : '');
-}
-function renderSide(){
-  $('goals').innerHTML = goals().map(g => { const d = g.n >= g.of;
-    return `<li class="${d?'done':''}"><span class="box">${d?'✓':''}</span><span class="t">${esc(g.t)}</span><span class="cnt">${Math.min(g.n,g.of)}/${g.of}</span></li>`; }).join('');
-  $('solCount').textContent = ROLE.live ? '' : `Sol ${S.sol} · target ${ROLE.par}`;
-  if (ROLE.live) $('tubes').innerHTML = '';
-  else $('tubes').innerHTML = [...Array(ROLE.tubes)].map((_,i) => { const id = R.tubes[i];
-    return `<span class="tube" title="${id ? esc(RES[id].name) : 'Empty tube'}">${id ? `<i style="background:${RES[id].color}"></i>` : ''}</span>`; }).join('') +
-    `<span class="lbl">${R.tubes.length ? `${R.tubes.length} sample${R.tubes.length>1?'s':''} on board · ${S.delivered} delivered` : `Sample tubes · ${S.delivered} delivered`}</span>`;
-  const found = Object.entries(S.col).filter(([,n]) => n);
-  $('found').innerHTML = found.map(([id,n]) => `<span class="fchip"><i style="background:${RES[id].color}"></i>${esc(ROLE.live ? RES[id].kid.replace('!','') : RES[id].name)} ×${n}</span>`).join('');
-  renderHUD();
-}
-function renderPalette(){
-  $('palette').innerHTML = Object.entries(CMDS).map(([k,d]) =>
-    `<button class="pal cat-${d.cat}" data-c="${k}"><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span><small>${d.cost}</small></button>`).join('');
-}
-function renderProg(){
-  if (ROLE.code) { $('count').textContent = `max ${ROLE.maxCmd} actions`; return; }
-  $('count').textContent = `${plan.length} / ${ROLE.maxCmd}`;
-  if (!plan.length) $('prog').innerHTML = `<li class="empty">Tap a command above to add it to today's plan.</li>`;
-  else $('prog').innerHTML = plan.map((c,i) => { const d = CMDS[c.type];
-    return `<li class="cmd cat-${d.cat} ${c.state||''}" data-i="${i}">
-      <span class="num">${i+1}</span><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span>
-      ${d.arg ? `<span class="arg"><button class="mini-b" data-a="dec" aria-label="Fewer squares" ${running?'disabled':''}>−</button><b>${c.arg}</b><button class="mini-b" data-a="inc" aria-label="More squares" ${running?'disabled':''}>+</button></span>` : ''}
-      <button class="mini-b" data-a="up" aria-label="Move up" ${running||i===0?'disabled':''}>⌃</button>
-      <button class="mini-b" data-a="del" aria-label="Remove" ${running?'disabled':''}>×</button></li>`; }).join('');
-  const lines = [`<span class="c"># Sol ${S.sol} command sequence</span>`, `<span class="f">from</span> mars <span class="f">import</span> rover`, ''];
-  if (!plan.length) lines.push('<span class="c"># (empty) add commands in Blocks</span>');
-  plan.forEach(c => lines.push(`rover.<span class="f">${CMDS[c.type].py}</span>(${c.arg ? `<span class="n">${c.arg}</span>` : ''})`));
-  $('code').innerHTML = lines.join('\n');
-}
-function renderMode(){
-  const live = ROLE.live, code = !!ROLE.code;
-  $('cadetPanel').hidden = !live; $('planPanel').hidden = live;
-  $('tabs').hidden = code;
-  $('prog').hidden = code || showCode; $('code').hidden = code || !showCode;
-  $('editor').hidden = !code;
-  $('planTitle').textContent = code ? "Today's program" : "Today's sequence";
-}
-function renderLock(){
-  document.querySelectorAll('.pal').forEach(b => b.disabled = running || (!ROLE.code && plan.length >= ROLE.maxCmd));
-  $('sendBtn').disabled = running || (!ROLE.code && !plan.length);
-  $('clearBtn').disabled = running;
-  $('newBtn').disabled = running;
-  $('editor').readOnly = running;
-  $('sendBtn').textContent = running ? 'Rover working…' : 'Send to Mars';
-  document.querySelectorAll('.role').forEach(b => b.disabled = running);
-}
-function renderAll(){ renderRoles(); renderMode(); renderPalette(); renderProg(); renderSide(); renderLock(); }
-
-$('roles').addEventListener('click', e => { const b = e.target.closest('.role'); if (!b || running || b.dataset.role === role) return;
-  role = b.dataset.role; store.set('jz.role', role); ROLE = ROLES[role]; newGame(worldSeed); });
-$('palette').addEventListener('click', e => {
-  const b = e.target.closest('.pal'); if (!b || running) return;
-  const k = b.dataset.c;
-  if (ROLE.code) {
-    const ta = $('editor'), v = ta.value, pos = ta.selectionStart ?? v.length;
-    const lineStart = v.lastIndexOf('\n', pos-1) + 1, lineEnd = v.indexOf('\n', pos), end = lineEnd === -1 ? v.length : lineEnd;
-    const cur = v.slice(lineStart, end), ind = (cur.match(/^\s*/)||[''])[0] + (/:\s*$/.test(cur) ? '    ' : '');
-    const text = `${ind}rover.${CMDS[k].py}(${CMDS[k].arg ? 1 : ''})`;
-    const insert = (end === v.length && v.length && !v.endsWith('\n') ? '\n' : (end === v.length ? '' : '\n')) + text;
-    const at = end === v.length && v.endsWith('\n') ? v.length : end;
-    ta.value = v.slice(0, at) + (v.endsWith('\n') && at === v.length ? text + '\n' : insert) + v.slice(at);
-    ta.dataset.touched = '1';
-    const caret = ta.value.indexOf(text, at) + text.length; ta.focus(); ta.setSelectionRange(caret, caret);
-    return;
-  }
-  if (plan.length >= ROLE.maxCmd) return;
-  plan.forEach(c => c.state = '');
-  plan.push({type:k, arg: CMDS[k].arg ? 1 : undefined});
-  renderProg(); renderLock();
-});
-$('prog').addEventListener('click', e => {
-  const b = e.target.closest('button'), item = e.target.closest('.cmd'); if (!b || !item || running) return;
-  const i = +item.dataset.i, c = plan[i]; plan.forEach(p => p.state = '');
-  if (b.dataset.a === 'inc') c.arg = Math.min(20, c.arg+1);
-  if (b.dataset.a === 'dec') c.arg = Math.max(1, c.arg-1);
-  if (b.dataset.a === 'del') plan.splice(i,1);
-  if (b.dataset.a === 'up' && i > 0) [plan[i-1], plan[i]] = [plan[i], plan[i-1]];
-  renderProg(); renderLock();
-});
-$('editor').addEventListener('keydown', e => {
-  if (e.key === 'Tab') { e.preventDefault(); const ta = e.target, s = ta.selectionStart; ta.value = ta.value.slice(0,s) + '    ' + ta.value.slice(ta.selectionEnd); ta.setSelectionRange(s+4, s+4); }
-});
-$('editor').addEventListener('input', e => { e.target.dataset.touched = '1'; $('err').hidden = true; });
-$('sendBtn').addEventListener('click', sendPlan);
-$('clearBtn').addEventListener('click', () => { if (ROLE.code) { $('editor').value = 'from mars import rover\n\n'; $('editor').dataset.touched = '1'; } else { plan = []; renderProg(); renderLock(); } });
-$('newBtn').addEventListener('click', () => newGame());
-$('againBtn').addEventListener('click', () => newGame());
-$('keepBtn').addEventListener('click', () => { contAfterWin = true; $('win').hidden = true; });
-$('disc').addEventListener('click', () => $('disc').hidden = true);
-$('fast').addEventListener('change', e => store.set('jz.fast', e.target.checked));
-$('sound').addEventListener('change', e => store.set('jz.sound', e.target.checked));
-document.querySelectorAll('[data-live]').forEach(b => b.addEventListener('click', () => live(b.dataset.live)));
-document.addEventListener('keydown', e => {
-  if (!ROLE.live || e.target.closest('textarea,input')) return;
-  const map = {ArrowUp:'forward', ArrowLeft:'left', ArrowRight:'right', ' ':'drill', Enter:'drill'};
-  if (map[e.key]) { e.preventDefault(); live(map[e.key]); }
-});
-function setTab(code){ showCode = code; $('tabBlocks').setAttribute('aria-selected', !code); $('tabCode').setAttribute('aria-selected', code); renderMode(); }
-$('tabBlocks').addEventListener('click', () => setTab(false));
-$('tabCode').addEventListener('click', () => setTab(true));
-$('zoomIn').addEventListener('click', () => zoom(1.25));
-$('zoomOut').addEventListener('click', () => zoom(.8));
-$('centerBtn').addEventListener('click', () => { cam.follow = true; });
-canvas.addEventListener('pointerdown', e => { drag = {x:e.clientX, y:e.clientY, cx:cam.x, cy:cam.y, moved:false}; canvas.setPointerCapture(e.pointerId); canvas.classList.add('dragging'); });
-canvas.addEventListener('pointermove', e => { if (!drag) return;
-  const dx = e.clientX-drag.x, dy = e.clientY-drag.y;
-  if (Math.abs(dx)+Math.abs(dy) > 4) { drag.moved = true; cam.follow = false; }
-  if (drag.moved) { cam.x = drag.cx - dx/cam.ts; cam.y = drag.cy - dy/cam.ts; clampCam(); } });
-const endDrag = () => { drag = null; canvas.classList.remove('dragging'); };
-canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
-canvas.addEventListener('wheel', e => { e.preventDefault(); zoom(e.deltaY < 0 ? 1.12 : .89); }, {passive:false});
-mini.addEventListener('click', e => { const r = mini.getBoundingClientRect(); const [vw,vh] = viewTiles();
-  cam.follow = false; cam.x = (e.clientX-r.left)/r.width*MW - vw/2; cam.y = (e.clientY-r.top)/r.height*MH - vh/2; clampCam(); });
-
-new ResizeObserver(resize).observe($('mapbox'));
-resize();
-newGame();
-requestAnimationFrame(frame);
-})();
-</script>
+<script src="vendor/peerjs.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="js/data.js"></script>
+<script src="js/world.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/net.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
 </body>
 </html>

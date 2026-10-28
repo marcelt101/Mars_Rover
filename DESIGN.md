@@ -5,7 +5,8 @@ A co-op browser game for up to 6 players, each on their own device, exploring re
 ## Versions
 
 - **v1** (branch `v1`, playable at `/v1/`): single-player Jezero Expedition with three roles.
-- **v2** (in progress on `main`, playable at `/game/`): co-op multiplayer, profiles, collecting, perks, more maps.
+- **v2** (on `main`, playable at `/game/`): co-op multiplayer, profiles, collecting, perks, Jezero and Gusev.
+- **v3** (next): real NASA maps.
 
 ## Platform
 
@@ -109,12 +110,21 @@ Replay: random expeditions on each map, a daily challenge seed, and later a map 
 
 Dust on solar panels, cleaning events, cold nights draining the battery, dust storms forecast a few sols ahead, a growing base station, wheel wear, comms windows.
 
-## Build order for v2
+## Status
 
-1. Profiles and collections (cards, patches, Collection Room, rover colors and names)
-2. Cadet picture-sequence mode
-3. Multiplayer: host and join with codes, Ready buttons, all rovers on one map
-4. Gusev Crater with the excavator
-5. Perks (Common and Rare first)
+Built in v2:
+1. Profiles and collections: 11 cards with rarity and shiny versions, 24 patches, ranks, inventory on **I**/**E** like Minecraft and Minetest
+2. Cadet picture-sequence mode with footprint preview and treasure-chest animation
+3. Multiplayer for up to 6: host and join with codes or QR, Ready buttons, chat, drafts of everyone's paths, reconnects, "Start without waiting"
+4. Gusev Crater with the Excavator, sand traps and Spirit at Troy
+5. Perks: Common and Rare tiers (Wide wheels, Sharp eyes, SuperCam laser, Big battery)
 
-Later updates: survival, remaining maps, Epic and Ultimate perks, Engineer coding perks, map editor, installable app.
+## Next revision (v3): real NASA maps
+
+Replace the generated terrain with real data so the game shows the actual ground:
+- **Imagery:** HiRISE and CTX orbital mosaics of each landing site (public domain, from NASA/JPL/University of Arizona and USGS).
+- **Elevation:** HiRISE digital terrain models (DTMs) for real slopes. Slope decides what is drivable, like the real rover planners do.
+- **Pipeline:** download, crop and downsample each site offline into a tile image plus a small height and terrain grid shipped with the game. Real features (Séítah, Home Plate, Mount Sharp) then sit where they really are.
+- Keep the gameplay grid; derive terrain types (sand, bedrock, steep) from the real imagery and slope.
+
+Later updates: survival, Meridiani / Gale / North Polar / Moon maps, Epic and Ultimate perks, Engineer coding perks (`sense_ahead()`, `if`, `while`, `def`), map editor, installable app.
