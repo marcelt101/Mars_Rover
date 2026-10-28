@@ -160,6 +160,10 @@ Batch 3 details: the Lab job (team games) catalogs samples, makes water/metal/br
 
 Several of these are already cards (clay, carbonate, silica, olivine, salts). The new ones would be added on the maps where they belong (Jezero, Gusev) or saved for the future maps (Meridiani, Gale, North Polar). The tablet always separates what was found from what it might mean, the same way the scientists do.
 
+**Batch 4 addition: calm space music.** Ambient background music made in the browser (Web Audio), not songs and not music files: slow soft synth chords, a gentle low hum, and an occasional quiet chime. It never repeats exactly, works offline, adds almost nothing to the download, and has no licensing questions (important for itch.io).
+- It follows the game: very calm while planning, a little more movement while rovers drive, low wind underneath during a dust storm, sparser and colder on the Moon, and a short happy chime blended in on a find.
+- A separate Music switch next to Sound, with a volume slider. It starts quiet and is remembered per device. It fades in after the first tap (browsers need a tap before playing sound).
+
 ## Next revision (v3): real NASA maps
 
 Replace the generated terrain with real data so the game shows the actual ground:
