@@ -10,7 +10,8 @@ No install needed: open `game/index.html` in any browser (Chrome, Edge, Firefox,
 
 | Folder | What it is |
 |---|---|
-| `game/` | **Jezero Expedition**: a big scrolling map of Jezero Crater with three crew roles |
+| `game/` | **Jezero Expedition v2** (in progress): co-op multiplayer, collecting, perks, more maps |
+| `v1/` | **Jezero Expedition v1**: the single-player version, kept as it was (also on the `v1` branch) |
 | `classic/` | **Mars Rover Ops**: the original five small grid missions |
 
 ## Crew roles in Jezero Expedition
@@ -50,6 +51,8 @@ for i in range(3):
 3. After a minute the game is at `https://marcelt101.github.io/Mars_Rover/` (GitHub shows the exact link at the top of the Pages settings).
 
 ## Roadmap
+
+The full plan is in [DESIGN.md](DESIGN.md).
 
 1. ~~Big scrolling Jezero map, scan / analyze / drill, three crew roles~~ ✔
 2. Power and survival: dust on the solar panels, cold nights, dust storms, the base station

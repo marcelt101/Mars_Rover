@@ -1,0 +1,120 @@
+# Mars Rover: Design Plan
+
+A co-op browser game for up to 6 players, each on their own device, exploring real places on Mars. You plan commands, send them to Mars, and watch the rovers carry them out.
+
+## Versions
+
+- **v1** (branch `v1`, playable at `/v1/`): single-player Jezero Expedition with three roles.
+- **v2** (in progress on `main`, playable at `/game/`): co-op multiplayer, profiles, collecting, perks, more maps.
+
+## Platform
+
+- Stays in the browser, hosted free on GitHub Pages.
+- 2D canvas maps. No build step: plain HTML, CSS and JavaScript.
+- Later: installable as an app (PWA) with an icon, fullscreen and offline play.
+- Save backup: export/import a save code, so a cleared browser doesn't lose a collection.
+
+## Crew roles
+
+| Role | Ages | How they plan |
+|---|---|---|
+| **Cadet** | 4–7 | Picture buttons only (↑ ↶ ↷ ⛏). Each arrow is one square. Up to 5 pictures, growing to 8 with rank. Big GO button. Ghost footprints preview the path. No reading, no numbers, no battery, no failure: bumps just wiggle. |
+| **Explorer** | 8–12 | Blocks with numbers: drive, turn, scan, analyze, drill, charge. |
+| **Specialist** | 13+ | Python with loops; later sensors, `if`/`while` and functions. |
+
+## Multiplayer (up to 6 players)
+
+- **The host's browser is the server.** One player taps *Host game*; the screen shows a room code (e.g. `MARS-4821`) and a QR code. Others tap *Join*.
+- Devices connect directly (WebRTC). A free public service (PeerJS) only introduces them at the start; all game traffic stays on the home network. Works outside the home too.
+- **Co-op sol:** everyone plans at the same time, presses *Ready*, all plans uplink together, and all rovers move at the same time. Rovers block each other, so the team has to coordinate.
+- Host is authoritative: it runs the simulation and sends results to everyone.
+- Host device stays awake (wake lock). Dropped players rejoin with the same code and get their rover back; their rover waits that sol.
+- Connection check screen to make network problems easy to report.
+
+### Telling rovers apart
+- Each player picks a color (body stripe, flag, tracks, planned path, minimap dot, log messages).
+- Each rover job has its own shape.
+- Small name flag always visible (initial when zoomed far out). Hover (PC) or tap (tablet) shows name, avatar, rank, battery and samples.
+- "Who's who" bar of player cards along the map edge; click one to jump to that rover.
+
+### Rover jobs
+Scout (bigger scan), Science (better spectrometer), Hauler (more tubes), Excavator (digs out sand traps, clears rocks), Helicopter (Ingenuity: flies over rocks, can't crash; ideal for the Cadet).
+
+## Profiles, progress and rewards
+
+- **Profiles:** name, avatar, rover color and skin. Personal progress is saved on each player's own device.
+- **Team progress** (base, unlocked maps) is saved on the host and copied to every player as a backup, so anyone can host next time.
+- **Ranks** (XP scaled per role so everyone ranks up at a similar pace): Trainee → Rover Driver → Field Geologist → Science Lead → Mission Specialist → Flight Director.
+- **Rewards never use streak pressure, never take progress away, and never rank siblings against each other.**
+
+### Collecting
+- **Mineral cards:** 30–40 across all maps, with a real fact each. Rarity: Common, Uncommon, Rare, Legendary. Small chance of a shiny "perfect specimen". Map sets give a gold frame and a patch.
+- **Mission patches:** 50+ for skills, firsts, silly moments and team achievements.
+- **Rover parts and skins:** paint, wheels, antennas, flags, decals; rare skins (Retro Apollo buggy, Golden Rover).
+- **Mars artifacts:** super-rare hidden finds from real history (Beagle 2, Mars Pathfinder, Ingenuity's last landing spot).
+- **Postcards:** photos taken at special spots (sunset over Jezero, dust devils, Earth in the night sky).
+- **Collection Room:** display cases, patch wall, garage and artifact shelf. Empty slots show as silhouettes.
+- Team finds are copied to everyone; personal finds (shinies, patches, skins) belong to whoever earned them. Optional trading of duplicates.
+- Cadet gets a treasure-chest opening animation with sounds.
+
+### Real-world prizes
+- Printable certificates and patches for ranks.
+- Parent-only prize board: real rewards set by a parent, with progress shown in the game.
+
+## Perks
+
+Based on real rover instruments. You own many but equip a limited number per expedition.
+
+| Tier | Perk | Effect | Real thing |
+|---|---|---|---|
+| Common | Wide wheels | Dunes cost normal power, fewer sand traps | Rover wheel redesigns |
+| Common | Dust wiper | Solar panels stay clean longer | Opportunity's wind gusts |
+| Rare | SuperCam laser | Analyze up to 3 squares away | Perseverance's 7 m laser |
+| Rare | Big battery | +50% battery | |
+| Epic | SHERLOC UV scanner | Signals glow by rarity | Perseverance's organics detector |
+| Epic | AutoNav | Steers around rocks instead of stopping | Perseverance self-driving |
+| Epic | Ingenuity buddy | Mini helicopter scouts 5 squares ahead each sol | Ingenuity's 72 flights |
+| Ultimate | **RIMFAX deep radar** | Sees underground: buried ice, fossils, secret artifacts only its owner can find; golden skin | Perseverance's ground-penetrating radar |
+| Ultimate | **Nuclear heart (RTG)** | Never runs out of power, ignores dust storms | Curiosity and Perseverance power source |
+
+**Earning:** rank-ups (Common, Rare), collection sets (Epic), big age-appropriate goals (Ultimate): Cadet 100 treasures, Explorer 3 map collections, Specialist a hard coding challenge.
+
+### Fairness by role
+| Role | Perk slots | Available |
+|---|---|---|
+| Cadet | 4 | All gameplay perks, including both Ultimates |
+| Explorer | 3 | Up to Epic, plus RIMFAX |
+| Specialist | 2 | Up to Rare gameplay perks; no Ultimate gameplay perks |
+
+The Specialist gets **Engineer perks** instead: new code abilities (`rover.sense_ahead()`, `if`/`while`, `def`, a personal AutoNav script that runs every sol). Their ultimate is prestige: the Flight Director title, a unique skin, and setting challenges for the team.
+
+**Team perks** help everyone, e.g. a base radio tower (longer plans) and a greenhouse (faster recharge).
+
+## Maps
+
+Each map adds its own mechanic. Unlocked in order as team milestones.
+
+| # | Map | Mechanic | Real story |
+|---|---|---|---|
+| 1 | Jezero Crater | Tutorial: scan, analyze, drill | Perseverance |
+| 2 | Gusev Crater | Sand traps everywhere; excavator matters | Spirit got stuck here |
+| 3 | Meridiani Planum | Huge plains for 6 players; blueberries, meteorites | Opportunity's marathon |
+| 4 | Gale Crater | Climbing Mount Sharp: slopes and power | Curiosity |
+| 5 | North Polar ice | Finale: water ice, freezing nights, big storms | Phoenix lander |
+| ★ | Moon: Hadley Rille | Bonus: Apollo-style buggy, low gravity | Apollo 15 |
+
+Replay: random expeditions on each map, a daily challenge seed, and later a map editor.
+
+## Survival (later update)
+
+Dust on solar panels, cleaning events, cold nights draining the battery, dust storms forecast a few sols ahead, a growing base station, wheel wear, comms windows.
+
+## Build order for v2
+
+1. Profiles and collections (cards, patches, Collection Room, rover colors and names)
+2. Cadet picture-sequence mode
+3. Multiplayer: host and join with codes, Ready buttons, all rovers on one map
+4. Gusev Crater with the excavator
+5. Perks (Common and Rare first)
+
+Later updates: survival, remaining maps, Epic and Ultimate perks, Engineer coding perks, map editor, installable app.
