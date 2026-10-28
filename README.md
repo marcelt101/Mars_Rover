@@ -44,7 +44,7 @@ The devices find each other through the free PeerJS service, then talk directly.
 | Excavator | Explorer, Specialist | `dig()` clears a rock or sand trap in front, never gets stuck |
 | Lab | Explorer, Specialist (team games) | Stays at the station. Catalogs the team's samples and builds base upgrades |
 
-On the Moon the ground rovers are Apollo Lunar Roving Vehicles, the station is the Lunar Module, and the helicopter stays home (there is no air to fly in).
+Scouts and Haulers look like Spirit and Opportunity (big winged solar array, Pancam mast, round dish antenna). Science and Excavator rovers look like Perseverance. The Cadet's Buggy looks like Sojourner, the first rover on Mars. On the Moon the ground rovers are Apollo Lunar Roving Vehicles, the station is the Lunar Module, and the helicopter stays home (there is no air to fly in).
 
 ## Getting started
 

@@ -215,12 +215,81 @@ function metalWheel(c, x, y, w, h, lod, steer){
 }
 function roverShadow(c, r, s){
   c.fillStyle = 'rgba(30,10,3,.34)';
+  if (r.job === 'scout' || r.job === 'hauler') { merPath(c, s); c.fill(); [[-.4], [.4]].forEach(([y]) => [-1, 1].forEach(sd => { rr(c, sd*.36*s - .08*s, y*s - .11*s, .16*s, .22*s, .04*s); c.fill(); })); return; }
   rr(c, -.3*s, -.32*s, .6*s, .62*s, .05*s); c.fill();
   WHEEL_Y.forEach(y => [-1, 1].forEach(sd => { rr(c, sd*WHEEL_X*s - .09*s, y*s - .12*s, .18*s, .24*s, .04*s); c.fill(); }));
   rr(c, .06*s, -.42*s, .22*s, .12*s, .03*s); c.fill();
   rr(c, -.08*s, .24*s, .16*s, .24*s, .04*s); c.fill();
 }
+/* Spirit / Opportunity (Mars Exploration Rover) seen from above, front at the top, from NASA's pictures: the big
+   dark winged solar array covers the body, the wheels peek out under it, the Pancam mast with its wide camera bar
+   and gold collar stands at the front, the round high-gain dish sits at the back right, and the low-gain antenna
+   is a thin black pole. The player's color is the rim of the solar array and the pennant. */
+const MER_ARRAY = [[-.24,-.34],[.24,-.34],[.5,-.2],[.5,.1],[.34,.3],[.13,.42],[-.13,.42],[-.34,.3],[-.5,.1],[-.5,-.2]];
+const merPath = (c, s, k = 1) => { c.beginPath(); MER_ARRAY.forEach(([x, y], i) => i ? c.lineTo(x*s*k, y*s*k) : c.moveTo(x*s*k, y*s*k)); c.closePath(); };
+function drawMER(c, r, a, t, s, lod){
+  const col = MR.colorHex(r.color), P = k => (r.perks || []).includes(k);
+  const ww = (P('wide_wheels') ? .17 : .13)*s, wh = .2*s;
+  // rocker-bogie and the six wheels (front and back wheels stick out past the array)
+  c.strokeStyle = '#2c3035'; c.lineWidth = s*.045; c.lineCap = 'round';
+  [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd*.36*s, -.4*s); c.lineTo(sd*.34*s, -.05*s); c.lineTo(sd*.4*s, .02*s); c.moveTo(sd*.34*s, -.05*s); c.lineTo(sd*.36*s, .4*s); c.stroke(); });
+  c.lineCap = 'butt';
+  [[-.4], [.02], [.4]].forEach(([y], i) => [-1, 1].forEach(sd => metalWheel(c, sd*(i === 1 ? .43 : .36)*s, y*s, ww, wh, lod, i !== 1)));
+  // the arm (IDD) tucked under the front, with its instrument turret
+  c.strokeStyle = '#5a6067'; c.lineWidth = s*.045; c.beginPath(); c.moveTo(.12*s, -.32*s); c.lineTo(-.08*s, -.43*s); c.stroke();
+  c.strokeStyle = '#d5d8dc'; c.lineWidth = s*.026; c.beginPath(); c.moveTo(.12*s, -.32*s); c.lineTo(-.08*s, -.43*s); c.stroke();
+  c.fillStyle = '#4a5057'; c.beginPath(); c.arc(-.11*s, -.44*s, s*.055, 0, Math.PI*2); c.fill();
+  if (lod >= 1) { c.fillStyle = '#b9bec4'; c.beginPath(); c.arc(-.11*s, -.44*s, s*.032, 0, Math.PI*2); c.fill(); c.fillStyle = '#e2c06a'; c.fillRect(-.16*s, -.46*s, .03*s, .04*s); }
+  if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.04; c.beginPath(); c.arc(-.11*s, -.44*s, s*.09, t/60, t/60 + 4); c.stroke(); }
+  // solar array: rim in the player's color, dark cells with thin lines, seams between the panels
+  c.fillStyle = col; merPath(c, s); c.fill();
+  const g = c.createLinearGradient(-.5*s, -.34*s, .5*s, .42*s); g.addColorStop(0, '#2b3442'); g.addColorStop(.5, '#1a212c'); g.addColorStop(1, '#2a2f38');
+  c.fillStyle = g; merPath(c, s, .93); c.fill();
+  if (lod >= 1) {
+    c.save(); merPath(c, s, .93); c.clip();
+    c.strokeStyle = 'rgba(170,185,205,.22)'; c.lineWidth = Math.max(.5, s*.006);
+    if (lod >= 2) { for (let k = -12; k <= 12; k++) { c.beginPath(); c.moveTo(k*.04*s, -.4*s); c.lineTo(k*.04*s, .45*s); c.stroke(); } for (let k = -9; k <= 11; k++) { c.beginPath(); c.moveTo(-.5*s, k*.04*s); c.lineTo(.5*s, k*.04*s); c.stroke(); } }
+    c.strokeStyle = 'rgba(200,205,212,.55)'; c.lineWidth = s*.014; c.beginPath();
+    [[-.24,-.34,-.2,-.06],[.24,-.34,.2,-.06],[-.5,-.05,-.2,-.06],[.5,-.05,.2,-.06],[-.2,-.06,-.13,.42],[.2,-.06,.13,.42]].forEach(([x1, y1, x2, y2]) => { c.moveTo(x1*s, y1*s); c.lineTo(x2*s, y2*s); }); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.07)'; c.beginPath(); c.moveTo(-.46*s, -.2*s); c.lineTo(-.1*s, -.32*s); c.lineTo(-.46*s, .05*s); c.closePath(); c.fill();
+    c.restore();
+    // equipment deck in the middle (the warm electronics box lid) with the calibration target
+    c.fillStyle = '#6b665e'; rr(c, -.1*s, -.1*s, .2*s, .2*s, .02*s); c.fill();
+    c.strokeStyle = 'rgba(226,192,106,.7)'; c.lineWidth = s*.008; c.stroke();
+    if (lod >= 2) { c.strokeStyle = 'rgba(30,32,36,.5)'; c.lineWidth = s*.006; c.beginPath(); c.moveTo(-.1*s, 0); c.lineTo(.1*s, 0); c.moveTo(0, -.1*s); c.lineTo(0, .1*s); c.stroke(); }
+    c.fillStyle = '#c9ced4'; c.beginPath(); c.arc(.05*s, .05*s, s*.026, 0, Math.PI*2); c.fill(); c.fillStyle = '#2a2e33'; c.fillRect(.047*s, .01*s, .006*s, .04*s);
+    if (P('big_battery')) { c.fillStyle = '#3d4a42'; rr(c, -.38*s, -.08*s, .12*s, .055*s, .01*s); c.fill(); c.fillStyle = '#86d48f'; c.fillRect(-.365*s, -.06*s, .08*s, .015*s); }
+    if (r.job === 'hauler') { c.fillStyle = '#3a3f45'; rr(c, -.13*s, .26*s, .26*s, .1*s, .015*s); c.fill();
+      for (let k = 0; k < 8; k++) { const id = (r.tubes || [])[k]; c.fillStyle = id ? MR.CARDS[id].color : '#9aa1a8'; rr(c, -.115*s + k*.03*s, .275*s, .02*s, .07*s, .006*s); c.fill(); } }
+  }
+  // high-gain antenna: a round dish on a gimbal at the back right (gold and bigger when upgraded)
+  const hga = P('hg_antenna'), hr = (hga ? .12 : .095)*s, hx = .27*s, hy = .14*s;
+  c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(hx + s*.025, hy + s*.03, hr, 0, Math.PI*2); c.fill();
+  const dg = c.createRadialGradient(hx - hr*.3, hy - hr*.3, hr*.1, hx, hy, hr); dg.addColorStop(0, hga ? '#f3dc98' : '#b9a58a'); dg.addColorStop(1, hga ? '#a8812f' : '#7a6a58');
+  c.fillStyle = dg; c.beginPath(); c.arc(hx, hy, hr, 0, Math.PI*2); c.fill();
+  if (lod >= 1) { c.strokeStyle = hga ? '#8a6a24' : '#5e5244'; c.lineWidth = Math.max(.5, s*.01); c.stroke(); c.beginPath(); c.arc(hx, hy, hr*.55, 0, Math.PI*2); c.stroke(); }
+  // low-gain antenna pole (taller Better radio) with the team pennant
+  const L = (P('better_radio') ? .18 : .12)*s, lx = -.22*s, ly = .2*s;
+  c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = s*.02; c.beginPath(); c.moveTo(lx, ly); c.lineTo(lx + L*.5, ly + L*.6); c.stroke();
+  c.fillStyle = '#15181c'; c.beginPath(); c.arc(lx, ly, s*.024, 0, Math.PI*2); c.fill();
+  c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.moveTo(lx + .02*s, ly + .03*s); c.lineTo(lx - .14*s, ly + .1*s); c.lineTo(lx + .01*s, ly + .13*s); c.closePath(); c.fill();
+  c.fillStyle = col; c.beginPath(); c.moveTo(lx, ly); c.lineTo(lx - .16*s, ly + .06*s); c.lineTo(lx - .01*s, ly + .1*s); c.closePath(); c.fill(); c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = Math.max(.5, s*.006); c.stroke();
+  // Pancam mast: gold collar, white mast and the wide camera bar (Scout stands a bit taller)
+  const mx = .1*s, my = -.22*s, up = r.job === 'scout' ? .1*s : .07*s, sc = P('supercam');
+  c.fillStyle = '#b08a3e'; c.beginPath(); c.arc(mx, my, s*.045, 0, Math.PI*2); c.fill();
+  c.strokeStyle = '#e1e4e7'; c.lineWidth = s*.04; c.beginPath(); c.moveTo(mx, my); c.lineTo(mx, my - up); c.stroke();
+  c.save(); c.translate(mx, my - up);
+  const bw2 = .3*s, bh2 = .07*s;
+  c.fillStyle = 'rgba(0,0,0,.3)'; rr(c, -bw2/2 + s*.03, -bh2/2 + s*.04, bw2, bh2, s*.012); c.fill();
+  const bg = c.createLinearGradient(0, -bh2/2, 0, bh2/2); bg.addColorStop(0, '#d7dade'); bg.addColorStop(1, '#8e959c');
+  c.fillStyle = bg; rr(c, -bw2/2, -bh2/2, bw2, bh2, s*.012); c.fill(); c.strokeStyle = '#4a5057'; c.lineWidth = Math.max(.5, s*.008); c.stroke();
+  if (lod >= 1) { c.fillStyle = '#11161c'; [-1, 1].forEach(sd => { rr(c, sd*bw2*.4 - s*.025, -bh2*.5 - s*.008, s*.05, s*.03, s*.006); c.fill(); rr(c, sd*bw2*.16 - s*.012, -bh2*.5 - s*.006, s*.024, s*.022, s*.004); c.fill(); });
+    if (sc) { c.fillStyle = '#ff5a4f'; c.beginPath(); c.arc(0, 0, s*.02, 0, Math.PI*2); c.fill(); }
+    if (P('sharp_eyes') && lod >= 2) { c.fillStyle = '#11161c'; [-.07, .07].forEach(x => { c.beginPath(); c.arc(x*s, bh2*.2, s*.01, 0, Math.PI*2); c.fill(); }); } }
+  c.restore();
+}
 function drawGroundRover(c, r, a, t, s, lod){
+  if (r.job === 'scout' || r.job === 'hauler') return drawMER(c, r, a, t, s, lod);
   const col = MR.colorHex(r.color), P = k => (r.perks || []).includes(k), sci = r.job === 'science';
   const ww = (P('wide_wheels') ? .19 : .14)*s, wh = .22*s;
   // rocker-bogie suspension (dark titanium tubes)
