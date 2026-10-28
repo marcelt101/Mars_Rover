@@ -95,6 +95,7 @@ Unlocks at the second rank (Rover Driver). Programs can then keep running for mo
 - **54 stickers**, **47 mission patches** (including coding ones like *Hello, Mars*, *Perfect Plan*, *Loop in a Loop*, *Smart Rover* and *Mission Control*), **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
 - **Signal delay:** each sol's commands take 5–10 seconds to reach Mars with the stock antenna. Better radio makes it 30% faster, the High-gain antenna twice as fast. Cadets get both automatically as they rank up.
 - Finishing Jezero unlocks Gusev, and finishing Gusev unlocks the Moon.
+- **Expeditions are saved** after every sol on the device that runs the game (solo, or the host). Tap **Continue** on the start screen to pick up where you left off, even after closing the browser. In a team game the host gets a new room code, and everyone who joins again with the same profile gets their own rover back.
 - Progress is saved in each device's browser. **Parents and saves** on the start screen has a backup code to move or restore profiles, and a switch to unlock all maps.
 
 ## Keys

@@ -43,6 +43,11 @@ UI.renderHome = () => {
   $('modes').style.opacity = cur ? 1 : .4;
   $('tutBar').hidden = !cur || cur.tutDone || cur.tutHide;
   ['soloBtn','hostBtn','joinBtn'].forEach(id => $(id).disabled = !cur);
+  const ex = MR.Store.expedition(), canResume = !!(ex && cur && ex.pid === cur.id && (!ex.won || ex.keep) && MR.MAPS[ex.map]);
+  $('resumePanel').hidden = !canResume;
+  if (canResume) { const ago = Math.round((Date.now() - ex.at) / 60000);
+    $('resumeText').textContent = `${MR.MAPS[ex.map].name}, sol ${ex.sol}. ${ex.mode === 'host' ? `Team game with ${ex.names.filter(n => n !== cur.name).join(', ') || 'your crew'}. Everyone joins again with the new room code and gets their own rover back.` : 'Solo.'} Saved ${ago < 1 ? 'just now' : ago < 60 ? ago + ' min ago' : ago < 2880 ? Math.round(ago/60) + ' h ago' : Math.round(ago/1440) + ' days ago'}.`;
+    $('resumeBtn').disabled = ex.mode === 'host' && !MR.netAvailable(); }
   $('hostBtn').disabled = !cur || !MR.netAvailable();
   $('joinBtn').disabled = !cur || !MR.netAvailable();
   UI.renderMe();

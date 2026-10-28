@@ -2,7 +2,7 @@
 (function () {
 const MR = window.MR;
 const SLOT = (new URLSearchParams(location.search).get('slot') || '').replace(/[^a-z0-9]/gi, '');
-const KEY = 'mr2.profiles' + SLOT, TEAM = 'mr2.team' + SLOT, SET = 'mr2.settings' + SLOT;
+const KEY = 'mr2.profiles' + SLOT, TEAM = 'mr2.team' + SLOT, SET = 'mr2.settings' + SLOT, EXP = 'mr2.expedition' + SLOT;
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
@@ -14,6 +14,10 @@ MR.Store = {
   team: load(TEAM, {unlocked:['jezero'], allMaps:false}),
   settings: load(SET, {fast:false, sound:true}),
   save(){ save(KEY, this.db); save(TEAM, this.team); save(SET, this.settings); },
+  /* The running expedition, saved by the device that runs it (solo, or the host) after every sol. */
+  expedition(){ return load(EXP, null); },
+  saveExpedition(x){ save(EXP, x); },
+  clearExpedition(){ try { localStorage.removeItem(EXP); } catch (e) {} },
   profiles(){ return this.db.list; },
   current(){ return this.db.list.find(p => p.id === this.db.current) || null; },
   select(id){ this.db.current = id; this.save(); },

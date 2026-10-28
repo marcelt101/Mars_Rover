@@ -28,12 +28,36 @@ if (!MR.netAvailable()) { $('joinErr').hidden = false; $('joinErr').textContent 
 G.onProfileChanged = () => { if (G.phase === 'lobby') { refreshMyLobbyEntry(); } UI.renderMe(); };
 
 $('homeBtn').onclick = () => { if (G.phase === 'lobby') leave(); };
-$('soloBtn').onclick = () => { if (!me()) return; G.lostCode = null; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()}; enterLobby(); };
-$('hostBtn').onclick = () => startHost();
+$('soloBtn').onclick = () => { if (!me()) return; G.resume = null; G.noSave = false; G.lostCode = null; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()}; enterLobby(); };
+$('hostBtn').onclick = () => { G.resume = null; G.noSave = false; startHost(); };
+/* Continue a saved expedition. Solo goes straight back in; a team game opens a new room, and players who join
+   with the same profile get their own rover back. */
+$('resumeBtn').onclick = () => {
+  const ex = MR.Store.expedition(), p = me(); if (!ex || !p) return;
+  let st; try { st = MR.stateFromWire(ex.state); } catch (e) { UI.toast('!', '#ff7b6c', 'That save could not be loaded', 'Starting a new expedition is the only option.'); MR.Store.clearExpedition(); UI.renderHome(); return; }
+  G.noSave = false;
+  if (ex.mode === 'host') { G.resume = ex; startHost(); G.lobby.map = ex.map; renderLobby(); return; }
+  G.resume = null; G.lostCode = null; G.mode = 'solo'; G.myPid = p.id;
+  G.lobby = {players:[{...MR.playerSummary(p), connected:true, host:true}], map:ex.map, unlocked:MR.Store.unlocked()};
+  if (!st.rovers.some(r => r.pid === p.id)) MR.addRover(st, G.lobby.players[0]);
+  enterGame(st); G.contAfterWin = !!ex.keep; if (st.won && ex.keep) { G.phase = 'plan'; renderGame(); }
+  log('good', `Welcome back! Your expedition continues on sol ${st.sol}.`);
+};
+let discardArmed = 0;
+$('discardBtn').onclick = () => {
+  if (Date.now() - discardArmed > 3000) { discardArmed = Date.now(); $('discardBtn').textContent = 'Tap again to delete the save'; setTimeout(() => $('discardBtn').textContent = 'Start over', 3000); return; }
+  MR.Store.clearExpedition(); UI.renderHome();
+};
+function saveExpedition(){
+  if (!isHostish() || !G.state || G.noSave) return;
+  const st = G.state;
+  MR.Store.saveExpedition({v:MR.VERSION, mode:G.mode, pid:G.myPid, map:st.map, sol:st.sol, won:!!st.won, keep:!!G.contAfterWin,
+    names:st.rovers.map(r => r.name), at:Date.now(), state:MR.stateToWire(st)});
+}
 /* Tutorial: a normal solo game on a fixed, safe Jezero layout with a find 3 squares west of the rover. */
 G.startTutorial = () => {
   const p = me(); if (!p) return;
-  G.lostCode = null; G.mode = 'solo'; G.myPid = p.id;
+  G.lostCode = null; G.mode = 'solo'; G.myPid = p.id; G.resume = null; G.noSave = true;
   const pl = {...MR.playerSummary(p), connected:true, host:true};
   G.lobby = {players:[pl], map:'jezero', unlocked:MR.Store.unlocked()};
   const st = MR.newGame({map:'jezero', seed:424242, players:[pl]}), W = st.world, r = st.rovers[0];
@@ -56,7 +80,7 @@ function leave(){
   clearInterval(G.pingTimer);
   G.gen = (G.gen || 0) + 1;
   if (MR.Tutorial) MR.Tutorial.stop();
-  Object.assign(G, {chain:Promise.resolve(), mode:null, net:null, code:null, phase:'home', state:null, plan:[], ready:false, readyPids:[], plans:{}, drafts:{}, cid2pid:{}, pending:[]});
+  Object.assign(G, {resume:null, chain:Promise.resolve(), mode:null, net:null, code:null, phase:'home', state:null, plan:[], ready:false, readyPids:[], plans:{}, drafts:{}, cid2pid:{}, pending:[]});
   document.body.classList.remove('bigmap');
   $('win').hidden = true; $('joinBtn').disabled = false; $('joinBtn').textContent = 'Join'; UI.renderHome(); UI.show('scrHome');
 }
@@ -114,7 +138,7 @@ function hostMessage(cid, m){
     if (G.phase === 'lobby') { broadcast(lobbyMsg()); renderLobby(); return; }
     // joining or rejoining a running game
     const lp = G.lobby.players.find(x => x.pid === pl.pid);
-    if (!G.state.rovers.some(r => r.pid === pl.pid)) { MR.addRover(G.state, lp); broadcast({type:'state', state:MR.stateToWire(G.state)}); setGameState(G.state); log('info', `${lp.name} joined the expedition.`); }
+    if (!G.state.rovers.some(r => r.pid === pl.pid)) { MR.addRover(G.state, lp); broadcast({type:'state', state:MR.stateToWire(G.state)}); setGameState(G.state); log('info', `${lp.name} joined the expedition.`); saveExpedition(); }
     else { G.net.send(cid, {type:'start', state:MR.stateToWire(G.state), lobby:G.lobby, code:G.code}); log('info', `${lp.name} reconnected.`); }
     G.net.send(cid, {type:'ready', pids:G.readyPids}); G.net.send(cid, {type:'drafts', drafts:G.drafts});
     broadcast(lobbyMsg()); renderGame(); return;
@@ -253,8 +277,10 @@ function renderLobby(){
   if (G.mode !== 'client') G.lobby.unlocked = unlocked;
   $('mapPick').innerHTML = MR.MAP_ORDER.map(k => { const m = MR.MAPS[k], open = unlocked.includes(k);
     return `<button class="mapcard" data-map="${k}" aria-pressed="${k === G.lobby.map}" ${open && G.mode !== 'client' ? '' : 'disabled'}><b>${m.name}</b><small>${m.rover} · ${m.year}</small><p>${open ? esc(m.blurb) : `Locked. Finish a ${MR.MAPS[m.unlock].name} expedition to unlock.`}</p></button>`; }).join('');
-  $('mapNote').textContent = G.mode === 'client' ? 'The host picks the map' : '';
+  $('mapNote').textContent = G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
+  if (G.resume) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);
   $('startBtn').hidden = G.mode === 'client';
+  $('startBtn').textContent = G.resume ? 'Continue expedition' : 'Start expedition';
   $('lobbyWait').textContent = G.mode === 'client' ? 'Waiting for the host to start…' : (host && players.length < 2 ? 'Waiting for players to join (you can also start alone).' : '');
 }
 function renderNet(){
@@ -267,11 +293,15 @@ $('jobPick').onclick = e => { const b = e.target.closest('.job'); if (!b) return
 $('mapPick').onclick = e => { const b = e.target.closest('.mapcard'); if (!b || b.disabled || G.mode === 'client') return; G.lobby.map = b.dataset.map; broadcast(lobbyMsg()); renderLobby(); MR.sfx.click(); };
 $('startBtn').onclick = () => {
   if (G.mode === 'client') return;
-  const players = G.lobby.players.filter(x => x.connected);
-  const st = MR.newGame({map:G.lobby.map, seed:Math.floor(Math.random()*1e9), players});
+  const players = G.lobby.players.filter(x => x.connected), ex = G.resume;
+  let st;
+  if (ex) { st = MR.stateFromWire(ex.state); players.forEach(p => { if (!st.rovers.some(r => r.pid === p.pid)) MR.addRover(st, p); }); }
+  else st = MR.newGame({map:G.lobby.map, seed:Math.floor(Math.random()*1e9), players});
+  G.resume = null;
   G.plans = {}; G.readyPids = []; G.drafts = {};
   broadcast({type:'start', state:MR.stateToWire(st), lobby:G.lobby, code:G.code});
   enterGame(st);
+  if (ex) { G.contAfterWin = !!ex.keep; log('good', `Welcome back! The expedition continues on sol ${st.sol}.`); }
 };
 $('leaveLobbyBtn').onclick = () => leave();
 
@@ -285,7 +315,7 @@ function enterGame(st){
   if (myRole() === 'cadet') log('info', 'Tap the pictures to plan, then press GO!');
   if (myRole() === 'specialist' && !$('editor').dataset.touched) $('editor').value = `from mars import rover\n\n# Scan around, then head out.\nrover.scan()\nfor i in range(2):\n    rover.forward(3)\nrover.analyze()\n`;
   R.resize(); R.cam.follow = true; setTimeout(() => R.focus(G.myPid, true), 30);
-  renderGame(); updateGhost();
+  renderGame(); updateGhost(); saveExpedition();
 }
 function setGameState(st){
   G.state = st;
@@ -885,7 +915,7 @@ async function playSol(timeline, newState){
   R.cam.follow = true;
   for (const tick of timeline) { await Promise.all(tick.map(playEvent)); if (gen !== G.gen) return; renderSide(); renderCrewBar(); }
   R.running = false; $('runLine').hidden = true;
-  setGameState(newState);
+  setGameState(newState); saveExpedition();
   const won = timeline.some(t => t.some(e => e.t === 'win'));
   const p = me();
   if (p) {
@@ -955,11 +985,11 @@ function showWin(st){
   $('againBtn').textContent = 'New expedition';
   $('win').hidden = false;
 }
-$('keepBtn').onclick = () => { G.contAfterWin = true; $('win').hidden = true; G.phase = 'plan'; renderGame(); };
-$('againBtn').onclick = () => { if (G.mode === 'client') return; G.state = null; broadcast({type:'toLobby', lobby:G.lobby}); enterLobby(); };
+$('keepBtn').onclick = () => { G.contAfterWin = true; $('win').hidden = true; G.phase = 'plan'; renderGame(); saveExpedition(); };
+$('againBtn').onclick = () => { if (G.mode === 'client') return; if (!G.noSave) MR.Store.clearExpedition(); G.state = null; broadcast({type:'toLobby', lobby:G.lobby}); enterLobby(); };
 let leaveArmed = 0;
 $('leaveGameBtn').onclick = () => {
-  if (Date.now() - leaveArmed > 3000) { leaveArmed = Date.now(); $('leaveGameBtn').textContent = G.mode === 'host' ? 'Tap again: ends the game for everyone' : 'Tap again to leave'; setTimeout(() => $('leaveGameBtn').textContent = 'Leave game', 3000); return; }
+  if (Date.now() - leaveArmed > 3000) { leaveArmed = Date.now(); $('leaveGameBtn').textContent = G.noSave ? 'Tap again to leave' : G.mode === 'host' ? 'Tap again: ends the game for everyone (it is saved)' : G.mode === 'solo' ? 'Tap again to leave (it is saved)' : 'Tap again to leave'; setTimeout(() => $('leaveGameBtn').textContent = 'Leave game', 3000); return; }
   leave();
 };
 
