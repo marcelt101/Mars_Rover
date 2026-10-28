@@ -141,6 +141,25 @@ Batch 3 details: the Lab job (team games) catalogs samples, makes water/metal/br
 - Small rewards: a patch for each completed family row and one for lighting up all the elements.
 - Add 8–10 more real minerals so the chart is worth filling (hematite "blueberries", gypsum veins, jarosite, magnetite, feldspar, perchlorate salts, ilmenite, the Moon's orange soil), some for the future maps. Real science only.
 
+**Batch 4 addition: the 12 "signs of a living Mars" minerals, each with an information tablet.** Real science only. Every tablet shows the mineral's picture and color, a simple formula, where a rover found it (mission and site), which instrument detects it, and "Why scientists care". The text is simpler for Cadets and more detailed for Specialists.
+
+| Mineral | Found by | Why scientists care |
+|---|---|---|
+| Clay (smectite) | Curiosity (Gale), Perseverance (Jezero delta) | Forms only in long-lasting, gentle, not-too-acidic water. Clay also traps and protects organic molecules for billions of years. |
+| Carbonate | Perseverance (Jezero rim), Spirit (Comanche) | Forms from water and carbon dioxide. On Earth, carbonates hold the oldest fossils of microbe mats (stromatolites). |
+| Opaline silica | Spirit (Home Plate) | Left by hot springs. On Earth, hot spring silica keeps finger-like shapes made by microbes, and Spirit found very similar shapes. |
+| Gypsum | Curiosity (Gale veins), Opportunity | Bright veins show water flowing through cracks in the rock long after the lake dried up. |
+| Jarosite | Opportunity (Meridiani) | Forms only in acidic, salty water, so it tells what kind of water was there and when. |
+| Hematite "blueberries" | Opportunity (Meridiani) | Little balls that grew in groundwater soaking through the rock. The first proof of past water that a rover touched. |
+| Halite and chlorides | Orbiters, Curiosity | Salt left when lakes evaporated, marking where water pooled and dried. |
+| Perchlorate | Phoenix (north polar plains) | A salt that keeps water liquid far below freezing. It can also break down organic molecules when rocks are heated, which makes finding them harder. |
+| Serpentine | Orbiters (Nili Fossae), Perseverance (Jezero) | Forms when water reacts with olivine, which releases hydrogen. On Earth, microbes deep underground live on that hydrogen. |
+| Olivine | Every rover | A clock for water: olivine turns into other minerals quickly in water, so finding fresh olivine shows the rock stayed dry. |
+| Manganese oxide | Curiosity (Gale), Opportunity | Needs water with a lot of oxygen. On Earth, microbes often help make it. |
+| Vivianite and greigite ("leopard spots") | Perseverance (Cheyava Falls, 2024) | Tiny spots in a mudstone with organic matter. On Earth, reactions like these are often run by microbes. NASA calls it a potential biosignature: the best clue yet, not proof. |
+
+Several of these are already cards (clay, carbonate, silica, olivine, salts). The new ones would be added on the maps where they belong (Jezero, Gusev) or saved for the future maps (Meridiani, Gale, North Polar). The tablet always separates what was found from what it might mean, the same way the scientists do.
+
 ## Next revision (v3): real NASA maps
 
 Replace the generated terrain with real data so the game shows the actual ground:
