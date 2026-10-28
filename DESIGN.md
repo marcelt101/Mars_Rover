@@ -130,7 +130,7 @@ Robot playtest after batch 1: a beginner following the hints finishes 93% of exp
 
 **Batch 2 (original list):** code stars and the coding badge ladder; realistic rovers with visible perks; tap-the-map planning, hint clouds, markers, recipes, sol summary; Scout flags and the Finds list; more realistic generated terrain (hillshading, craters, delta, dunes).
 
-**Batch 3:** team chain (find → drill → lab), Mars Catalog and base upgrades; satellite relay kit (multi-sol programs, blocks for Explorers and Python for Specialists); gentle weather and forecasts; Moon map with the Apollo Lunar Roving Vehicle.
+**Batch 3:** team chain (find → drill → lab), Mars Catalog and base upgrades; satellite relay kit (multi-sol programs, blocks for Explorers and Python for Specialists, with mission recipes); gentle weather and forecasts; rover health dashboard (battery, tubes, wheels, dusty panels, temperature, signal, instruments; a simple face for Cadets; the station repairs everything for free); Moon map with the Apollo Lunar Roving Vehicle.
 
 ## Next revision (v3): real NASA maps
 
