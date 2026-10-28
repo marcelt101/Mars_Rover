@@ -38,7 +38,7 @@ function terJezero(w, seed){
     if (d > 52 + nr*4 && !chan) t = T.RIM;
     else {
       const ax = x-APEX.x, ay = y-APEX.y, ad = Math.hypot(ax,ay), ang = Math.atan2(ay,ax)*180/Math.PI;
-      if (ad < 14 + nr*5 && ang > -55 && ang < 80) t = T.DELTA;
+      if (ad < 13 + nr*4 + 3.2*Math.max(0, Math.sin(ang*Math.PI/180*5 + 1)) && ang > -55 && ang < 80) t = T.DELTA;
       if (chan) t = T.CHAN;
       const sx = (x-23)/10.5, sy = (y-31)/6.2;
       if (sx*sx + sy*sy < 1 + (nB(x/4,y/4)-.5)*.7) t = T.DUNE;
@@ -166,64 +166,66 @@ const COLS = {
   jezero:[[181,96,61],[150,78,51],[210,140,92],[160,104,80],[138,76,54],[108,56,41],[150,92,66],[96,54,40],[196,150,118]],
   gusev: [[166,98,68],[136,80,58],[204,142,98],[160,104,80],[128,74,54],[104,58,44],[156,96,68],[94,56,42],[204,170,140]],
 };
+/* The terrain picture: a height map lit from the north-west (hillshading), so craters, the delta,
+   dunes, hills and the crater rim look like an orbital photo, with soft edges when zoomed out. */
+const HEIGHT = [0, .15, .12, .7, -.45, 1.9, 1.1, 2.1, 1.0];
 MR.bakeTerrain = function (w) {
-  const r = mulberry32(w.seed+99), nz = makeNoise(w.seed+5), TC = COLS[w.map] || COLS.jezero;
-  const cv = document.createElement('canvas'); cv.width = MW*BASE; cv.height = MH*BASE;
-  const g = cv.getContext('2d');
-  const sm = document.createElement('canvas'); sm.width = MW; sm.height = MH;
-  const sg = sm.getContext('2d'), img = sg.createImageData(MW, MH);
-  for (let i=0;i<N;i++) {
-    const x = i % MW, y = (i/MW)|0, c = TC[w.ter[i]], v = (nz(x/3,y/3)-.5)*28;
-    img.data[i*4] = c[0]+v; img.data[i*4+1] = c[1]+v*.7; img.data[i*4+2] = c[2]+v*.5; img.data[i*4+3] = 255;
+  const r = mulberry32(w.seed+99), nz = makeNoise(w.seed+5), nd = makeNoise(w.seed+61), TC = COLS[w.map] || COLS.jezero;
+  const S = 10, PW = MW*S, PH = MH*S;
+  // tile heights, blurred once so slopes look natural
+  const th = new Float32Array(N), tb = new Float32Array(N);
+  for (let i=0;i<N;i++) { const x = i % MW, y = (i/MW)|0, t = w.ter[i]; th[i] = HEIGHT[t] + (t === T.RIM || t === T.HILL || t === T.CLIFF ? (nz(x/4+20, y/4)-.5)*1.2 : (nz(x/5, y/5)-.5)*.25); }
+  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) { let s2 = 0, n2 = 0; for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) { if (!MR.inb(x+dx,y+dy)) continue; const wt = dx||dy ? 1 : 2; s2 += th[(y+dy)*MW+x+dx]*wt; n2 += wt; } tb[y*MW+x] = s2/n2; }
+  const bil = (arr, fx, fy) => { const x0 = Math.max(0, Math.min(MW-1, Math.floor(fx))), y0 = Math.max(0, Math.min(MH-1, Math.floor(fy))), x1 = Math.min(MW-1, x0+1), y1 = Math.min(MH-1, y0+1), tx = Math.max(0, Math.min(1, fx-x0)), ty = Math.max(0, Math.min(1, fy-y0));
+    return (arr[y0*MW+x0]*(1-tx) + arr[y0*MW+x1]*tx)*(1-ty) + (arr[y1*MW+x0]*(1-tx) + arr[y1*MW+x1]*tx)*ty; };
+  const dune = new Float32Array(N), delta = new Float32Array(N);
+  for (let i=0;i<N;i++) { dune[i] = w.ter[i] === T.DUNE ? 1 : 0; delta[i] = w.ter[i] === T.DELTA ? 1 : 0; }
+  const craters = []; for (let i=0;i<N;i++) if (w.obs[i] === 'C') craters.push({x:i % MW + .5, y:((i/MW)|0) + .5, R:.42 + r()*.1, fresh:r() < .6});
+  for (let k=0;k<45;k++) { const x = r()*MW, y = r()*MH, t = w.ter[Math.floor(y)*MW + Math.floor(x)]; if (t === T.FLOOR || t === T.BED || t === T.DELTA) craters.push({x, y, R:.06 + r()*.08, fresh:r() < .25, deco:true}); }
+  const wind = .6, wc = Math.cos(wind), ws = Math.sin(wind);
+  const H = new Float32Array((PW+2)*(PH+2)), at = (px, py) => (py+1)*(PW+2) + px+1;
+  for (let py=-1;py<=PH;py++) for (let px=-1;px<=PW;px++) {
+    const fx = (px+.5)/S - .5, fy = (py+.5)/S - .5, ux = fx+.5, uy = fy+.5;
+    let h = bil(tb, fx, fy) + (nd(ux*1.3, uy*1.3)-.5)*.18 + (nd(ux*4+9, uy*4)-.5)*.05;
+    const dw = bil(dune, fx, fy);
+    if (dw > 0) { const ph = (ux*wc + uy*ws) * Math.PI*2/1.5 + nd(ux*.22, uy*.22)*1.4, sw = Math.sin(ph);
+      h += dw * (.03 + .035*nd(ux*.8+3, uy*.8)) * (sw > 0 ? sw : sw*.4); }
+    H[at(px, py)] = h;
   }
-  sg.putImageData(img,0,0);
-  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
-  g.drawImage(sm, 0, 0, cv.width, cv.height);
-  const ter = (x,y) => MR.inb(x,y) ? w.ter[y*MW+x] : -1;
+  craters.forEach(c => { const R = c.R, x0 = Math.floor((c.x - R*2)*S), x1 = Math.ceil((c.x + R*2)*S), y0 = Math.floor((c.y - R*2)*S), y1 = Math.ceil((c.y + R*2)*S);
+    for (let py=Math.max(-1,y0);py<=Math.min(PH,y1);py++) for (let px=Math.max(-1,x0);px<=Math.min(PW,x1);px++) {
+      const d = Math.hypot((px+.5)/S - c.x, (py+.5)/S - c.y) / R;
+      if (d < 1) H[at(px,py)] -= (c.deco ? .12 : .8) * (1 - d*d);
+      H[at(px,py)] += (c.deco ? .05 : .32) * Math.exp(-(((d-1)/.18)**2));
+    } });
+  const img = new ImageData(PW, PH), D = img.data;
+  const colTiles = [0,1,2].map(ch => { const a2 = new Float32Array(N); for (let i=0;i<N;i++) a2[i] = TC[w.ter[i]][ch]; return a2; });
+  for (let py=0;py<PH;py++) for (let px=0;px<PW;px++) {
+    const fx = (px+.5)/S - .5, fy = (py+.5)/S - .5;
+    const slope = (H[at(px-1,py-1)] - H[at(px+1,py+1)]) * S * .55;
+    const shade = Math.max(.45, Math.min(1.55, 1 + slope));
+    const alb = 1 + (nz(px/14, py/14)-.5)*.16 + (nd(px/3.2, py/3.2)-.5)*.07;
+    const dl = bil(delta, fx, fy), strata = dl > 0 ? Math.sin(H[at(px,py)]*38) * 7 * dl : 0;
+    const k = (py*PW + px)*4;
+    for (let ch=0;ch<3;ch++) D[k+ch] = Math.max(0, Math.min(255, bil(colTiles[ch], fx, fy) * alb * shade + strata * (ch === 2 ? .6 : 1)));
+    D[k+3] = 255;
+  }
+  craters.forEach(c => { if (!c.fresh) return; const R = c.R;   // bright ejecta around fresh craters
+    for (let py=Math.floor((c.y-R*2.4)*S);py<=Math.ceil((c.y+R*2.4)*S);py++) for (let px=Math.floor((c.x-R*2.4)*S);px<=Math.ceil((c.x+R*2.4)*S);px++) {
+      if (px < 0 || py < 0 || px >= PW || py >= PH) continue; const d = Math.hypot((px+.5)/S - c.x, (py+.5)/S - c.y) / R;
+      if (d < 1.05 || d > 2.4) continue; const a2 = (1 - (d-1.05)/1.35) * .22 * (.6 + nd(px/2, py/2)*.8), k = (py*PW+px)*4;
+      for (let ch=0;ch<3;ch++) D[k+ch] = Math.min(255, D[k+ch] + (255 - D[k+ch]) * a2 * (ch === 2 ? .75 : 1)); } });
+  const small = document.createElement('canvas'); small.width = PW; small.height = PH; small.getContext('2d').putImageData(img, 0, 0);
+  const cv = document.createElement('canvas'); cv.width = MW*BASE; cv.height = MH*BASE;
+  const g = cv.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(small, 0, 0, cv.width, cv.height);
+  // fine grain and a few surface details on top
   for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
     const X = x*BASE, Y = y*BASE, t = w.ter[y*MW+x];
-    if (t === T.DUNE) {
-      for (let k=0;k<3;k++) { const yy = Y+7+k*9+r()*3, bend = -5+r()*3;
-        g.strokeStyle='rgba(255,225,190,0.24)'; g.lineWidth=2; g.beginPath(); g.moveTo(X+1,yy); g.quadraticCurveTo(X+16,yy+bend,X+31,yy); g.stroke();
-        g.strokeStyle='rgba(95,40,20,0.16)'; g.beginPath(); g.moveTo(X+1,yy+2.5); g.quadraticCurveTo(X+16,yy+bend+2.5,X+31,yy+2.5); g.stroke(); }
-    } else if (t === T.BED) {
-      g.strokeStyle='rgba(70,25,12,0.32)'; g.lineWidth=1;
-      for (let k=0;k<2;k++) { g.beginPath(); let px=X+r()*32, py=Y+r()*32; g.moveTo(px,py); for (let s=0;s<3;s++){ px+=(r()-.5)*16; py+=(r()-.5)*16; g.lineTo(px,py);} g.stroke(); }
-    } else if (t === T.DELTA) {
-      const slope = (nz(x/8+50,y/8)-.5)*6;
-      for (let k=0;k<4;k++) { const yy = Y+4+k*8;
-        g.strokeStyle = k%2 ? 'rgba(255,232,212,0.13)' : 'rgba(70,30,20,0.17)'; g.lineWidth = 2.5;
-        g.beginPath(); g.moveTo(X,yy); g.lineTo(X+32,yy+slope); g.stroke(); }
-    } else if (t === T.RIM || t === T.CLIFF) {
-      for (let k=0;k<4;k++) { g.fillStyle = r()<.45 ? 'rgba(255,200,170,0.10)' : 'rgba(35,12,6,0.24)';
-        g.beginPath(); g.ellipse(X+r()*32, Y+r()*32, 4+r()*9, 3+r()*6, r()*3, 0, Math.PI*2); g.fill(); }
-      [[1,0],[0,1],[-1,0],[0,-1]].forEach(([dx,dy]) => { const nt = ter(x+dx,y+dy);
-        if (nt >= 0 && nt !== t) { g.fillStyle='rgba(30,10,4,0.28)';
-          if (dx===1) g.fillRect(X+BASE,Y,5,BASE); if (dx===-1) g.fillRect(X-5,Y,5,BASE);
-          if (dy===1) g.fillRect(X,Y+BASE,BASE,5); if (dy===-1) g.fillRect(X,Y-5,BASE,5);
-          g.fillStyle='rgba(255,210,180,0.12)';
-          if (dx===1) g.fillRect(X+BASE-4,Y,4,BASE); if (dy===1) g.fillRect(X,Y+BASE-4,BASE,4); } });
-    } else if (t === T.HILL) {
-      g.strokeStyle='rgba(255,220,190,0.14)'; g.lineWidth=1.5;
-      for (let k=0;k<2;k++) { const yy = Y+8+k*14+r()*4; g.beginPath(); g.moveTo(X,yy); g.bezierCurveTo(X+10,yy-6,X+22,yy+6,X+32,yy); g.stroke(); }
-      g.fillStyle='rgba(40,14,6,0.14)'; g.beginPath(); g.ellipse(X+20+r()*8, Y+20+r()*8, 9, 6, 0, 0, Math.PI*2); g.fill();
-    } else if (t === T.PLATE) {
-      for (let k=0;k<4;k++) { g.strokeStyle = k%2 ? 'rgba(255,245,230,0.2)' : 'rgba(90,50,30,0.18)'; g.lineWidth=2;
-        g.beginPath(); g.moveTo(X, Y+5+k*8); g.lineTo(X+32, Y+6+k*8); g.stroke(); }
-    } else if (t === T.CHAN) {
-      g.fillStyle='rgba(55,22,12,0.14)'; g.fillRect(X,Y,BASE,BASE);
-      g.strokeStyle='rgba(255,230,210,0.12)'; g.lineWidth=1.5; g.beginPath(); g.moveTo(X,Y+10+r()*12); g.bezierCurveTo(X+10,Y+r()*32,X+22,Y+r()*32,X+32,Y+10+r()*12); g.stroke();
-    }
+    if (t === T.BED && r() < .7) { g.strokeStyle='rgba(60,22,10,0.22)'; g.lineWidth=1; g.beginPath(); let px2=X+r()*32, py2=Y+r()*32; g.moveTo(px2,py2); for (let s2=0;s2<3;s2++){ px2+=(r()-.5)*14; py2+=(r()-.5)*14; g.lineTo(px2,py2);} g.stroke(); }
+    if ((t === T.FLOOR || t === T.BED) && r() < .25) { g.fillStyle='rgba(60,25,12,0.35)'; for (let k=0;k<3;k++) { g.beginPath(); g.arc(X+r()*32, Y+r()*32, .8+r()*1.6, 0, Math.PI*2); g.fill(); } }
   }
-  for (let i=0;i<30000;i++) { g.fillStyle = r()<.5 ? 'rgba(255,210,180,0.16)' : 'rgba(55,18,8,0.2)'; const s = r()*1.8+.5; g.fillRect(r()*cv.width, r()*cv.height, s, s); }
-  for (let i=0;i<N;i++) {
-    if (w.obs[i] !== 'C') continue;
-    const cx = (i%MW)*BASE+16, cy = ((i/MW)|0)*BASE+16, Rr = 11.5+r()*2;
-    const gr = g.createRadialGradient(cx+2,cy+3,1,cx,cy,Rr);
-    gr.addColorStop(0,'#5e2716'); gr.addColorStop(.75,'#7f3820'); gr.addColorStop(1,'#a85232');
-    g.fillStyle=gr; g.beginPath(); g.arc(cx,cy,Rr,0,Math.PI*2); g.fill();
-    g.strokeStyle='rgba(245,190,150,0.45)'; g.lineWidth=2; g.beginPath(); g.arc(cx,cy,Rr,Math.PI*.55,Math.PI*1.95); g.stroke();
-  }
+  for (let i=0;i<26000;i++) { g.fillStyle = r()<.5 ? 'rgba(255,215,190,0.12)' : 'rgba(50,16,6,0.16)'; const s2 = r()*1.6+.4; g.fillRect(r()*cv.width, r()*cv.height, s2, s2); }
   return cv;
 };
 })();

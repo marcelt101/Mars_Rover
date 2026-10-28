@@ -108,7 +108,7 @@ UI.inventory = tab => {
   if (invTab === 'cards') {
     const sel = invSel && MR.CARDS[invSel] && p.cards[invSel] ? invSel : null;
     body = `<p class="muted" style="margin:0">${owned.length} of ${MR.CARD_ORDER.length} cards found · ${shinies} shiny. Tap a card to read about it.</p>
-      ${sel ? `<div class="cardfact"><b>${esc(MR.CARDS[sel].name)}</b> · <span style="color:${MR.RARITY[MR.CARDS[sel].rar].col}">${MR.RARITY[MR.CARDS[sel].rar].name}</span><br>${esc(MR.CARDS[sel].fact)}</div>` : ''}
+      ${sel ? `<div class="cardfact"><b>${esc(MR.CARDS[sel].name)}</b> · <span style="color:${MR.RARITY[MR.CARDS[sel].rar].col}">${MR.RARITY[MR.CARDS[sel].rar].name}</span><br>${esc(MR.CARDS[sel].fact)}${p.cards[sel].where ? `<br><small class="muted">Last found at ${esc(p.cards[sel].where)}.</small>` : ''}</div>` : ''}
       <div class="cards">${MR.CARD_ORDER.map(id => { const c = MR.CARDS[id], have = p.cards[id] && p.cards[id].n, sh = p.cards[id] && p.cards[id].shiny, rar = MR.RARITY[c.rar];
         if (!have) return `<div class="card locked"><div class="gm"></div><b>???</b><span class="rar" style="color:${rar.col}">${rar.name}</span><small class="muted">Found at ${c.maps.map(m => MR.MAPS[m].name).join(' or ')}</small></div>`;
         return `<button class="card ${sh ? 'shiny' : ''} ${sel === id ? 'sel' : ''}" data-card="${id}">${sh ? '<span class="shn" title="Shiny">✦</span>' : ''}<span class="n">×${p.cards[id].n + (p.cards[id].shiny||0)}</span><div class="gm" style="background:${c.color}"></div><b>${esc(p.role === 'cadet' && c.kid ? c.kid : c.name)}</b><span class="rar" style="color:${rar.col}">${rar.name}</span></button>`; }).join('')}</div>`;
@@ -203,6 +203,7 @@ UI.notify = (notices, cadet) => {
       if (cadet) UI.chest(n.id, n.k === 'shiny');
       else UI.toast('◆', c.color, n.k === 'shiny' ? `Shiny card: ${c.name}!` : `New card: ${c.name}`, `${MR.RARITY[c.rar].name}. Press I to see your collection.`);
     } else if (n.k === 'sticker') { const x = MR.STICKERS.find(q => q.id === n.id); if (n.isNew || x.tier !== 'C') UI.toast(x.e, MR.STICKER_TIER[x.tier].col, n.isNew ? `New sticker: ${x.name}!` : `${MR.STICKER_TIER[x.tier].name}: ${x.name}`, 'Press I and open Stickers.'); }
+    else if (n.k === 'credit') UI.toast('⚑', '#58cfbe', 'Discovery credit!', `A teammate drilled ${n.site || 'a site'} you found. +15 XP`);
     else if (n.k === 'patch') { const pt = MR.PATCHES.find(x => x.id === n.id); UI.toast(pt.icon, '#f0bf5a', `Patch earned: ${pt.name}`, pt.desc); }
     else if (n.k === 'rank') UI.toast('★', '#58cfbe', `Rank up: ${MR.RANKS[n.rank].name}!`, cadet ? `Next expedition you can plan ${MR.CADET_LEN(n.rank)} pictures.` : 'Check your inventory (I) for new perks.', 6000);
     else if (n.k === 'perk') { const pk = MR.PERKS[n.id]; UI.toast(pk.icon, '#f0bf5a', `New perk: ${pk.name}`, pk.desc, 6000); }

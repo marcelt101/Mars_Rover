@@ -7,7 +7,7 @@ const G = MR.Game = {
   mode:null, net:null, code:null, myPid:null, phase:'home',
   lobby:{players:[], map:'jezero', unlocked:['jezero']},
   state:null, plan:[], ready:false, readyPids:[], plans:{}, drafts:{}, cid2pid:{},
-  planInfo:null, contAfterWin:false, showCode:false, pending:[], lastPing:null, wake:null, lastSeen:{}, lastPong:0, chain:Promise.resolve(),
+  planInfo:null, contAfterWin:false, showCode:false, pending:[], lastPing:null, wake:null, lastSeen:{}, lastPong:0, chain:Promise.resolve(), markers:{},
 };
 const me = () => MR.Store.current();
 const myRover = () => G.state && G.state.rovers.find(r => r.pid === G.myPid);
@@ -133,6 +133,13 @@ function hostHandle(pid, m){
       if (!G.readyPids.includes(pid)) G.readyPids.push(pid);
       broadcast({type:'ready', pids:G.readyPids}); renderTeam(); maybeRun(); break;
     case 'unready': G.readyPids = G.readyPids.filter(x => x !== pid); delete G.plans[pid]; broadcast({type:'ready', pids:G.readyPids}); renderTeam(); break;
+    case 'claim': case 'rename': { const site = G.state && G.state.sites && G.state.sites[m.i]; if (!site || !lp) return;
+      if (m.type === 'claim') site.claim = m.on ? pid : (site.claim === pid ? null : site.claim);
+      else if (site.by === pid) site.name = String(m.name || '').replace(/[<>]/g, '').trim().slice(0, 22) || site.name;
+      broadcast({type:'sites', sites:G.state.sites}); renderFinds(); break; }
+    case 'marker': { if (!lp || !MR.inb(m.x|0, m.y|0)) return; const key = (m.x|0) + ',' + (m.y|0);
+      if (m.kind && MARKS[m.kind]) G.markers[key] = {x:m.x|0, y:m.y|0, kind:m.kind, pid, name:lp.name, color:lp.color}; else delete G.markers[key];
+      broadcast({type:'markers', markers:G.markers}); onMarkers(m.kind ? G.markers[key] : null, pid); break; }
     case 'draft': G.drafts[pid] = Array.isArray(m.path) ? m.path.slice(0, 60) : []; R.drafts = G.drafts; broadcast({type:'drafts', drafts:G.drafts}); break;
     case 'chat': { const text = String(m.text||'').slice(0,120).trim(); if (!text || !lp) return; const c = {type:'chat', pid, name:lp.name, color:lp.color, text}; broadcast(c); showChat(c); break; }
   }
@@ -204,6 +211,8 @@ function clientMessage(m){
     case 'sol': G.chain = G.chain.then(() => playSol(m.timeline, MR.stateFromWire(m.state))).catch(e => console.error(e)); break;
     case 'ready': G.readyPids = m.pids || []; renderTeam(); break;
     case 'drafts': G.drafts = m.drafts || {}; R.drafts = G.drafts; break;
+    case 'sites': if (G.state) { G.state.sites = m.sites || {}; R.view && (R.view.sites = G.state.sites); renderFinds(); } break;
+    case 'markers': { const before = Object.keys(G.markers).length; G.markers = m.markers || {}; const added = Object.values(G.markers).find(x => !G.lastMarkerKeys || !G.lastMarkerKeys.includes(x.x + ',' + x.y)); onMarkers(Object.keys(G.markers).length > before ? added : null, added && added.pid); break; }
     case 'chat': showChat(m); break;
   }
 }
@@ -267,7 +276,7 @@ $('leaveLobbyBtn').onclick = () => leave();
 
 /* ---------- game screen ---------- */
 function enterGame(st){
-  G.contAfterWin = false; G.ready = false; G.plan = []; G.phase = 'plan'; G.dull = 0; G.hintRes = null;
+  G.contAfterWin = false; G.ready = false; G.plan = []; G.phase = 'plan'; G.dull = 0; G.hintRes = null; G.undo = []; G.markers = {}; renderMarkers();
   R.resetTracks(); setGameState(st);
   UI.show('scrGame'); $('win').hidden = true; $('log').innerHTML = '';
   const M = MR.MAPS[st.map];
@@ -291,7 +300,7 @@ function renderGame(){
   $('planTitle').textContent = code ? "Today's program" : "Today's plan";
   $('howList').innerHTML = MR.HOW[role].map(h => `<li>${esc(h)}</li>`).join('');
   $('chatRow').hidden = !team();
-  renderPalette(); renderPlan(); renderHud(); renderSide(); renderCrewBar(); renderTeam(); renderLock(); renderNet(); computeHints(); renderNudges();
+  renderPalette(); renderPlan(); renderHud(); renderSide(); renderCrewBar(); renderTeam(); renderLock(); renderNet(); computeHints(); renderNudges(); renderFinds();
 }
 function renderHud(){
   const r = myRover(); if (!r) return;
@@ -365,12 +374,15 @@ function renderNudges(){
 const planToPy = acts => acts.map(a => `rover.${MR.CMDS[a.type].py}(${MR.CMDS[a.type].arg ? a.arg : ''})`).join('\n');
 function applyPlan(acts, replace){
   const r = myRover(); if (!r || G.ready || G.phase !== 'plan') return;
+  pushUndo();
   if (r.role === 'specialist') {
     const ta = $('editor'), code = planToPy(acts);
     ta.value = replace ? `from mars import rover\n\n${code}\n` : ta.value.replace(/\s*$/, '\n') + code + '\n'; ta.dataset.touched = '1';
   } else {
     if (replace) G.plan = [];
-    acts.forEach(a => { if (G.plan.length < maxPlan()) G.plan.push({type:a.type, arg:MR.CMDS[a.type].arg ? (a.arg || 1) : undefined}); });
+    acts.forEach(a => { const last = G.plan[G.plan.length - 1];
+      if (r.role !== 'cadet' && last && last.type === a.type && (a.type === 'forward' || a.type === 'back') && last.arg + (a.arg || 1) <= 20) { last.arg += a.arg || 1; return; }
+      if (G.plan.length < maxPlan()) G.plan.push({type:a.type, arg:MR.CMDS[a.type].arg ? (a.arg || 1) : undefined}); });
   }
   MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); renderNudges();
 }
@@ -386,6 +398,38 @@ $('nudges').addEventListener('click', e => {
       if (p) applyPlan(MR.pathToPlan(r, p, Math.min(maxPlan(), 12)), true); else UI.toast('!', '#f0bf5a', 'No route found yet', 'Explore a bit more so the rover can see a way back.'); break; }
   }
 });
+/* The Finds list: every flagged site that is still worth a look, best first. */
+function renderFinds(){
+  const st = G.state, r = myRover(), box = $('finds'); if (!st || !r) { box.innerHTML = ''; return; }
+  const W = st.world, sites = st.sites || {}, rank = {C:1, U:2, R:3, L:4};
+  const rows = Object.entries(sites).map(([i, s2]) => ({i:+i, ...s2})).filter(s2 => W.sig[s2.i] && !W.drilled[s2.i] && W.res[s2.i] && !(W.known[s2.i] && W.res[s2.i] === 'basalt'))
+    .map(s2 => ({...s2, known:!!W.known[s2.i], res:W.res[s2.i], d:Math.hypot(s2.i % MW - r.x, ((s2.i/MW)|0) - r.y)}))
+    .sort((a, b) => (b.known ? rank[MR.CARDS[b.res].rar] || 0 : 0) - (a.known ? rank[MR.CARDS[a.res].rar] || 0 : 0) || a.d - b.d);
+  $('findsPanel').hidden = !rows.length || r.role === 'cadet';
+  const who = pid => { const x = st.rovers.find(q2 => q2.pid === pid); return x ? x.name : 'Someone'; };
+  box.innerHTML = rows.slice(0, 12).map(s2 => { const c = MR.CARDS[s2.res], finder = st.rovers.find(q2 => q2.pid === s2.by);
+    const what = s2.known ? `${c.name} · <span style="color:${MR.RARITY[c.rar].col}">${MR.RARITY[c.rar].name}</span>` : 'Mystery signal';
+    const claim = s2.claim === G.myPid ? `<button class="mini-b wide" data-claim="${s2.i}" data-on="0">Unclaim</button>` : s2.claim ? `<span class="muted">${esc(who(s2.claim))} is coming</span>` : `<button class="mini-b wide" data-claim="${s2.i}" data-on="1">I'll drill this</button>`;
+    return `<li><span class="fd" style="background:${finder ? MR.colorHex(finder.color) : '#888'}"></span><span class="fn"><b>${esc(s2.name)}</b>${s2.by === G.myPid ? ` <button class="ren" data-ren="${s2.i}" aria-label="Rename">✎</button>` : ''}<small>${what} · ${Math.round(s2.d)} sq · found by ${esc(finder ? finder.name : '?')}</small></span><span class="fa">${team() ? claim : ''}<button class="mini-b wide" data-go="${s2.i}" ${G.phase !== 'plan' || G.ready ? 'disabled' : ''}>Go</button></span></li>`; }).join('');
+}
+$('finds').addEventListener('click', e => {
+  const c = e.target.closest('[data-claim]'), go = e.target.closest('[data-go]'), ren = e.target.closest('[data-ren]');
+  if (c) toHost({type:'claim', i:+c.dataset.claim, on:c.dataset.on === '1'});
+  if (go) { const i = +go.dataset.go, st = G.state, from = planEnd(), x = i % MW, y = (i/MW)|0; if (!from) return;
+    const path = MR.findPath(st, from, (px, py) => px === x && py === y);
+    if (!path) { UI.toast('!', '#f0bf5a', 'No route found', 'The rover can not see a safe way there yet.'); return; }
+    const acts = MR.pathToPlan(from, path, Math.max(1, maxPlan() - (myRole() === 'specialist' ? 0 : G.plan.length) - 2));
+    if (!st.world.known[i]) acts.push({type:'analyze'}); acts.push({type:'drill'}); applyPlan(acts, false);
+    if (team() && !(st.sites[i] || {}).claim) toHost({type:'claim', i, on:true}); }
+  if (ren) { const li = ren.closest('li'), b = li.querySelector('b'), old = b.textContent;
+    b.outerHTML = `<input class="input renin" maxlength="22" value="${esc(old)}" aria-label="Site name">`; const inp = li.querySelector('.renin'); inp.focus(); inp.select();
+    const done = ok => { if (ok && inp.value.trim() && inp.value.trim() !== old) toHost({type:'rename', i:+ren.dataset.ren, name:inp.value.trim()}); else renderFinds(); };
+    inp.onkeydown = ev => { if (ev.key === 'Enter') done(true); if (ev.key === 'Escape') done(false); }; inp.onblur = () => done(true); }
+});
+function onMarkers(added, pid){
+  G.lastMarkerKeys = Object.keys(G.markers); renderMarkers();
+  if (added && pid !== G.myPid) { MR.sfx.join(); log('info', `${added.name} placed a marker: ${MARKS[added.kind].icon} ${MARKS[added.kind].name}.`); }
+}
 function renderCrewBar(){
   if (!G.state) return;
   $('crewBar').innerHTML = G.state.rovers.map(r => {
@@ -460,9 +504,9 @@ function planActions(){
   if (r.role === 'specialist') {
     const res = MR.parsePy($('editor').value, MR.ROLES.specialist.maxCmd);
     if (res.error) return {error:res.error};
-    return {actions:res.actions, info:{loops:res.loops, clean:res.lines <= 5 && res.actions.reduce((s, a) => s + (MR.CMDS[a.type].arg ? a.arg : 1), 0) >= 10}};
+    return {actions:res.actions, info:{python:true, loops:res.loops, nested:res.nested, maxRepeat:res.maxRepeat, blocks:res.lines, clean:res.lines <= 5 && res.actions.reduce((s, a) => s + (MR.CMDS[a.type].arg ? a.arg : 1), 0) >= 10}};
   }
-  return {actions:G.plan.map((c, i) => ({type:c.type, arg:c.arg || 1, idx:i}))};
+  return {actions:G.plan.map((c, i) => ({type:c.type, arg:c.arg || 1, idx:i})), info:{python:false, blocks:G.plan.length}};
 }
 let draftTimer = null;
 function updateGhost(){
@@ -473,8 +517,13 @@ function updateGhost(){
   clearTimeout(draftTimer);
   draftTimer = setTimeout(() => toHost({type:'draft', path:R.ghost.map(p => [p[0], p[1]])}), 250);
 }
+const _ug = updateGhost; updateGhost = function(){ _ug(); planEstimate(); };
+function pushUndo(){ const r = myRover(); G.undo = G.undo || []; G.undo.push(r && r.role === 'specialist' ? {code:$('editor').value} : {plan:JSON.parse(JSON.stringify(G.plan))}); if (G.undo.length > 40) G.undo.shift(); }
+function undo(){ if (G.ready || G.phase !== 'plan' || !G.undo || !G.undo.length) return; const u = G.undo.pop();
+  if (u.code != null) $('editor').value = u.code; else G.plan = u.plan; MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); renderNudges(); }
 function addCmd(k){
   const r = myRover(); if (!r || G.phase !== 'plan' || G.ready) return;
+  pushUndo();
   if (r.role === 'specialist') return insertPy(k);
   const last = G.plan[G.plan.length - 1];
   if (r.role !== 'cadet' && last && last.type === k && (k === 'forward' || k === 'back') && last.arg < 20) {
@@ -501,11 +550,12 @@ function insertPy(k){
 }
 $('palette').onclick = e => { const b = e.target.closest('.pal'); if (b && !b.disabled) addCmd(b.dataset.c); };
 document.querySelectorAll('.cbtn').forEach(b => b.onclick = () => addCmd(b.dataset.pic));
-$('seq').onclick = e => { const b = e.target.closest('.pic'); if (!b || b.classList.contains('slot') || G.ready || G.phase !== 'plan') return; G.plan.splice(+b.dataset.i, 1); G.plan.forEach(c => c.state = ''); MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); };
-$('trashBtn').onclick = () => { if (G.ready || G.phase !== 'plan') return; G.plan = []; renderPlan(); renderLock(); updateGhost(); };
+$('seq').onclick = e => { const b = e.target.closest('.pic'); if (!b || b.classList.contains('slot') || G.ready || G.phase !== 'plan') return; pushUndo(); G.plan.splice(+b.dataset.i, 1); G.plan.forEach(c => c.state = ''); MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); };
+$('undoBtn').onclick = () => undo();
+$('trashBtn').onclick = () => { if (G.ready || G.phase !== 'plan') return; pushUndo(); G.plan = []; renderPlan(); renderLock(); updateGhost(); };
 $('prog').onclick = e => {
   const b = e.target.closest('button'), item = e.target.closest('.cmd'); if (!b || !item || G.ready || G.phase !== 'plan') return;
-  const i = +item.dataset.i, c = G.plan[i]; G.plan.forEach(p => p.state = '');
+  pushUndo(); const i = +item.dataset.i, c = G.plan[i]; G.plan.forEach(p => p.state = '');
   if (b.dataset.a === 'inc') c.arg = Math.min(20, c.arg + 1);
   if (b.dataset.a === 'dec') c.arg = Math.max(1, c.arg - 1);
   if (b.dataset.a === 'del') G.plan.splice(i, 1);
@@ -518,7 +568,7 @@ $('editor').addEventListener('keydown', e => {
 });
 let pyTimer = null;
 $('editor').addEventListener('input', e => { e.target.dataset.touched = '1'; $('err').hidden = true; clearTimeout(pyTimer); pyTimer = setTimeout(updateGhost, 250); });
-$('clearBtn').onclick = () => { if (G.ready || G.phase !== 'plan') return; if (myRole() === 'specialist') { $('editor').value = 'from mars import rover\n\n'; $('editor').dataset.touched = '1'; } else G.plan = []; renderPlan(); renderLock(); updateGhost(); };
+$('clearBtn').onclick = () => { if (G.ready || G.phase !== 'plan') return; pushUndo(); if (myRole() === 'specialist') { $('editor').value = 'from mars import rover\n\n'; $('editor').dataset.touched = '1'; } else G.plan = []; renderPlan(); renderLock(); updateGhost(); };
 $('tabBlocks').onclick = () => { G.showCode = false; $('tabBlocks').setAttribute('aria-selected', true); $('tabCode').setAttribute('aria-selected', false); renderGame(); };
 $('tabCode').onclick = () => { G.showCode = true; $('tabBlocks').setAttribute('aria-selected', false); $('tabCode').setAttribute('aria-selected', true); renderGame(); };
 $('sendBtn').onclick = () => sendPlan();
@@ -531,7 +581,7 @@ function sendPlan(){
   if (pa.error) { $('err').hidden = false; $('err').textContent = pa.error; MR.sfx.bump(); return; }
   if (!pa.actions.length && myRole() !== 'specialist') return;
   if (!pa.actions.length) { $('err').hidden = false; $('err').textContent = 'No rover commands found. Try rover.forward(2).'; return; }
-  G.planInfo = pa.info || null; G.ready = true; MR.sfx.click();
+  G.planInfo = pa.info || null; G.ready = true; MR.sfx.click(); $('solCard').innerHTML = '';
   G.plan.forEach(c => c.state = '');
   toHost({type:'plan', actions:pa.actions});
   renderPlan(); renderTeam();
@@ -605,7 +655,7 @@ function uplink(){
 }
 async function playSol(timeline, newState){
   const gen = G.gen;
-  G.phase = 'run'; G.ready = false; if (!isHostish()) G.readyPids = []; R.running = true; R.ghost = []; R.drafts = {}; G.drafts = {};
+  G.solPlayed = G.state.sol; G.phase = 'run'; G.ready = false; if (!isHostish()) G.readyPids = []; R.running = true; R.ghost = []; R.drafts = {}; G.drafts = {};
   renderTeam(); renderPlan();
   await uplink();
   if (gen !== G.gen) return;
@@ -616,7 +666,9 @@ async function playSol(timeline, newState){
   const won = timeline.some(t => t.some(e => e.t === 'win'));
   const p = me();
   if (p) {
-    const notices = MR.applyRewards(p, G.myPid, timeline.flat(), {map:newState.map, players:newState.rovers.length, planInfo:G.planInfo});
+    const code = myRole() === 'cadet' ? null : codeReview(timeline.flat().filter(e => e.pid === G.myPid), G.planInfo, newState);
+    const notices = MR.applyRewards(p, G.myPid, timeline.flat(), {map:newState.map, players:newState.rovers.length, planInfo:G.planInfo, code});
+    renderSolCard(timeline.flat().filter(e => e.pid === G.myPid), newState, code);
     UI.notify(notices, myRole() === 'cadet');
   }
   G.planInfo = null;
@@ -629,12 +681,45 @@ async function playSol(timeline, newState){
     if (isHostish()) G.lobby.unlocked = MR.Store.unlocked();
   }
   G.plan.forEach(c => c.state = '');
-  if (myRole() === 'cadet') G.plan = [];
+  if (myRole() !== 'specialist' && G.plan.length) { G.undo = G.undo || []; G.undo.push({plan:G.plan.map(c => ({type:c.type, arg:c.arg}))}); G.plan = []; }
   G.phase = newState.won && !G.contAfterWin ? 'won' : 'plan';
   renderGame(); updateGhost();
   if (won) showWin(newState);
   const pend = G.pending; G.pending = []; pend.forEach(f => f());
   if (isHostish()) { broadcast({type:'ready', pids:G.readyPids}); renderTeam(); maybeRun(); }
+}
+/* Code stars: did the plan work, was it efficient, did it use a smart tool. Plus one friendly tip. */
+function codeReview(mine, info, st){
+  if (!info || !mine.length) return null;
+  const halted = mine.some(e => e.t === 'skip' || e.t === 'bump' || e.t === 'stuck' || e.t === 'lowpower');
+  const steps = mine.filter(e => ['move','turn','scan','analyze','drill','dig','charge'].includes(e.t)).length;
+  const goodDrill = mine.some(e => e.t === 'drill' && e.res !== 'basalt'), basalt = mine.some(e => e.t === 'drill' && e.res === 'basalt');
+  const found = mine.some(e => (e.t === 'scan' && e.sigs.length) || (e.t === 'dock' && e.n) || (e.t === 'analyze' && e.cells.length));
+  const worked = !halted && steps > 0, efficient = steps / Math.max(1, info.blocks) >= 1.5;
+  const smart = info.python ? !!info.loops : (goodDrill || found);
+  const stars = (worked ? 1 : 0) + (efficient ? 1 : 0) + (smart ? 1 : 0);
+  let tip;
+  if (mine.some(e => e.t === 'bump')) tip = 'A hazard stopped your rover. Scan first, or tap the map to plan a route around rocks.';
+  else if (mine.some(e => e.t === 'lowpower')) tip = 'The battery ran low. Add Charge, or plan a trip home to the station.';
+  else if (basalt) tip = 'That was just basalt. Analyze before you Drill to save your sample tubes.';
+  else if (info.python && info.maxRepeat >= 3) tip = `You wrote the same line ${info.maxRepeat} times in a row. A for loop does that in 2 lines.`;
+  else if (info.python && !info.loops) tip = 'Try a for loop: for i in range(3): repeats the indented lines.';
+  else if (!efficient) tip = info.python ? 'Tip: rover.forward(5) drives 5 squares in one line.' : 'Tip: press W again to add squares to the same Forward block.';
+  else if (!smart) tip = 'Scan finds mystery signals, and Analyze tells you if they are worth drilling.';
+  else tip = stars === 3 ? 'Perfect plan!' : 'Nice plan!';
+  return {stars, worked, efficient, smart, tip, nested:!!info.nested, python:!!info.python};
+}
+function renderSolCard(mine, st, code){
+  const r = st.rovers.find(x => x.pid === G.myPid); if (!r) { $('solCard').innerHTML = ''; return; }
+  const sq = mine.filter(e => e.t === 'move').length, sigs = mine.reduce((n, e) => n + (e.t === 'scan' ? e.sigs.length : e.t === 'move' && e.sigs ? e.sigs.length : 0), 0);
+  const samples = mine.filter(e => e.t === 'drill').length, delivered = mine.reduce((n, e) => n + (e.t === 'dock' ? e.n : 0), 0);
+  const bits = [`${sq} square${sq === 1 ? '' : 's'}`];
+  if (sigs) bits.push(`${sigs} signal${sigs === 1 ? '' : 's'} found`);
+  if (samples) bits.push(`${samples} ${r.role === 'cadet' ? 'treasure' : 'sample'}${samples === 1 ? '' : 's'}`);
+  if (delivered) bits.push(`${delivered} delivered`);
+  if (r.role !== 'cadet') bits.push(`battery ${r.bat}%`);
+  const starHtml = code ? `<span class="stars3" title="Plan stars: worked, efficient, smart">${'★'.repeat(code.stars)}<i>${'★'.repeat(3 - code.stars)}</i></span>` : '';
+  $('solCard').innerHTML = `<div class="solcard"><div class="ph"><b>Sol ${G.solPlayed || st.sol} report</b>${starHtml}</div><span>${bits.join(' · ')}</span>${code ? `<small>${esc(code.tip)}</small>` : ''}</div>`;
 }
 function showWin(st){
   const par = MR.parOf(st), s = st.sol <= par ? 3 : st.sol <= Math.ceil(par*1.5) ? 2 : 1;
@@ -679,7 +764,51 @@ function showTip(pid, x, y){
   $('tip').style.left = Math.max(90, Math.min(innerWidth - 90, pos.x)) + 'px'; $('tip').style.top = Math.max(70, pos.y) + 'px'; $('tip').hidden = false;
   clearTimeout(tipTimer); tipTimer = setTimeout(() => $('tip').hidden = true, 3500);
 }
-R.onTapRover = (pid, x, y) => { if (pid) showTip(pid, x, y); else $('tip').hidden = true; };
+R.onTapRover = (pid, x, y) => { $('tapMenu').hidden = true; if (pid) showTip(pid, x, y); else $('tip').hidden = true; };
+/* Tap the map: build plan steps for you, or drop a team marker. */
+const MARKS = {dig:{icon:'⛏', name:'Dig here'}, danger:{icon:'⚠', name:'Danger'}, meet:{icon:'★', name:'Meet here'}};
+function planEnd(){ const r = myRover(); if (!r) return null; const g = R.ghost[R.ghost.length-1]; return g ? {...r, x:g[0], y:g[1], dir:g[2]} : r; }
+R.onTapMap = (x, y, cx, cy) => {
+  $('tip').hidden = true; const r = myRover(), st = G.state; if (!r || !st || !MR.inb(x, y)) return;
+  const W = st.world, i = y*MW + x, opts = [], canPlan = r.role !== 'cadet' && G.phase === 'plan' && !G.ready;
+  if (canPlan) {
+    if (MR.onStation(st.map, x, y)) opts.push(['home', '⌂ Go home (unload and recharge)']);
+    else if (W.res[i] && W.sig[i] && !W.drilled[i] && !MR.CARDS[W.res[i]].artifact) opts.push(['check', W.known[i] ? `⊛ Go and drill ${MR.CARDS[W.res[i]].name}` : '◈ Go and check it (drive, analyze, drill)']);
+    if (!MR.onStation(st.map, x, y)) { opts.push(['drive', '↑ Drive here']); opts.push(['drivescan', '◎ Drive here and scan']); }
+  }
+  if (team() || r.role !== 'cadet') { const mk = G.markers[x + ',' + y];
+    Object.entries(MARKS).forEach(([k, m]) => opts.push(['mark:' + k, `${m.icon} Marker: ${m.name}`]));
+    if (mk) opts.push(['mark:', '✕ Remove marker']); }
+  if (!opts.length) return;
+  const menu = $('tapMenu'); menu.dataset.x = x; menu.dataset.y = y;
+  menu.innerHTML = opts.map(([a, l]) => `<button data-tap="${a}">${esc(l)}</button>`).join('');
+  menu.hidden = false; menu.style.left = Math.min(innerWidth - menu.offsetWidth - 10, cx + 8) + 'px'; menu.style.top = Math.min(innerHeight - menu.offsetHeight - 10, cy + 8) + 'px';
+};
+$('tapMenu').addEventListener('click', e => {
+  const b = e.target.closest('[data-tap]'); if (!b) return; const m = $('tapMenu'), x = +m.dataset.x, y = +m.dataset.y, a = b.dataset.tap; m.hidden = true;
+  if (a.startsWith('mark:')) { toHost({type:'marker', x, y, kind:a.slice(5) || null}); return; }
+  const st = G.state, from = planEnd(); if (!from) return;
+  const path = MR.findPath(st, from, a === 'home' ? (px, py) => MR.onStation(st.map, px, py) : (px, py) => px === x && py === y);
+  if (!path) { UI.toast('!', '#f0bf5a', 'No route found', 'The rover can not see a safe way there yet.'); return; }
+  const room = maxPlan() - (myRole() === 'specialist' ? 0 : G.plan.length);
+  const acts = MR.pathToPlan(from, path, Math.max(1, room - (a === 'check' ? 2 : a === 'drivescan' ? 1 : 0)));
+  if (a === 'check') { const i = y*MW + x; if (!st.world.known[i]) acts.push({type:'analyze'}); acts.push({type:'drill'}); }
+  if (a === 'drivescan') acts.push({type:'scan'});
+  applyPlan(acts, false);
+});
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#tapMenu') && e.target.id !== 'map') $('tapMenu').hidden = true; });
+function renderMarkers(){ R.markers = Object.values(G.markers || {}); }
+function planEstimate(){
+  const r = myRover(), el = $('planEst'); if (!r || r.role === 'cadet' || G.phase !== 'plan') { el.textContent = ''; return; }
+  const pa = planActions(); if (pa.error || !pa.actions.length) { el.textContent = ''; return; }
+  const W = G.state.world, cost = {turn:1, scan:5, analyze:2, drill:8, dig:6, charge:-15};
+  let use = 0; R.ghost.forEach(([x, y]) => { const t = MR.TER[W.ter[y*MW + x]]; let c2 = t.cost || 2; if ((r.perks||[]).includes('wide_wheels') && (t.sandy || t.hilly)) c2 = Math.max(2, c2 - 2); use += c2; });
+  pa.actions.forEach(a => { if (a.type === 'left' || a.type === 'right') use += 1; else if (cost[a.type] != null) use += cost[a.type]; });
+  const left = r.bat - use, end = planEnd(), home = end && !MR.onStation(G.state.map, end.x, end.y) ? MR.findPath(G.state, end, (x, y) => MR.onStation(G.state.map, x, y)) : [];
+  const need = home ? home.length * 2 : 0;
+  el.className = 'est' + (left < 0 ? ' bad' : left < need ? ' warn' : '');
+  el.textContent = `Uses about ${Math.max(0, use)}% battery · ${R.ghost.length} square${R.ghost.length === 1 ? '' : 's'} · about ${Math.max(0, left)}% left` + (left < 0 ? '. Not enough power for all of it!' : left < need ? '. Not enough left to drive home after this.' : '');
+}
 let lastHover = null;
 setInterval(() => { if (R.hoverPid !== lastHover) { lastHover = R.hoverPid; if (lastHover) { const s = R.screenOf(lastHover); if (s) showTip(lastHover, s.x, s.y); } else $('tip').hidden = true; } }, 120);
 
@@ -695,6 +824,7 @@ let tabIdx = 0;
 document.addEventListener('keydown', e => {
   if (G.phase === 'home' || G.phase === 'lobby' || $('scrGame').hidden || UI.modalOpen()) return;
   const typing = e.target.closest && e.target.closest('input,textarea,select');
+  if (!typing && (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return; }
   if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
   const role = myRole(), k = e.key;
   if ((k === 'Enter' || k === ' ') && e.target.closest && e.target.closest('button')) return;
@@ -710,7 +840,7 @@ document.addEventListener('keydown', e => {
   if (lk === 'm') { G.toggleBig(); return; }
   if (k === '+' || k === '=') { R.zoom(1.2); return; } if (k === '-' || k === '_') { R.zoom(.83); return; }
   if (k === 'Enter') { e.preventDefault(); sendPlan(); return; }
-  if (k === 'Backspace' && role !== 'specialist') { e.preventDefault(); if (!G.ready && G.phase === 'plan' && G.plan.length) { const last = G.plan[G.plan.length-1]; if (last.arg > 1) last.arg--; else G.plan.pop(); renderPlan(); renderLock(); updateGhost(); } return; }
+  if (k === 'Backspace' && role !== 'specialist') { e.preventDefault(); if (!G.ready && G.phase === 'plan' && G.plan.length) { pushUndo(); const last = G.plan[G.plan.length-1]; if (last.arg > 1) last.arg--; else G.plan.pop(); renderPlan(); renderLock(); updateGhost(); } return; }
   const move = {w:'forward', ArrowUp:'forward', a:'left', ArrowLeft:'left', d:'right', ArrowRight:'right', s:'back', ArrowDown:'back', ' ':'drill'}[lk];
   const tool = {q:'scan', r:'analyze', g:'dig', c:'charge'}[lk];
   const cmd = move || tool;

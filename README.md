@@ -47,12 +47,21 @@ The devices find each other through the free PeerJS service, then talk directly.
 
 New players can take the optional **tutorial** from the start screen. It has different steps for Cadet, Explorer and Specialist, points at the real buttons, and reads the steps aloud for Cadets. While playing, each objective shows a hint with a **Show** button, arrows at the map edge point to where to look, and helpers like **Plan route home** build the plan for you.
 
+## Planning helpers
+
+- **Tap the map** to plan: *Drive here*, *Drive here and scan*, *Go and check it* on a signal, or *Go home* on the station. The blocks are built for you, and you can still edit them.
+- **Team markers:** tap the map to drop ⛏ Dig here, ⚠ Danger or ★ Meet here. Everyone sees them.
+- **Flags and Finds:** every signal a rover finds gets a flag in the finder's color and a site name (like NASA's "Rochette" or "Cheyava Falls"). The **Finds** list shows the best ones first. Claim one with *I'll drill this*, or tap *Go*. The finder gets credit when a teammate drills it, and can rename the site.
+- **Battery estimate** under the plan, with a warning if there won't be enough to get home.
+- **Undo** (or Ctrl+Z).
+- **Sol report** after every sol, with **plan stars** (worked, efficient, smart) and a tip for writing better plans and code.
+
 ## Collecting and progress
 
 - **Inventory:** press **I** (or **E**) any time, like Minecraft and Minetest.
 - **Mineral cards** with real facts, rarities and rare shiny versions. Team finds go to everyone.
 - **Mars history:** find Perseverance's backshell, the Ingenuity helicopter, and the Spirit rover where it got stuck.
-- **54 stickers**, **33 mission patches**, **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
+- **54 stickers**, **39 mission patches** (including coding ones like *Hello, Mars*, *Perfect Plan* and *Loop in a Loop*), **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
 - **Signal delay:** each sol's commands take 5–10 seconds to reach Mars with the stock antenna. Better radio makes it 30% faster, the High-gain antenna twice as fast. Cadets get both automatically as they rank up.
 - Finishing Jezero unlocks Gusev for the team.
 - Progress is saved in each device's browser. **Parents and saves** on the start screen has a backup code to move or restore profiles, and a switch to unlock all maps.
@@ -67,6 +76,7 @@ New players can take the optional **tutorial** from the start screen. It has dif
 | Space | Drill (Dig for Cadets) |
 | Q / R / G / C | Scan / Analyze / Dig (Excavator) / Charge |
 | Backspace | Remove the last step |
+| Ctrl+Z | Undo |
 | Enter | Send or Ready (Ctrl+Enter in the Python editor) |
 | I or E | Inventory |
 | M | Big map |

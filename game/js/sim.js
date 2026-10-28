@@ -7,7 +7,8 @@ const isPower = r => r.role !== 'cadet';
 const has = (r, p) => (r.perks || []).includes(p);
 MR.sightOf = r => (r.job === 'heli' || r.job === 'scout' ? 4 : 3) + (has(r,'sharp_eyes') ? 1 : 0);
 MR.scanOf = r => (r.job === 'scout' ? 6 : 4) + (has(r,'sharp_eyes') ? 1 : 0);
-MR.tubesOf = r => MR.ROLES[r.role].tubes + (r.job === 'hauler' ? 4 : 0);
+/* In team games the Scout carries 2 fewer tubes (it finds, others haul); solo Scouts keep the full rack. */
+MR.tubesOf = r => Math.max(0, MR.ROLES[r.role].tubes + (r.job === 'hauler' ? 4 : 0) + (r.tubeAdj || 0));
 MR.regionAt = (st, x, y) => MR.nearStation(st.map, x, y, 2) ? 'Base station' : MR.MAPS[st.map].regions[st.world.ter[y*MW+x]];
 
 function spawnCells(map){
@@ -33,15 +34,15 @@ MR.newGame = ({map, seed, players}) => {
   const world = MR.genWorld(map, seed, cadets > 0);
   const cells = spawnCells(map);
   const st = {v:MR.VERSION, map, seed, sol:1, won:false, rng:(seed ^ 0x5bd1e995) | 0,
-    team:{score:0, delivered:0, treasures:0, col:{}}, rovers:[], world,
+    team:{score:0, delivered:0, treasures:0, col:{}}, rovers:[], world, sites:{},
     goals: others ? MR.MAPS[map].goals(others) : MR.cadetGoals(cadets)};
-  players.forEach((p, i) => { const r = MR.makeRover(p, cells[i % cells.length], map); st.rovers.push(r); reveal(world, r.x, r.y, MR.sightOf(r)); });
+  players.forEach((p, i) => { const r = MR.makeRover(p, cells[i % cells.length], map); if (players.length > 1 && r.job === 'scout') r.tubeAdj = -2; st.rovers.push(r); reveal(world, r.x, r.y, MR.sightOf(r)); });
   return st;
 };
 MR.addRover = (st, p) => {
   const cells = spawnCells(st.map), used = new Set(st.rovers.map(r => r.x+','+r.y));
   const c = cells.find(c => !used.has(c[0]+','+c[1])) || cells[0];
-  const r = MR.makeRover(p, c, st.map); st.rovers.push(r); reveal(st.world, r.x, r.y, MR.sightOf(r)); return r;
+  const r = MR.makeRover(p, c, st.map); if (r.job === 'scout') r.tubeAdj = -2; st.rovers.push(r); reveal(st.world, r.x, r.y, MR.sightOf(r)); return r;
 };
 
 MR.stateToWire = st => ({...st, world:MR.worldToWire(st.world)});
@@ -73,6 +74,17 @@ function markSignals(W, cx, cy, rad, traps){
 }
 function rnd(st){ st.rng = (st.rng + 0x6D2B79F5) | 0; let t = st.rng; t = Math.imul(t ^ t >>> 15, 1 | t); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
 
+/* Every signal a rover finds gets a flag with the finder and a site name, like NASA's target names. */
+const SITE_NAMES = ['Rochette','Kodiak','Cheyava Falls','Bright Angel','Sapphire Canyon','Wildcat Ridge','Skinner Ridge','Montdenier','Hidden Harbor','Otis Peak','Lake Haiyaha','Roubion','Brac','Quartier','Coulettes','Swift Run','Bunsen Peak','Mageik','Pilot Mountain','Silver Mountain','Kukaklek','Amalik','Bellegarde','Issole','Robine','Malay','Atmo Mountain','Comet Geyser','Dourbes','Sid','Hazeltop','Shuyak','Mount Pilot','Green Gardens','Big Sandy','Tenby','Lefroy Bay','Vermillion','Pelican Point','Bell Island'];
+function flagSites(st, r, sigs){
+  if (!sigs || !sigs.length) return;
+  st.sites = st.sites || {};
+  const used = new Set(Object.values(st.sites).map(x => x.name));
+  sigs.forEach(i => { if (st.world.kid[i] || st.sites[i]) return;
+    let name = SITE_NAMES[Math.floor(rnd(st) * SITE_NAMES.length)], k = 2;
+    while (used.has(name)) name = SITE_NAMES[Math.floor(rnd(st) * SITE_NAMES.length)] + (used.size >= SITE_NAMES.length ? ' ' + (k++) : '');
+    used.add(name); st.sites[i] = {by:r.pid, name, sol:st.sol, claim:null}; });
+}
 function blockReason(st, r, nx, ny){
   if (!MR.inb(nx,ny)) return 'the edge of the map';
   if (r.job === 'heli') return null;
@@ -122,6 +134,7 @@ function act(st, r, a, E){
       r.x = nx; r.y = ny;
       const seen = reveal(W, nx, ny, MR.sightOf(r));
       const sigs = r.job === 'heli' ? markSignals(W, nx, ny, 2, false).sigs : [];
+      flagSites(st, r, sigs);
       const reg = MR.regionAt(st, nx, ny);
       E({t:'move', from, to:[nx,ny], fly:r.job === 'heli', slow:!!MR.TER[W.ter[i]].sandy && r.job !== 'heli', seen, sigs, bat:r.bat,
         msg: reg !== reg0 && !cadet ? {k:'info', text:`${nm} is entering ${reg}.`} : (sigs.length ? {k:'good', text:`${nm} spotted ${sigs.length} treasure${sigs.length>1?'s':''} from the air!`} : null)});
@@ -145,6 +158,7 @@ function act(st, r, a, E){
       if (cadet) return true;
       if (!spend(5, 'scan')) return false;
       const rad = MR.scanOf(r), seen = reveal(W, r.x, r.y, rad), m = markSignals(W, r.x, r.y, rad, true);
+      flagSites(st, r, m.sigs);
       const parts = [];
       if (m.sigs.length) parts.push(`${m.sigs.length} mystery signal${m.sigs.length>1?'s':''}`);
       if (m.traps.length) parts.push(`${m.traps.length} sand trap${m.traps.length>1?'s':''}`);
@@ -175,7 +189,8 @@ function act(st, r, a, E){
         if (i < 0) { E({t:'nothing', msg:{k:'info', text:`${nm} dug a hole. Nothing here. Look for a sparkly gem!`}}); return true; }
         const id = W.res[i], shiny = rnd(st) < .1;
         W.drilled[i] = 1; W.known[i] = 1; st.team.col[id] = (st.team.col[id]||0) + 1; st.team.treasures++; st.team.score += MR.CARDS[id].pts;
-        E({t:'drill', i, res:id, shiny, treasure:true, msg:{k:'good', text:`${nm} found treasure: ${MR.CARDS[id].kid}${shiny ? ' (shiny!)' : ''}!`}});
+        const site = (st.sites || {})[i];
+        E({t:'drill', i, res:id, shiny, treasure:true, by:site && site.by, site:site && site.name, msg:{k:'good', text:`${nm} found treasure: ${MR.CARDS[id].kid}${shiny ? ' (shiny!)' : ''}!`}});
         return true;
       }
       const i = r.y*MW+r.x, id = W.res[i];
@@ -185,7 +200,8 @@ function act(st, r, a, E){
       if (!spend(8, 'drill')) return false;
       const shiny = rnd(st) < .08;
       W.drilled[i] = 1; W.known[i] = 1; W.sig[i] = 1; r.tubes.push(id); st.team.col[id] = (st.team.col[id]||0) + 1;
-      E({t:'drill', i, res:id, shiny, bat:r.bat, tubes:r.tubes.slice(), msg:{k: id === 'basalt' ? 'warn' : 'good', text:`${nm} sealed a sample: ${MR.CARDS[id].name}${shiny ? ' (shiny!)' : ''}. Tubes: ${r.tubes.length}/${MR.tubesOf(r)}.`}});
+      const site = (st.sites || {})[i];
+      E({t:'drill', i, res:id, shiny, by:site && site.by, site:site && site.name, bat:r.bat, tubes:r.tubes.slice(), msg:{k: id === 'basalt' ? 'warn' : 'good', text:`${nm} sealed a sample: ${MR.CARDS[id].name}${shiny ? ' (shiny!)' : ''}. Tubes: ${r.tubes.length}/${MR.tubesOf(r)}.`}});
       return true;
     }
     case 'dig': {
@@ -323,7 +339,7 @@ MR.ghostPath = (st, r, actions) => {
 /* Tiny Python interpreter: rover commands and for loops. */
 MR.parsePy = (src, maxCmd) => {
   const lines = src.replace(/\t/g,'    ').split('\n');
-  const root = [], stack = [{ind:0, body:root}]; let pending = null, used = 0, hasLoop = false;
+  const root = [], stack = [{ind:0, body:root}]; let pending = null, used = 0, hasLoop = false, depth = 0, repeat = 1, maxRepeat = 1, lastKey = '';
   for (let i=0;i<lines.length;i++) {
     const n = i+1, raw = lines[i].replace(/#.*$/, ''), text = raw.trim();
     if (!text) continue;
@@ -339,7 +355,7 @@ MR.parsePy = (src, maxCmd) => {
     used++;
     let m = text.match(/^for\s+\w+\s+in\s+range\(\s*(\d+)\s*\)\s*:$/);
     if (m) { const node = {loop:+m[1], body:[]}; if (node.loop > 20) return {error:`Line ${n}: loops can repeat at most 20 times.`};
-      stack[stack.length-1].body.push(node); pending = {hdr:ind, body:node.body}; hasLoop = true; continue; }
+      stack[stack.length-1].body.push(node); pending = {hdr:ind, body:node.body}; hasLoop = true; depth = Math.max(depth, stack.length); lastKey = ''; continue; }
     if (/^for\b/.test(text)) return {error:`Line ${n}: write loops like this: for i in range(3):`};
     m = text.match(/^rover\.(\w+)\(\s*(\d*)\s*\)$/);
     if (!m) return {error:`Line ${n}: I don't understand "${text}". Try rover.forward(2).`};
@@ -347,6 +363,7 @@ MR.parsePy = (src, maxCmd) => {
     if (!type) return {error:`Line ${n}: the rover has no command called ${m[1]}(). Try: ${Object.values(MR.CMDS).map(c=>c.py).join(', ')}.`};
     if (MR.CMDS[type].arg) { if (!m[2]) return {error:`Line ${n}: ${m[1]}() needs a number of squares, like rover.${m[1]}(3).`}; if (+m[2] < 1 || +m[2] > 20) return {error:`Line ${n}: use a number from 1 to 20.`}; }
     else if (m[2]) return {error:`Line ${n}: ${m[1]}() does not take a number.`};
+    const key = ind + ':' + text; repeat = key === lastKey ? repeat + 1 : 1; maxRepeat = Math.max(maxRepeat, repeat); lastKey = key;
     stack[stack.length-1].body.push({type, arg: MR.CMDS[type].arg ? +m[2] : undefined, idx:n});
   }
   if (pending) return {error:'The last for loop has nothing inside it.'};
@@ -354,6 +371,6 @@ MR.parsePy = (src, maxCmd) => {
   const run = body => { for (const s of body) { if (out.length > maxCmd) return; if (s.loop) { for (let k=0;k<s.loop;k++) run(s.body); } else out.push({...s}); } };
   run(root);
   if (out.length > maxCmd) return {error:`That program makes more than ${maxCmd} moves. The rover can only do ${maxCmd} per sol.`};
-  return {actions:out, loops:hasLoop, lines:used};
+  return {actions:out, loops:hasLoop, lines:used, nested:depth >= 2, maxRepeat};
 };
 })();

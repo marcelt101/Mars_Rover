@@ -126,7 +126,9 @@ Built in v2:
 
 Robot playtest after batch 1: a beginner following the hints finishes 93% of expeditions (before: 30% on Jezero, 0% on Gusev); the Cadet has no wait longer than 8 minutes between rewards for the first 80 minutes (before: a 48-minute gap); ranks keep coming through 2+ hours.
 
-**Batch 2:** code stars and the coding badge ladder; realistic rovers with visible perks; tap-the-map planning, hint clouds, markers, recipes, sol summary; Scout flags and the Finds list; more realistic generated terrain (hillshading, craters, delta, dunes).
+**Batch 2 (done):** realistic terrain with hillshading (crater bowls with ejecta, delta lobes and strata, dune ridges, hills, Home Plate mesa); Perseverance-style rovers with job gear and visible perks, plus Buggy and Ingenuity; plan stars and coding tips in a sol report, coding patches; tap-the-map planning, team markers, undo, battery estimate; Scout flags with site names, claiming, renaming, discovery credit and the Finds list.
+
+**Batch 2 (original list):** code stars and the coding badge ladder; realistic rovers with visible perks; tap-the-map planning, hint clouds, markers, recipes, sol summary; Scout flags and the Finds list; more realistic generated terrain (hillshading, craters, delta, dunes).
 
 **Batch 3:** team chain (find → drill → lab), Mars Catalog and base upgrades; satellite relay kit (multi-sol programs, blocks for Explorers and Python for Specialists); gentle weather and forecasts; Moon map with the Apollo Lunar Roving Vehicle.
 

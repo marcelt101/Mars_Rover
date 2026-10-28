@@ -7,7 +7,7 @@ const load = (k, d) => { try { const v = localStorage.getItem(k); return v == nu
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 const blankStats = () => ({squares:0, flown:0, samples:0, delivered:0, scans:0, identified:0, stuck:0, freed:0, bumps:0, treasures:0,
-  cleared:0, loops:0, clean:0, shinies:0, artifacts:0, organics:0, exp:{}, crew3:0, teamWins:0, xpFrac:0, stickerKinds:0, cardKinds:0, tutorial:0});
+  cleared:0, loops:0, clean:0, shinies:0, artifacts:0, organics:0, exp:{}, crew3:0, teamWins:0, xpFrac:0, stickerKinds:0, cardKinds:0, tutorial:0, programs:0, nested:0, stars3:0, sitesFound:0, sitesShared:0});
 
 MR.Store = {
   db: load(KEY, {list:[], current:null}),
@@ -64,11 +64,11 @@ MR.applyRewards = (p, myPid, events, ctx) => {
   events.forEach(e => {
     const me = e.pid === myPid;
     switch (e.t) {
-      case 'move': if (me) { if (e.fly) s.flown++; else s.squares++; s.xpFrac += .5; } break;
+      case 'move': if (me) { if (e.fly) s.flown++; else s.squares++; s.xpFrac += .5; s.sitesFound += (e.sigs || []).length; } break;
       case 'bump': if (me) s.bumps++; break;
       case 'stuck': if (me) s.stuck++; break;
       case 'free': if (me) { s.freed++; addXp(10); } break;
-      case 'scan': if (me) { s.scans++; addXp(2); } break;
+      case 'scan': if (me) { s.scans++; addXp(2); s.sitesFound += (e.sigs || []).length; } break;
       case 'analyze': if (me) { const n = e.cells.filter(c => c.res !== 'basalt').length; s.identified += n; addXp(4*n); } break;
       case 'drill':
         addCard(e.res, false);
@@ -77,7 +77,9 @@ MR.applyRewards = (p, myPid, events, ctx) => {
           if (e.treasure) { s.treasures++; sticker(); } else s.samples++;
           if (e.res === 'organics') s.organics++;
           if (e.shiny) { addCard(e.res, true); s.shinies++; }
+          if (e.site && p.cards[e.res]) p.cards[e.res].where = `${e.site}, ${MR.MAPS[ctx.map] ? MR.MAPS[ctx.map].name : ''}`;
         } else if (e.res === 'organics') s.organics++;
+        if (!me && e.by === myPid) { s.sitesShared++; addXp(15); out.push({k:'credit', res:e.res, site:e.site}); }
         break;
       case 'artifact': addCard(e.res, false); s.artifacts++; addXp(me ? 80 : 30); sticker(.1); break;
       case 'dock': if (me && e.n) { s.delivered += e.n; addXp(10*e.n); sticker(); } break;
@@ -90,7 +92,8 @@ MR.applyRewards = (p, myPid, events, ctx) => {
         break;
     }
   });
-  if (ctx.planInfo) { if (ctx.planInfo.loops) s.loops++; if (ctx.planInfo.clean) s.clean++; }
+  if (ctx.planInfo) { if (ctx.planInfo.loops) s.loops++; if (ctx.planInfo.clean) s.clean++; if (ctx.planInfo.python) s.programs++; if (ctx.planInfo.nested) s.nested++; }
+  if (ctx.code) { addXp(5 * ctx.code.stars); if (ctx.code.stars === 3) s.stars3++; if (ctx.code.stars) out.push({k:'stars', n:ctx.code.stars}); }
   if (s.xpFrac >= 1) { addXp(Math.floor(s.xpFrac)); s.xpFrac -= Math.floor(s.xpFrac); }
   s.stickerKinds = Object.keys(p.stickers).length;
   s.cardKinds = MR.CARD_ORDER.filter(id => p.cards[id] && (p.cards[id].n || p.cards[id].shiny)).length;

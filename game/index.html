@@ -164,9 +164,11 @@
           <pre class="code" id="code" hidden></pre>
           <textarea class="editor" id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Python program" hidden></textarea>
           <p class="err" id="err" hidden></p>
+          <p class="est" id="planEst"></p>
           <p class="running" id="runLine" hidden></p>
           <div class="actions">
             <button class="btn primary" id="sendBtn">Send to Mars</button>
+            <button class="btn" id="undoBtn" title="Undo (Ctrl+Z)">Undo</button>
             <button class="btn" id="clearBtn">Clear</button>
           </div>
         </div>
@@ -176,6 +178,7 @@
             <div><strong id="ulTitle">Uplink: Earth to Mars</strong> <span id="ulSub">Real signals take 4 to 24 minutes.</span></div>
             <div class="ulbar"><span id="ulBar"></span></div>
           </div>
+          <div id="solCard"></div>
           <p class="teamline" id="teamLine"></p>
           <div class="nudges" id="nudges"></div>
           <button class="btn" id="forceBtn" hidden>Start without waiting</button>
@@ -187,6 +190,10 @@
           <div class="tubes" id="tubes"></div>
         </div>
 
+        <div class="panel" id="findsPanel" hidden>
+          <div class="ph"><h3 class="t">Finds</h3><span class="count">flagged sites, best first</span></div>
+          <ul class="finds" id="finds"></ul>
+        </div>
         <div class="panel">
           <div class="ph"><h3 class="t">Mission log</h3></div>
           <div class="chatrow" id="chatRow"><input class="input" id="chatIn" maxlength="120" placeholder="Say something to the team (T)" autocomplete="off"><button class="btn" id="chatSend">Send</button></div>
@@ -198,6 +205,7 @@
 </div>
 
 <div class="tip" id="tip" hidden></div>
+<div class="tapmenu" id="tapMenu" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="chest" id="chest" hidden></div>
 <div class="coach" id="coach" hidden role="dialog" aria-live="polite"></div>
