@@ -164,6 +164,18 @@ Several of these are already cards (clay, carbonate, silica, olivine, salts). Th
 - It follows the game: very calm while planning, a little more movement while rovers drive, low wind underneath during a dust storm, sparser and colder on the Moon, and a short happy chime blended in on a find.
 - A separate Music switch next to Sound, with a volume slider. It starts quiet and is remembered per device. It fades in after the first tap (browsers need a tap before playing sound).
 
+**Batch 4 addition: clear missions modeled on real NASA campaigns** (playtest feedback from the 15-year-old: objectives need to be clear and say what they are about). Built together with the 12 minerals, since most objectives are about finding them.
+- Each map is split into **campaigns**, the way NASA's science team really plans. Perseverance's real ones: Crater Floor, Delta Front, Upper Fan, Margin, Crater Rim. Spirit's: Columbia Hills and Home Plate. Apollo 15's: Hadley Rille and the Apennine Front.
+- Each campaign has 2–4 **science objectives**, written like the team's real goals: "Find rocks that formed in water", "Collect a sample that could hold signs of ancient life", "Measure how dusty the air is before the storm season". Each one shows:
+  - **What to do:** the concrete task ("Analyze 2 clay sites on the delta front, then drill the best one").
+  - **Why scientists want it:** one or two sentences of real science, linked to the mineral tablet.
+  - **Success criteria:** clear checkboxes, like NASA's "mission success" requirements, plus an optional bonus.
+  - **Where to look:** a hint area on the map, as now.
+- A **mission briefing** card at the start of each campaign, with a "Campaign complete" debrief card at the end that names the real mission it is based on (with the year).
+- The mission panel always shows the current objective at the top, with its progress, so a player never has to guess what to do next.
+- Text by role: Cadets get picture objectives ("Find 3 green gems"); Explorers get short sentences; Specialists get the full science reason and the instrument names.
+- This is also the base for the 30-day Mission Log idea: a campaign is about one day of play.
+
 ## Next revision (v3): real NASA maps
 
 Replace the generated terrain with real data so the game shows the actual ground:
