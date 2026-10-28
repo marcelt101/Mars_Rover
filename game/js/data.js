@@ -50,13 +50,15 @@ MR.JOBS = {
 };
 MR.defaultJob = role => role === 'cadet' ? 'buggy' : 'scout';
 
+/* A small sample vial, drawn in the icon's text color. */
+MR.ICON_VIAL = '<svg class="svgic" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(28 12 12)"><path d="M7 3h10M8.6 3v13a3.4 3.4 0 0 0 6.8 0V3" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.6 10.5h6.8V16a3.4 3.4 0 0 1-6.8 0z" fill="currentColor"/></g></svg>';
 MR.CMDS = {
   forward: {label:'Forward', icon:'↑', cat:'move', arg:true, cost:'2% / square', py:'forward'},
   back:    {label:'Back', icon:'↓', cat:'move', arg:true, cost:'2% / square', py:'backward'},
   left:    {label:'Turn left', icon:'↶', cat:'move', cost:'1%', py:'turn_left'},
   right:   {label:'Turn right', icon:'↷', cat:'move', cost:'1%', py:'turn_right'},
   scan:    {label:'Scan', icon:'◎', cat:'sci', cost:'5%', py:'scan'},
-  analyze: {label:'Analyze', icon:'◈', cat:'sci', cost:'2%', py:'analyze'},
+  analyze: {label:'Analyze', icon:MR.ICON_VIAL, cat:'sci', cost:'2%', py:'analyze'},
   drill:   {label:'Drill', icon:'⊛', cat:'sci', cost:'8%', py:'drill'},
   dig:     {label:'Dig', icon:'▲', cat:'build', cost:'6%', py:'dig', jobs:['excavator']},
   charge:  {label:'Charge', icon:'ϟ', cat:'power', cost:'+15%', py:'charge'},
@@ -77,7 +79,7 @@ MR.relayOK = r => !!r && r.role !== 'cadet' && r.job !== 'lab' && (r.rank|0) >= 
 MR.BLOCKS = {
   repeat:     {label:'Repeat', icon:'⟲', arg:true, def:3, max:10, py:n => `for i in range(${n}):`, desc:'Repeat the blocks inside'},
   if_signal:  {label:'If on a signal', icon:'?', cond:{c:'signal_here'}, py:() => 'if rover.signal_here():', desc:'Only if the rover is on a mystery signal'},
-  if_worth:   {label:'If worth drilling', icon:'◈', cond:{c:'worth'}, py:() => 'if rover.worth_drilling():', desc:'Only if Analyze found something good here'},
+  if_worth:   {label:'If worth drilling', icon:MR.ICON_VIAL, cond:{c:'worth'}, py:() => 'if rover.worth_drilling():', desc:'Only if Analyze found something good here'},
   if_clear:   {label:'If path clear', icon:'⇡', cond:{c:'ahead', op:'==', v:'clear'}, py:() => 'if rover.sense_ahead() == "clear":', desc:'Only if the square ahead is safe'},
   until_full: {label:'Until full or low battery', icon:'⧗', cond:{c:'and', a:{c:'not', a:{c:'tubes_full'}}, b:{c:'bat', op:'>', v:40}}, loop:true, relay:true, py:() => 'while not rover.tubes_full() and rover.battery() > 40:', desc:'Keep going until the tubes are full or the battery is down to 40% (at most 30 times)'},
 };

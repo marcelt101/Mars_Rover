@@ -85,7 +85,7 @@ Unlocks at the second rank (Rover Driver). Programs can then keep running for mo
 ## Weather and rover health
 
 - A **weather station** report each sol, with a forecast for the next 2 sols. Dust storms are rare and short: rovers see 1 square less and the solar panels charge half. The Moon has no weather.
-- **Rover health (H):** battery, tubes, wheels, dusty panels, temperature, signal and instruments. Cadets see a simple face. Driving onto the station repairs everything for free.
+- **Rover health (H):** round gauges for battery, solar panels, wheels, sample tubes, heaters and radio. Tap one to learn about it. Cadets see a simple face. Driving onto the station repairs everything for free.
 
 ## Collecting and progress
 
@@ -117,7 +117,7 @@ Unlocks at the second rank (Rover Driver). Programs can then keep running for mo
 | F | Follow your rover |
 | Tab | Look at the next rover |
 | T | Talk to the team |
-| + / − | Zoom |
+| + / − or mouse wheel | Zoom (the wheel zooms toward the pointer) |
 | Esc | Close windows |
 
 ## Python commands (Specialist)

@@ -328,19 +328,25 @@ function healthModal(){
   const P = k => (r.perks || []).includes(k), bat = Math.round(r.bat / r.batMax * 100), dust = Math.round(r.dust || 0), wheels = Math.round(r.wheels ?? 100);
   const delay = (MR.uplinkMs(st, r) / 1000).toFixed(1);
   const parts = [
-    ['Battery', `${r.bat}% of ${r.batMax}%`, bat, 'Rovers store solar power in lithium-ion batteries. Charge, or dock at the station to fill up.'],
-    ['Solar panels', dust ? `${dust}% dusty` : 'Clean', 100 - dust, dust ? `Dust makes the panels charge ${Math.round(dust/3)}% less at night. Docking at the station cleans them, and sometimes a gust of wind does too.` : 'Clean panels charge fully at night.'],
-    ['Wheels', `${wheels}%`, wheels, wheels < 25 ? 'Worn wheels use a little more power on every square. Dock at the station for a free repair.' : 'Sharp rocks wear the wheels a little. Curiosity got holes in its wheels, so Perseverance got tougher ones.' + (P('wide_wheels') ? ' Your wide wheels wear half as fast.' : '')],
-    ['Heaters', wx.lo != null ? `Tonight about ${wx.lo}°C` : '–', 80, 'Nights on Mars are colder than Antarctica, so heaters use a little battery to keep the electronics warm.'],
-    ['Radio', `${MR.antennaName(r)} · ${delay} s delay`, P('hg_antenna') ? 100 : P('better_radio') ? 80 : 60, 'Signals travel to Mars at the speed of light, which still takes 4 to 24 minutes in real life.'],
-    ['Instruments', `Scan ${MR.scanOf(r)} sq${P('supercam') ? ' · SuperCam laser' : ''}${P('sharp_eyes') ? ' · extra cameras' : ''}`, 100, r.job === 'science' ? 'Your spectrometer identifies every signal within 2 squares.' : 'Scan finds signals, the spectrometer identifies them, and the drill collects samples.'],
-    ['Sample tubes', `${r.tubes.length} of ${MR.tubesOf(r)}`, 100 - r.tubes.length / Math.max(1, MR.tubesOf(r)) * 60, 'Perseverance seals its samples in tubes so a future mission can bring them to Earth.'],
+    ['Battery', `${r.bat}% of ${r.batMax}%`, bat, 'Rovers store solar power in lithium-ion batteries. Charge, or dock at the station to fill up.', bat + '%'],
+    ['Solar panels', dust ? `${dust}% dusty` : 'Clean', 100 - dust, dust ? `Dust makes the panels charge ${Math.round(dust/3)}% less at night. Docking at the station cleans them, and sometimes a gust of wind does too.` : 'Clean panels charge fully at night.', (100 - dust) + '%'],
+    ['Wheels', `${wheels}%`, wheels, wheels < 25 ? 'Worn wheels use a little more power on every square. Dock at the station for a free repair.' : 'Sharp rocks wear the wheels a little. Curiosity got holes in its wheels, so Perseverance got tougher ones.' + (P('wide_wheels') ? ' Your wide wheels wear half as fast.' : ''), wheels + '%'],
+    ['Sample tubes', `${r.tubes.length} of ${MR.tubesOf(r)} full`, 100 - r.tubes.length / Math.max(1, MR.tubesOf(r)) * 60, 'Perseverance seals its samples in tubes so a future mission can bring them to Earth.', `${r.tubes.length}/${MR.tubesOf(r)}`, r.tubes.length / Math.max(1, MR.tubesOf(r)) * 100],
+    ['Heaters', wx.lo != null ? `Tonight ${wx.lo}°C` : '–', 80, 'Nights on Mars are colder than Antarctica, so heaters use a little battery to keep the electronics warm.', wx.lo != null ? wx.lo + '°' : '–'],
+    ['Radio', `${MR.antennaName(r)}`, P('hg_antenna') ? 100 : P('better_radio') ? 80 : 60, `Commands take ${delay} s to arrive. Real signals travel at the speed of light, which still takes 4 to 24 minutes. Your scan reaches ${MR.scanOf(r)} squares${P('supercam') ? ' and the SuperCam laser checks 3 squares ahead' : ''}.`, delay + 's'],
   ];
-  if (r.stuck) parts.unshift(['Stuck in sand', 'Back up 1 square', 10, 'Spirit got stuck in soft sand in 2009. Backing out the way you came is the best escape.']);
+  if (r.stuck) parts.unshift(['Stuck', 'In soft sand', 10, 'Spirit got stuck in soft sand in 2009. Back up 1 square, the way you came, to escape.', '!', 100]);
+  /* Pie-style gauges: a ring that fills up, with the reading in the middle. */
+  const gauge = (pct, col, label) => { const rr = 15.5, c = 2 * Math.PI * rr, f = Math.max(2, Math.min(100, pct));
+    return `<svg class="gauge" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="${rr}" fill="none" stroke="#0b1015" stroke-width="4"/><circle cx="18" cy="18" r="${rr}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(c * f / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 18 18)"/><text x="18" y="18" dy=".35em" text-anchor="middle">${esc(label)}</text></svg>`; };
+  const worst = parts.reduce((w, p2, i) => p2[2] < parts[w][2] ? i : w, 0);
   UI.openModal(`<div class="sh"><h2>${esc(r.name)}'s rover health</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div>
-    <div class="sb"><div class="health"><canvas id="healthPic" width="440" height="440"></canvas><div class="parts">${parts.map(([n, v, h, f]) =>
-      `<div class="part"><span class="st" style="background:${lvl(h)}"></span><b>${n}</b><span class="val">${esc(v)}</span><div class="bar"><span style="width:${Math.max(4, Math.min(100, h))}%;background:${lvl(h)}"></span></div><small>${esc(f)}</small></div>`).join('')}</div></div>
-    <p class="muted" style="margin:0;font-size:13px">Docking at the station charges the battery, cleans the panels and repairs the wheels for free.</p></div>`);
+    <div class="sb"><div class="health"><canvas id="healthPic" width="440" height="440"></canvas><div><div class="gauges">${parts.map(([n, v, h, f, lab, fill], i) =>
+      `<button class="gtile ${i === worst ? 'on' : ''}" data-g="${i}" aria-label="${esc(n)}: ${esc(v)}">${gauge(fill ?? h, lvl(h), lab)}<b>${esc(n)}</b><small>${esc(v)}</small></button>`).join('')}</div>
+      <p class="gfact" id="gFact"><b>${esc(parts[worst][0])}:</b> ${esc(parts[worst][3])}</p></div></div>
+    <p class="muted" style="margin:0;font-size:13px">Tap a gauge to learn about it. Docking at the station charges the battery, cleans the panels and repairs the wheels for free.</p></div>`);
+  document.querySelectorAll('.gtile').forEach(b => b.onclick = () => { const p2 = parts[+b.dataset.g];
+    document.querySelectorAll('.gtile').forEach(x => x.classList.toggle('on', x === b)); $('gFact').innerHTML = `<b>${esc(p2[0])}:</b> ${esc(p2[3])}`; });
   R.drawPreview($('healthPic'), r);
 }
 $('healthBtn').onclick = () => healthModal();
@@ -1001,7 +1007,7 @@ R.onTapMap = (x, y, cx, cy) => {
     if (mk) opts.push(['mark:', '✕ Remove marker']); }
   if (!opts.length) return;
   const menu = $('tapMenu'); menu.dataset.x = x; menu.dataset.y = y;
-  menu.innerHTML = opts.map(([a, l]) => `<button data-tap="${a}">${esc(l)}</button>`).join('');
+  menu.innerHTML = opts.map(([a, l]) => `<button data-tap="${a}">${esc(l).replace('◈', MR.ICON_VIAL)}</button>`).join('');
   menu.hidden = false; menu.style.left = Math.min(innerWidth - menu.offsetWidth - 10, cx + 8) + 'px'; menu.style.top = Math.min(innerHeight - menu.offsetHeight - 10, cy + 8) + 'px';
 };
 $('tapMenu').addEventListener('click', e => {

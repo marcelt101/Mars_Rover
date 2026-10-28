@@ -28,7 +28,10 @@ R.init = (canvas, mini, box) => {
     drag = null; canvas.style.cursor = 'grab'; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('pointerleave', () => { R.hoverPid = null; });
-  canvas.addEventListener('wheel', e => { e.preventDefault(); R.zoom(e.deltaY < 0 ? 1.12 : .89); }, {passive:false});
+  /* Mouse wheel and trackpad pinch zoom toward the pointer. Small trackpad steps give small zoom steps. */
+  canvas.addEventListener('wheel', e => { e.preventDefault(); const b = canvas.getBoundingClientRect();
+    const d = Math.max(-1, Math.min(1, e.deltaY / (e.deltaMode ? 3 : 100)));
+    R.zoom(Math.pow(1.15, -d), (e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height); }, {passive:false});
   mini.addEventListener('click', e => { const r = mini.getBoundingClientRect(), [vw,vh] = R.viewTiles();
     R.cam.follow = false; R.cam.x = (e.clientX-r.left)/r.width*MW - vw/2; R.cam.y = (e.clientY-r.top)/r.height*MH - vh/2; R.clamp(); });
   requestAnimationFrame(R.frame);
@@ -49,9 +52,12 @@ R.myRover = () => R.view && R.view.rovers.find(r => r.pid === R.myPid);
 R.viewTiles = () => [R.VW/R.cam.ts, R.VH/R.cam.ts];
 R.minTs = () => Math.max(R.VW/MW, R.VH/MH);
 R.clamp = () => { const [vw,vh] = R.viewTiles(); R.cam.x = Math.max(0, Math.min(MW-vw, R.cam.x)); R.cam.y = Math.max(0, Math.min(MH-vh, R.cam.y)); };
-R.zoom = f => { const [vw,vh] = R.viewTiles(), cx = R.cam.x+vw/2, cy = R.cam.y+vh/2;
-  R.cam.ts = Math.max(R.minTs(), Math.min(64, R.cam.ts*f)); const [nw,nh] = R.viewTiles(); R.cam.x = cx-nw/2; R.cam.y = cy-nh/2; R.clamp();
-  MR.Store.settings.zoom = Math.round(R.cam.ts); MR.Store.save(); };
+/* Zoom by f, keeping the point at (fx, fy) of the view (0..1, default the middle) in place. */
+let zoomSave = null;
+R.zoom = (f, fx = .5, fy = .5) => { const [vw,vh] = R.viewTiles(), px = R.cam.x + vw*fx, py = R.cam.y + vh*fy;
+  R.cam.ts = Math.max(R.minTs(), Math.min(64, R.cam.ts*f)); const [nw,nh] = R.viewTiles(); R.cam.x = px - nw*fx; R.cam.y = py - nh*fy; R.clamp();
+  if (fx !== .5 || fy !== .5) R.cam.follow = false;
+  clearTimeout(zoomSave); zoomSave = setTimeout(() => { MR.Store.settings.zoom = Math.round(R.cam.ts); MR.Store.save(); }, 400); };
 R.focus = (pid, follow) => { const a = R.anim[pid]; if (!a) return; const [vw,vh] = R.viewTiles(); R.cam.x = a.px+.5-vw/2; R.cam.y = a.py+.5-vh/2; R.clamp(); R.cam.follow = !!follow; };
 R.resize = () => {
   const box = R.box; R.VW = Math.max(200, box.clientWidth);
