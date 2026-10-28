@@ -24,7 +24,7 @@ function blankWorld(map, seed, cadetGems){
   return {map, seed, cadetGems:!!cadetGems,
     ter:new Uint8Array(N), obs:new Array(N).fill(''), res:new Array(N).fill(''), kid:new Uint8Array(N),
     trap:new Uint8Array(N), seen:new Uint8Array(N), sig:new Uint8Array(N), known:new Uint8Array(N),
-    drilled:new Uint8Array(N), trapSeen:new Uint8Array(N)};
+    drilled:new Uint8Array(N), trapSeen:new Uint8Array(N), extra:[]};
 }
 MR.onStation = (map, x, y) => { const s = MR.MAPS[map].station; return x>=s.x && x<=s.x+1 && y>=s.y && y<=s.y+1; };
 MR.nearStation = (map, x, y, d) => { const s = MR.MAPS[map].station; return Math.abs(x-(s.x+.5))<=d && Math.abs(y-(s.y+.5))<=d; };
@@ -99,7 +99,7 @@ MR.genWorld = function (map, seed, cadetGems) {
     const ad = (x,y) => Math.hypot(x-w.apex.x, y-w.apex.y);
     place('clay', 6, isT(T.DELTA));
     place('carbonate', 4, (x,y,t) => t === T.DELTA && ad(x,y) > 10);
-    place('organics', 2, (x,y,t) => t === T.DELTA && ad(x,y) > 5 && ad(x,y) < 12);
+    place('organics', 4, (x,y,t) => t === T.DELTA && ad(x,y) > 4 && ad(x,y) < 13);
     place('olivine', 5, isT(T.DUNE));
     place('salts', 4, isT(T.FLOOR, T.BED));
     place('meteorite', 3, isT(T.FLOOR));
@@ -111,13 +111,14 @@ MR.genWorld = function (map, seed, cadetGems) {
     while (k < 10 && g++ < 4000) {
       const x = Math.floor(r()*MW), y = Math.floor(r()*MH), i = y*MW+x, d = Math.hypot(x-S.x, y-S.y);
       if (d < 3 || d > 11 || !free(i)) continue;
-      w.res[i] = kinds[Math.floor(r()*kinds.length)]; w.kid[i] = 1; w.sig[i] = 1; w.known[i] = 1; w.seen[i] = 1; k++;
+      w.res[i] = kinds[Math.floor(r()*kinds.length)]; w.kid[i] = 1; w.sig[i] = 1; w.known[i] = 1; k++;
+      for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) if (MR.inb(x+dx,y+dy)) w.seen[(y+dy)*MW+x+dx] = 1;
     }
   }
   for (let i=0;i<N;i++) {
     if (w.ter[i] !== T.DUNE || w.res[i] || w.obs[i]) continue;
     const x = i % MW, y = (i / MW) | 0;
-    if (MR.nearStation(map,x,y,3)) continue;
+    if (MR.nearStation(map,x,y,8)) continue;
     const troy = map === 'gusev' && Math.hypot(x-36, y-32) < 3.5;
     if (r() < (troy ? .35 : .1)) w.trap[i] = 1;
   }
@@ -142,20 +143,21 @@ const unpackBits = (str, a) => { const s = atob(str); for (let j=0;j<s.length;j+
 const packObs = obs => { let out = '', i = 0; while (i < N) { const c = obs[i] || '.'; let j = i; while (j < N && (obs[j] || '.') === c) j++; out += c + (j-i) + ','; i = j; } return out; };
 const unpackObs = (str, obs) => { let i = 0; str.split(',').forEach(t => { if (!t) return; const c = t[0], n = +t.slice(1); for (let k=0;k<n && i<N;k++) obs[i++] = c === '.' ? '' : c; }); };
 MR.worldToWire = w => {
-  const o = {map:w.map, seed:w.seed, cadetGems:w.cadetGems, obs:packObs(w.obs)};
+  const o = {map:w.map, seed:w.seed, cadetGems:w.cadetGems, obs:packObs(w.obs), extra:w.extra.slice()};
   BITS.forEach(k => o[k] = packBits(w[k]));
   return o;
 };
 MR.worldFromWire = (o, base) => {
   const w = base && base.map === o.map && base.seed === o.seed && base.cadetGems === o.cadetGems ? base : MR.genWorld(o.map, o.seed, o.cadetGems);
   unpackObs(o.obs, w.obs);
+  w.extra = (o.extra || []).slice(); w.extra.forEach(([i, id]) => { w.res[i] = id; w.kid[i] = 1; });
   BITS.forEach(k => unpackBits(o[k], w[k]));
   return w;
 };
 MR.cloneWorld = w => {
   const c = {...w};
   ['ter','kid','trap','seen','sig','known','drilled','trapSeen'].forEach(k => c[k] = w[k].slice());
-  c.obs = w.obs.slice(); c.res = w.res;
+  c.obs = w.obs.slice(); c.res = w.res.slice(); c.extra = (w.extra || []).slice();
   return c;
 };
 

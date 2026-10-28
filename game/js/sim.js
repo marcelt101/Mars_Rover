@@ -226,6 +226,27 @@ function expand(r, actions){
   return out.slice(0, r.role === 'specialist' ? 200 : 400);
 }
 
+/* Cadets never run out of treasure: when few gems are left near a Cadet, a few new ones appear nearby. */
+const KID_GEMS = {jezero:['olivine','clay','salts','meteorite','carbonate','basalt'], gusev:['olivine','salts','silica','meteorite','carbonate','basalt']};
+function spawnCadetGems(st, timeline){
+  const W = st.world, kinds = KID_GEMS[st.map] || KID_GEMS.jezero, evs = [];
+  st.rovers.filter(r => r.role === 'cadet').forEach(r => {
+    let near = 0;
+    for (let i=0;i<W.res.length;i++) if (W.kid[i] && !W.drilled[i] && Math.hypot(i % MW - r.x, ((i/MW)|0) - r.y) <= 10) near++;
+    if (near >= 3) return;
+    const cells = []; let g = 0;
+    while (cells.length < 3 && g++ < 300) {
+      const a = rnd(st)*Math.PI*2, d = 3 + rnd(st)*5, x = Math.round(r.x + Math.cos(a)*d), y = Math.round(r.y + Math.sin(a)*d);
+      if (!MR.inb(x,y)) continue; const i = y*MW+x;
+      if (W.res[i] || W.obs[i] || MR.TER[W.ter[i]].block || W.trap[i] || MR.onStation(st.map, x, y)) continue;
+      const id = kinds[Math.floor(rnd(st)*kinds.length)];
+      W.res[i] = id; W.kid[i] = 1; W.sig[i] = 1; W.known[i] = 1; W.extra.push([i, id]);
+      cells.push({i, res:id, seen:reveal(W, x, y, 1)});
+    }
+    if (cells.length) evs.push({t:'spawn', pid:r.pid, cells, msg:{k:'good', text:`New sparkly gems appeared near ${r.name}!`}});
+  });
+  if (evs.length) timeline.push(evs);
+}
 MR.simulateSol = (prev, plans) => {
   const st = MR.cloneState(prev), timeline = [], q = {};
   st.rovers.forEach(r => q[r.pid] = expand(r, plans[r.pid]));
@@ -241,6 +262,7 @@ MR.simulateSol = (prev, plans) => {
     if (!st.won && MR.goalProgress(st).every(g => g.done)) { st.won = true; evs.push({t:'win', msg:{k:'good', text:'Expedition complete! Every objective is done.'}}); }
     timeline.push(evs);
   }
+  spawnCadetGems(st, timeline);
   if (!st.won) {
     const charges = [];
     st.rovers.forEach(r => { if (!isPower(r)) return; const before = r.bat; r.bat = Math.min(r.batMax, r.bat + MR.ROLES[r.role].solar); charges.push({pid:r.pid, before, bat:r.bat}); });
@@ -250,6 +272,38 @@ MR.simulateSol = (prev, plans) => {
   return {timeline, state:st};
 };
 
+/* Shortest route the team knows about (unseen squares are assumed open). Returns squares [x,y]. */
+MR.findPath = (st, r, goal, maxLen = 400) => {
+  const W = st.world, start = r.y*MW + r.x, prev = new Map([[start, -1]]), q = [start];
+  const open = (x, y) => { if (!MR.inb(x,y)) return false; if (r.job === 'heli') return true; const i = y*MW+x;
+    if (!W.seen[i]) return true; if (MR.TER[W.ter[i]].block || W.obs[i] || W.trapSeen[i]) return false;
+    return !st.rovers.some(o => o !== r && o.job !== 'heli' && o.x === x && o.y === y); };
+  while (q.length) {
+    const c = q.shift(), x = c % MW, y = (c/MW) | 0;
+    if (c !== start && goal(x, y)) { const p = []; let k = c; while (k !== start) { p.unshift([k % MW, (k/MW) | 0]); k = prev.get(k); } return p.slice(0, maxLen); }
+    for (const [dx, dy] of DIRS) { const nx = x+dx, ny = y+dy, n = ny*MW+nx; if (!prev.has(n) && open(nx, ny)) { prev.set(n, c); q.push(n); } }
+  }
+  return null;
+};
+/* Turn a route into plan blocks: turns plus Forward N. */
+MR.pathToPlan = (r, path, maxBlocks) => {
+  const out = []; let d = r.dir, x = r.x, y = r.y;
+  for (const [nx, ny] of path) {
+    const want = DIRS.findIndex(([dx, dy]) => dx === nx-x && dy === ny-y), diff = (want - d + 4) % 4;
+    if (diff === 1) out.push({type:'right'}); else if (diff === 3) out.push({type:'left'}); else if (diff === 2) out.push({type:'right'}, {type:'right'});
+    if (out.length >= maxBlocks) break;
+    d = want; x = nx; y = ny;
+    const last = out[out.length-1];
+    if (last && last.type === 'forward' && last.arg < 20) last.arg++; else { if (out.length >= maxBlocks) break; out.push({type:'forward', arg:1}); }
+  }
+  return out.slice(0, maxBlocks);
+};
+/* Rough area to search for a mineral: the middle of where it can be found (not the exact spot). */
+MR.searchArea = (st, res) => {
+  const W = st.world; let sx = 0, sy = 0, n = 0;
+  for (let i=0;i<W.res.length;i++) if (W.res[i] === res && !W.drilled[i] && !W.kid[i]) { sx += i % MW; sy += (i/MW) | 0; n++; }
+  return n ? {x:sx/n, y:sy/n, n} : null;
+};
 /* Where a plan would take the rover, for the dotted preview. Stops at known obstacles. */
 MR.ghostPath = (st, r, actions) => {
   const path = [], W = st.world; let x = r.x, y = r.y, d = r.dir;

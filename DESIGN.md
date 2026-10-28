@@ -120,6 +120,16 @@ Built in v2:
 5. Perks: Common and Rare tiers (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery)
 6. Signal delay of 5–10 s per sol with the stock antenna; radio and antenna perks shorten it
 
+## Improvement batches (from playtesting)
+
+**Batch 1 (done):** bigger map on PC with a big-map mode (M); driving at half speed; movement buttons in a WASD-style cross with other buttons grouped (Science, Tools, Power); PC keys (WASD/arrows, Space, Q/R/G/C, Enter, Shift+WASD camera); guidance (objective hints with Show, search circles and edge arrows, one-tap helpers like Plan route home, fewer sand traps near the station); pacing (10 ranks, 54 stickers, 9 more patches, endless Cadet gems, 4 organic sites, realistic star targets); optional role-matched tutorial.
+
+Robot playtest after batch 1: a beginner following the hints finishes 93% of expeditions (before: 30% on Jezero, 0% on Gusev); the Cadet has no wait longer than 8 minutes between rewards for the first 80 minutes (before: a 48-minute gap); ranks keep coming through 2+ hours.
+
+**Batch 2:** code stars and the coding badge ladder; realistic rovers with visible perks; tap-the-map planning, hint clouds, markers, recipes, sol summary; Scout flags and the Finds list; more realistic generated terrain (hillshading, craters, delta, dunes).
+
+**Batch 3:** team chain (find → drill → lab), Mars Catalog and base upgrades; satellite relay kit (multi-sol programs, blocks for Explorers and Python for Specialists); gentle weather and forecasts; Moon map with the Apollo Lunar Roving Vehicle.
+
 ## Next revision (v3): real NASA maps
 
 Replace the generated terrain with real data so the game shows the actual ground:

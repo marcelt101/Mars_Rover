@@ -43,12 +43,16 @@ The devices find each other through the free PeerJS service, then talk directly.
 | Hauler | Explorer, Specialist | 4 extra sample tubes |
 | Excavator | Explorer, Specialist | `dig()` clears a rock or sand trap in front, never gets stuck |
 
+## Getting started
+
+New players can take the optional **tutorial** from the start screen. It has different steps for Cadet, Explorer and Specialist, points at the real buttons, and reads the steps aloud for Cadets. While playing, each objective shows a hint with a **Show** button, arrows at the map edge point to where to look, and helpers like **Plan route home** build the plan for you.
+
 ## Collecting and progress
 
 - **Inventory:** press **I** (or **E**) any time, like Minecraft and Minetest.
 - **Mineral cards** with real facts, rarities and rare shiny versions. Team finds go to everyone.
 - **Mars history:** find Perseverance's backshell, the Ingenuity helicopter, and the Spirit rover where it got stuck.
-- **24 mission patches**, **ranks** from Trainee to Flight Director, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
+- **54 stickers**, **33 mission patches**, **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
 - **Signal delay:** each sol's commands take 5–10 seconds to reach Mars with the stock antenna. Better radio makes it 30% faster, the High-gain antenna twice as fast. Cadets get both automatically as they rank up.
 - Finishing Jezero unlocks Gusev for the team.
 - Progress is saved in each device's browser. **Parents and saves** on the start screen has a backup code to move or restore profiles, and a switch to unlock all maps.
@@ -57,17 +61,21 @@ The devices find each other through the free PeerJS service, then talk directly.
 
 | Key | Does |
 |---|---|
-| I or E | Inventory |
-| Esc | Close windows |
-| T | Talk to the team |
-| Tab | Look at the next rover |
-| W A S D | Move the camera |
-| F | Follow your rover |
-| + / − | Zoom |
-| 1–9 | Add commands (Explorer) |
-| Arrow keys, Space | Add arrows and dig (Cadet) |
+| W or ↑ | Forward (press again to add a square) |
+| A or ← / D or → | Turn left / right |
+| S or ↓ | Back |
+| Space | Drill (Dig for Cadets) |
+| Q / R / G / C | Scan / Analyze / Dig (Excavator) / Charge |
 | Backspace | Remove the last step |
 | Enter | Send or Ready (Ctrl+Enter in the Python editor) |
+| I or E | Inventory |
+| M | Big map |
+| Shift + W A S D | Move the camera |
+| F | Follow your rover |
+| Tab | Look at the next rover |
+| T | Talk to the team |
+| + / − | Zoom |
+| Esc | Close windows |
 
 ## Python commands (Specialist)
 
@@ -101,9 +109,12 @@ Plain HTML, CSS and JavaScript. No build step.
 - `game/js/ui.js`, `game/js/game.js`: screens and the game controller
 - `game/vendor/`: PeerJS and qrcode-generator (MIT, see `LICENSES.txt`)
 
+`tools/playtest-bots.js` runs robot players (a Cadet, a beginner with and without hints, a good Explorer) on the real rules and prints pacing numbers: time to first reward, finish rate, boring sols, rank timing.
+
 Testing options in the URL:
 - `?net=local` connects several windows of one browser without PeerJS.
 - `?slot=a` gives a window its own saves.
+- `?uplink=0.1` shortens the signal delay for testing.
 - `?peerhost=192.168.1.20&peerport=9000` uses your own PeerJS server instead of the public one.
 
 The full plan is in [DESIGN.md](DESIGN.md).

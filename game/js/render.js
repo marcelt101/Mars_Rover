@@ -12,7 +12,8 @@ const R = MR.Render = {
 
 R.init = (canvas, mini, box) => {
   R.canvas = canvas; R.ctx = canvas.getContext('2d'); R.mini = mini; R.mctx = mini.getContext('2d'); R.box = box;
-  new ResizeObserver(R.resize).observe(box);
+  new ResizeObserver(() => R.resize()).observe(box);
+  addEventListener('resize', () => R.resize());
   let drag = null;
   canvas.addEventListener('pointerdown', e => { drag = {x:e.clientX, y:e.clientY, cx:R.cam.x, cy:R.cam.y, moved:false}; canvas.setPointerCapture(e.pointerId); });
   canvas.addEventListener('pointermove', e => {
@@ -46,15 +47,20 @@ R.viewTiles = () => [R.VW/R.cam.ts, R.VH/R.cam.ts];
 R.minTs = () => Math.max(R.VW/MW, R.VH/MH);
 R.clamp = () => { const [vw,vh] = R.viewTiles(); R.cam.x = Math.max(0, Math.min(MW-vw, R.cam.x)); R.cam.y = Math.max(0, Math.min(MH-vh, R.cam.y)); };
 R.zoom = f => { const [vw,vh] = R.viewTiles(), cx = R.cam.x+vw/2, cy = R.cam.y+vh/2;
-  R.cam.ts = Math.max(R.minTs(), Math.min(64, R.cam.ts*f)); const [nw,nh] = R.viewTiles(); R.cam.x = cx-nw/2; R.cam.y = cy-nh/2; R.clamp(); };
+  R.cam.ts = Math.max(R.minTs(), Math.min(64, R.cam.ts*f)); const [nw,nh] = R.viewTiles(); R.cam.x = cx-nw/2; R.cam.y = cy-nh/2; R.clamp();
+  MR.Store.settings.zoom = Math.round(R.cam.ts); MR.Store.save(); };
 R.focus = (pid, follow) => { const a = R.anim[pid]; if (!a) return; const [vw,vh] = R.viewTiles(); R.cam.x = a.px+.5-vw/2; R.cam.y = a.py+.5-vh/2; R.clamp(); R.cam.follow = !!follow; };
 R.resize = () => {
-  const box = R.box; R.VW = Math.max(200, box.clientWidth); R.VH = Math.round(Math.max(300, Math.min(640, R.VW*.62)));
+  const box = R.box; R.VW = Math.max(200, box.clientWidth);
+  if (innerWidth >= 1100) {
+    const top = box.getBoundingClientRect().top + scrollY, big = document.body.classList.contains('bigmap');
+    R.VH = Math.round(Math.max(380, Math.min(1600, innerHeight - top - (big ? 52 : 64))));
+  } else R.VH = Math.round(Math.max(300, Math.min(640, R.VW*.62)));
   R.dpr = Math.min(window.devicePixelRatio || 1, 2);
   R.canvas.style.width = R.VW+'px'; R.canvas.style.height = R.VH+'px';
   R.canvas.width = Math.round(R.VW*R.dpr); R.canvas.height = Math.round(R.VH*R.dpr);
   const mr = R.mini.getBoundingClientRect(); R.mini.width = Math.max(1, Math.round(mr.width*R.dpr)); R.mini.height = Math.max(1, Math.round(mr.height*R.dpr));
-  if (!R.cam.init) { R.cam.ts = R.VW > 700 ? 32 : 26; R.cam.init = true; }
+  if (!R.cam.init) { R.cam.ts = (MR.Store.settings.zoom) || (R.VW > 700 ? 32 : 26); R.cam.init = true; }
   R.cam.ts = Math.max(R.minTs(), R.cam.ts); R.clamp();
 };
 R.hit = (cx, cy) => {
@@ -188,6 +194,36 @@ function drawRover(c, r, a, t, ts, ghost){
   }
   c.restore();
 }
+/* Guidance: a dashed search circle (or a bouncing marker) when on screen, an arrow at the edge when not. */
+function drawHints(c, t, ts){
+  (R.hints || []).forEach(h => {
+    const sx = (h.x - R.cam.x + .5)*ts, sy = (h.y - R.cam.y + .5)*ts, m = 40;
+    const on = sx > m && sy > m && sx < R.VW - m && sy < R.VH - m;
+    c.save(); c.font = `600 13px 'IBM Plex Sans', system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const pill = (x, y, text) => { const w = c.measureText(text).width + 14; c.fillStyle = 'rgba(10,14,19,.85)'; rr(c, x - w/2, y - 11, w, 22, 11); c.fill(); c.strokeStyle = h.color; c.lineWidth = 1.5; c.stroke(); c.fillStyle = '#e6ecf1'; c.fillText(text, x, y + .5); };
+    if (on) {
+      if (h.area) {
+        c.strokeStyle = h.color; c.globalAlpha = .6 + .25*Math.sin(t/400); c.lineWidth = Math.max(2, ts*.07); c.setLineDash([ts*.3, ts*.2]);
+        c.beginPath(); c.arc(sx, sy, ts*4.5, 0, Math.PI*2); c.stroke(); c.setLineDash([]); c.globalAlpha = .1; c.fillStyle = h.color; c.fill(); c.globalAlpha = 1;
+        pill(sx, Math.max(14, sy - ts*4.5 - 4), h.near ? `${h.label}: scan around here!` : `Look for ${h.label} here`);
+      } else {
+        const b = Math.sin(t/180)*ts*.12; c.fillStyle = h.color;
+        c.beginPath(); c.moveTo(sx, sy - ts*.55 + b); c.lineTo(sx - ts*.22, sy - ts*.95 + b); c.lineTo(sx + ts*.22, sy - ts*.95 + b); c.closePath(); c.fill();
+      }
+    } else {
+      const cx = R.VW/2, cy = R.VH/2, dx = sx - cx, dy = sy - cy;
+      const k = Math.min((R.VW/2 - 46) / Math.max(1e-6, Math.abs(dx)), (R.VH/2 - 46) / Math.max(1e-6, Math.abs(dy)));
+      const ax = cx + dx*k, ay = cy + dy*k, ang = Math.atan2(dy, dx), pulse = 1 + .08*Math.sin(t/250);
+      c.translate(ax, ay); c.fillStyle = 'rgba(10,14,19,.85)'; c.beginPath(); c.arc(0, 0, 18*pulse, 0, Math.PI*2); c.fill();
+      c.strokeStyle = h.color; c.lineWidth = 2; c.stroke(); c.rotate(ang); c.fillStyle = h.color;
+      c.beginPath(); c.moveTo(11, 0); c.lineTo(-6, -8); c.lineTo(-2, 0); c.lineTo(-6, 8); c.closePath(); c.fill();
+      c.setTransform(R.dpr,0,0,R.dpr,0,0);
+      const lx = ax - Math.cos(ang)*58, ly = ay - Math.sin(ang)*30;
+      pill(Math.max(60, Math.min(R.VW - 60, lx)), Math.max(16, Math.min(R.VH - 16, ly)), h.label);
+    }
+    c.restore();
+  });
+}
 function drawNameFlag(c, r, a, ts){
   const cx = (a.px-R.cam.x+.5)*ts, top = (a.py-R.cam.y)*ts - (r.job === 'heli' ? ts*.25 : 0), col = MR.colorHex(r.color);
   const label = ts >= 22 ? r.name : r.name.slice(0,1).toUpperCase();
@@ -265,6 +301,7 @@ R.frame = t => {
   rovers.forEach(r => { const a = R.anim[r.pid]; if (a) drawRover(c, r, a, t, ts, false); });
   c.fillStyle='rgba(16,11,9,0.62)';
   for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) if (!W.seen[y*MW+x]) c.fillRect(Math.floor((x-cam.x)*ts), Math.floor((y-cam.y)*ts), Math.ceil(ts)+1, Math.ceil(ts)+1);
+  if (!R.running) drawHints(c, t, ts);
   rovers.forEach(r => { const a = R.anim[r.pid]; if (a) drawNameFlag(c, r, a, ts); });
   c.font = `600 ${Math.max(11, Math.round(ts*.42))}px 'Chakra Petch', sans-serif`; c.textAlign='center'; c.textBaseline='middle';
   MR.MAPS[R.view.map].labels.forEach(l => { const X=(l.x-cam.x)*ts, Y=(l.y-cam.y)*ts; if (X<-200||X>R.VW+200||Y<-40||Y>R.VH+40) return;

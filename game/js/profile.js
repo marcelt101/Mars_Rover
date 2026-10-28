@@ -7,7 +7,7 @@ const load = (k, d) => { try { const v = localStorage.getItem(k); return v == nu
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 const blankStats = () => ({squares:0, flown:0, samples:0, delivered:0, scans:0, identified:0, stuck:0, freed:0, bumps:0, treasures:0,
-  cleared:0, loops:0, clean:0, shinies:0, artifacts:0, organics:0, exp:{}, crew3:0, teamWins:0, xpFrac:0});
+  cleared:0, loops:0, clean:0, shinies:0, artifacts:0, organics:0, exp:{}, crew3:0, teamWins:0, xpFrac:0, stickerKinds:0, cardKinds:0, tutorial:0});
 
 MR.Store = {
   db: load(KEY, {list:[], current:null}),
@@ -19,7 +19,7 @@ MR.Store = {
   select(id){ this.db.current = id; this.save(); },
   create({name, color, role}){
     const p = {id:'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:String(name).trim().slice(0,16) || 'Rover',
-      color, role, job:MR.defaultJob(role), xp:0, cards:{}, patches:{}, perks:[], stats:blankStats(), created:Date.now()};
+      color, role, job:MR.defaultJob(role), xp:0, cards:{}, stickers:{}, patches:{}, perks:[], stats:blankStats(), created:Date.now()};
     this.db.list.push(p); this.db.current = p.id; this.save(); return p;
   },
   remove(id){ this.db.list = this.db.list.filter(p => p.id !== id); if (this.db.current === id) this.db.current = null; this.save(); },
@@ -35,7 +35,7 @@ MR.Store = {
     this.save(); return data.profiles.length;
   },
 };
-MR.Store.db.list.forEach(p => { p.stats = {...blankStats(), ...(p.stats||{})}; p.cards = p.cards || {}; p.patches = p.patches || {}; p.perks = p.perks || []; });
+MR.Store.db.list.forEach(p => { p.stats = {...blankStats(), ...(p.stats||{})}; p.cards = p.cards || {}; p.stickers = p.stickers || {}; p.patches = p.patches || {}; p.perks = p.perks || []; });
 
 MR.rankInfo = p => { const r = MR.rankOf(p.xp), cur = MR.RANKS[r], next = MR.RANKS[r+1];
   return {rank:r, name:cur.name, next: next ? next.name : null, frac: next ? (p.xp - cur.xp)/(next.xp - cur.xp) : 1, toNext: next ? next.xp - p.xp : 0}; };
@@ -53,6 +53,14 @@ MR.applyRewards = (p, myPid, events, ctx) => {
     if (shiny) c.shiny++; else c.n++;
     if (isNew) out.push({k:'card', id}); if (newShiny) out.push({k:'shiny', id});
   };
+  p.stickers = p.stickers || {};
+  const sticker = boost => {
+    const roll = Math.random(), tier = roll < .04 + (boost||0) ? 'G' : roll < .26 + (boost||0) ? 'S' : 'C';
+    const pool = MR.STICKERS.filter(x => x.tier === tier), fresh = pool.filter(x => !p.stickers[x.id]), useFresh = fresh.length && Math.random() < .45;
+    const pick = (useFresh ? fresh : pool)[Math.floor(Math.random() * (useFresh ? fresh : pool).length)] || pool[0];
+    const isNew = !p.stickers[pick.id]; p.stickers[pick.id] = (p.stickers[pick.id] || 0) + 1;
+    out.push({k:'sticker', id:pick.id, isNew});
+  };
   events.forEach(e => {
     const me = e.pid === myPid;
     switch (e.t) {
@@ -66,24 +74,26 @@ MR.applyRewards = (p, myPid, events, ctx) => {
         addCard(e.res, false);
         if (me) {
           addXp(MR.RARITY[MR.CARDS[e.res].rar].xp + (e.treasure ? 15 : 0));
-          if (e.treasure) s.treasures++; else s.samples++;
+          if (e.treasure) { s.treasures++; sticker(); } else s.samples++;
           if (e.res === 'organics') s.organics++;
           if (e.shiny) { addCard(e.res, true); s.shinies++; }
         } else if (e.res === 'organics') s.organics++;
         break;
-      case 'artifact': addCard(e.res, false); s.artifacts++; addXp(me ? 80 : 30); break;
-      case 'dock': if (me && e.n) { s.delivered += e.n; addXp(10*e.n); } break;
+      case 'artifact': addCard(e.res, false); s.artifacts++; addXp(me ? 80 : 30); sticker(.1); break;
+      case 'dock': if (me && e.n) { s.delivered += e.n; addXp(10*e.n); sticker(); } break;
       case 'dig': if (me && e.what !== 'none') { s.cleared++; addXp(5); } break;
       case 'win':
         s.exp[ctx.map] = (s.exp[ctx.map]||0) + 1; addXp(120);
         if (ctx.players > 1) s.teamWins++;
         if (ctx.players >= 3) s.crew3++;
-        out.push({k:'win'});
+        out.push({k:'win'}); sticker(.15);
         break;
     }
   });
   if (ctx.planInfo) { if (ctx.planInfo.loops) s.loops++; if (ctx.planInfo.clean) s.clean++; }
   if (s.xpFrac >= 1) { addXp(Math.floor(s.xpFrac)); s.xpFrac -= Math.floor(s.xpFrac); }
+  s.stickerKinds = Object.keys(p.stickers).length;
+  s.cardKinds = MR.CARD_ORDER.filter(id => p.cards[id] && (p.cards[id].n || p.cards[id].shiny)).length;
   MR.PATCHES.forEach(pt => { if (!p.patches[pt.id] && pt.test(s)) { p.patches[pt.id] = Date.now(); addXp(25); out.push({k:'patch', id:pt.id}); } });
   const rank1 = MR.rankOf(p.xp);
   if (rank1 > rank0) {

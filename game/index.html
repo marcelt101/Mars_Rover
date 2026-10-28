@@ -26,6 +26,10 @@
   <section class="screen" id="scrHome">
     <div class="ph"><h2>Who's playing?</h2><span class="muted">Each player picks their own profile on their own device.</span></div>
     <div class="profiles" id="profiles"></div>
+    <div class="tutbar" id="tutBar" hidden>
+      <span><b>New here?</b> Take the 3-minute tutorial for your role. You can skip it anytime.</span>
+      <span class="row"><button class="btn primary" id="tutBtn">Start tutorial</button><button class="btn" id="tutNo">No thanks</button></span>
+    </div>
     <div class="modes" id="modes">
       <div class="panel mode">
         <h3 class="t">Play solo</h3>
@@ -45,6 +49,7 @@
       </div>
     </div>
     <div class="links">
+      <button id="tutLink">Tutorial</button>
       <button id="parentsBtn">Parents and saves</button>
       <a href="../v1/">Play version 1</a>
       <a href="../classic/">Classic missions</a>
@@ -108,6 +113,7 @@
             <button class="mbtn" id="zoomIn" aria-label="Zoom in">+</button>
             <button class="mbtn" id="zoomOut" aria-label="Zoom out">−</button>
             <button class="mbtn" id="centerBtn" aria-label="Follow my rover">◎</button>
+            <button class="mbtn" id="bigBtn" aria-label="Big map (M)" title="Big map (M)">⛶</button>
           </div>
           <canvas class="mini" id="mini" aria-label="Overview map. Click to look there."></canvas>
           <div class="win" id="win" hidden>
@@ -131,15 +137,15 @@
         <details class="how"><summary>How to play</summary><ul id="howList"></ul></details>
       </div>
 
-      <div class="col">
+      <div class="col side">
         <div class="panel" id="cadetPanel" hidden>
           <div class="ph"><h3 class="t">Your plan</h3><span class="count" id="cadetCount"></span></div>
           <div class="seq" id="seq"></div>
           <div class="cadet">
-            <button class="cbtn" data-pic="left" aria-label="Turn left">↶</button>
-            <button class="cbtn" data-pic="forward" aria-label="Go one square">↑</button>
-            <button class="cbtn" data-pic="right" aria-label="Turn right">↷</button>
-            <button class="cbtn dig" data-pic="drill" aria-label="Dig for treasure">⛏</button>
+            <button class="cbtn up" data-pic="forward" aria-label="Go one square (W)">↑<span class="key">W</span></button>
+            <button class="cbtn lf" data-pic="left" aria-label="Turn left (A)">↶<span class="key">A</span></button>
+            <button class="cbtn rt" data-pic="right" aria-label="Turn right (D)">↷<span class="key">D</span></button>
+            <button class="cbtn dig" data-pic="drill" aria-label="Dig for treasure (Space)">⛏<span class="key">Space</span></button>
           </div>
           <div class="cadetgo">
             <button class="gobtn" id="goBtn">GO!</button>
@@ -171,6 +177,7 @@
             <div class="ulbar"><span id="ulBar"></span></div>
           </div>
           <p class="teamline" id="teamLine"></p>
+          <div class="nudges" id="nudges"></div>
           <button class="btn" id="forceBtn" hidden>Start without waiting</button>
         </div>
 
@@ -193,6 +200,7 @@
 <div class="tip" id="tip" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="chest" id="chest" hidden></div>
+<div class="coach" id="coach" hidden role="dialog" aria-live="polite"></div>
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
 
 <script src="vendor/peerjs.min.js"></script>
@@ -205,5 +213,6 @@
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/game.js"></script>
+<script src="js/tutorial.js"></script>
 </body>
 </html>

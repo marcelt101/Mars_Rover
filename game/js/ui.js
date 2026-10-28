@@ -41,6 +41,7 @@ UI.renderHome = () => {
     return `<button class="pcard" data-id="${p.id}" aria-pressed="${cur && cur.id === p.id}">${UI.avatar(p)}<span style="min-width:0;flex:1"><b>${esc(p.name)}</b><small>${MR.ROLES[p.role].label} · ${ri.name}</small><div class="xpbar"><span style="width:${Math.round(ri.frac*100)}%"></span></div></span></button>`; }).join('')
     + `<button class="pcard new" id="newProfile">+ New crew member</button>`;
   $('modes').style.opacity = cur ? 1 : .4;
+  $('tutBar').hidden = !cur || cur.tutDone || cur.tutHide;
   ['soloBtn','hostBtn','joinBtn'].forEach(id => $(id).disabled = !cur);
   $('hostBtn').disabled = !cur || !MR.netAvailable();
   $('joinBtn').disabled = !cur || !MR.netAvailable();
@@ -97,7 +98,8 @@ let invTab = 'cards', invSel = null;
 UI.inventory = tab => {
   const p = MR.Store.current(); if (!p) return;
   if (tab) invTab = tab;
-  const tabs = [['cards','Cards'],['patches','Patches'],['rover','Rover'],['stats','Stats']];
+  UI.invOpenedAt = Date.now();
+  const tabs = [['cards','Cards'],['stickers','Stickers'],['patches','Patches'],['rover','Rover'],['stats','Stats']];
   const ri = MR.rankInfo(p);
   const owned = MR.CARD_ORDER.filter(id => p.cards[id] && p.cards[id].n);
   const shinies = MR.CARD_ORDER.filter(id => p.cards[id] && p.cards[id].shiny).length;
@@ -110,6 +112,11 @@ UI.inventory = tab => {
       <div class="cards">${MR.CARD_ORDER.map(id => { const c = MR.CARDS[id], have = p.cards[id] && p.cards[id].n, sh = p.cards[id] && p.cards[id].shiny, rar = MR.RARITY[c.rar];
         if (!have) return `<div class="card locked"><div class="gm"></div><b>???</b><span class="rar" style="color:${rar.col}">${rar.name}</span><small class="muted">Found at ${c.maps.map(m => MR.MAPS[m].name).join(' or ')}</small></div>`;
         return `<button class="card ${sh ? 'shiny' : ''} ${sel === id ? 'sel' : ''}" data-card="${id}">${sh ? '<span class="shn" title="Shiny">✦</span>' : ''}<span class="n">×${p.cards[id].n + (p.cards[id].shiny||0)}</span><div class="gm" style="background:${c.color}"></div><b>${esc(p.role === 'cadet' && c.kid ? c.kid : c.name)}</b><span class="rar" style="color:${rar.col}">${rar.name}</span></button>`; }).join('')}</div>`;
+  } else if (invTab === 'stickers') {
+    const st = p.stickers || {}, got = MR.STICKERS.filter(x => st[x.id]).length;
+    body = `<p class="muted" style="margin:0">${got} of ${MR.STICKERS.length} stickers. ${p.role === 'cadet' ? 'Every treasure gives a sticker!' : 'You get a sticker for every delivery and every find from Mars history.'}</p>
+      <div class="stickers">${MR.STICKERS.map(x => { const n = st[x.id] || 0, t = MR.STICKER_TIER[x.tier];
+        return `<div class="stk ${n ? 'got' : ''} tier-${x.tier}" title="${esc(x.name)}">${n ? `<span class="se">${x.e}</span>` : '<span class="se q">?</span>'}<b>${n ? esc(x.name) : '???'}</b><small style="color:${t.col}">${t.name}${n > 1 ? ` ×${n}` : ''}</small></div>`; }).join('')}</div>`;
   } else if (invTab === 'patches') {
     body = `<p class="muted" style="margin:0">${gotPatches} of ${MR.PATCHES.length} mission patches earned.</p>
       <div class="patches">${MR.PATCHES.map((pt, i) => { const got = !!p.patches[pt.id], col = MR.COLORS[i % MR.COLORS.length].hex;
@@ -147,6 +154,7 @@ UI.inventory = tab => {
     else { UI.toast('!', '#f0bf5a', 'All perk slots are full', 'Remove a perk first.'); return; }
     MR.Store.save(); UI.inventory(); };
 };
+UI.invOpenedAt = 0;
 UI.toggleInventory = () => { if (UI.modalOpen()) UI.closeModal(); else UI.inventory(); };
 $('invBtn').addEventListener('click', () => UI.inventory());
 $('meBtn').addEventListener('click', () => UI.inventory('rover'));
@@ -168,6 +176,9 @@ UI.parents = () => {
   $('impBtn').onclick = () => { try { const n = MR.Store.importCode($('impCode').value); $('impMsg').textContent = `Restored ${n} profile${n === 1 ? '' : 's'}.`; UI.renderHome(); } catch (e) { $('impMsg').textContent = 'That code did not work. Check that it was copied completely.'; } };
 };
 $('parentsBtn').addEventListener('click', () => UI.parents());
+$('tutBtn').addEventListener('click', () => MR.Game.startTutorial());
+$('tutLink').addEventListener('click', () => { if (MR.Store.current()) MR.Game.startTutorial(); });
+$('tutNo').addEventListener('click', () => { const p = MR.Store.current(); if (p) { p.tutHide = true; MR.Store.save(); } UI.renderHome(); });
 
 /* ---------- toasts and treasure chest ---------- */
 UI.toast = (icon, color, title, sub, ms = 4200) => {
@@ -191,7 +202,8 @@ UI.notify = (notices, cadet) => {
       const c = MR.CARDS[n.id];
       if (cadet) UI.chest(n.id, n.k === 'shiny');
       else UI.toast('◆', c.color, n.k === 'shiny' ? `Shiny card: ${c.name}!` : `New card: ${c.name}`, `${MR.RARITY[c.rar].name}. Press I to see your collection.`);
-    } else if (n.k === 'patch') { const pt = MR.PATCHES.find(x => x.id === n.id); UI.toast(pt.icon, '#f0bf5a', `Patch earned: ${pt.name}`, pt.desc); }
+    } else if (n.k === 'sticker') { const x = MR.STICKERS.find(q => q.id === n.id); if (n.isNew || x.tier !== 'C') UI.toast(x.e, MR.STICKER_TIER[x.tier].col, n.isNew ? `New sticker: ${x.name}!` : `${MR.STICKER_TIER[x.tier].name}: ${x.name}`, 'Press I and open Stickers.'); }
+    else if (n.k === 'patch') { const pt = MR.PATCHES.find(x => x.id === n.id); UI.toast(pt.icon, '#f0bf5a', `Patch earned: ${pt.name}`, pt.desc); }
     else if (n.k === 'rank') UI.toast('★', '#58cfbe', `Rank up: ${MR.RANKS[n.rank].name}!`, cadet ? `Next expedition you can plan ${MR.CADET_LEN(n.rank)} pictures.` : 'Check your inventory (I) for new perks.', 6000);
     else if (n.k === 'perk') { const pk = MR.PERKS[n.id]; UI.toast(pk.icon, '#f0bf5a', `New perk: ${pk.name}`, pk.desc, 6000); }
   });

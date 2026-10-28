@@ -30,6 +30,23 @@ G.onProfileChanged = () => { if (G.phase === 'lobby') { refreshMyLobbyEntry(); }
 $('homeBtn').onclick = () => { if (G.phase === 'lobby') leave(); };
 $('soloBtn').onclick = () => { if (!me()) return; G.lostCode = null; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()}; enterLobby(); };
 $('hostBtn').onclick = () => startHost();
+/* Tutorial: a normal solo game on a fixed, safe Jezero layout with a find 3 squares west of the rover. */
+G.startTutorial = () => {
+  const p = me(); if (!p) return;
+  G.lostCode = null; G.mode = 'solo'; G.myPid = p.id;
+  const pl = {...MR.playerSummary(p), connected:true, host:true};
+  G.lobby = {players:[pl], map:'jezero', unlocked:MR.Store.unlocked()};
+  const st = MR.newGame({map:'jezero', seed:424242, players:[pl]}), W = st.world, r = st.rovers[0];
+  r.x = 33; r.y = 22; r.dir = 3;
+  for (let x = 28; x <= 33; x++) for (let y = 21; y <= 23; y++) { const i = y*MW + x; W.obs[i] = ''; W.trap[i] = 0; W.trapSeen[i] = 0; if (y === 22) { W.res[i] = ''; W.kid[i] = 0; } if (MR.TER[W.ter[i]].block) W.ter[i] = 0; }
+  const t = 22*MW + 30;
+  if (p.role === 'cadet') { W.res[t] = 'olivine'; W.kid[t] = 1; W.sig[t] = 1; W.known[t] = 1; W.seen[t] = 1; }
+  else { W.res[t] = 'clay'; W.sig[t] = 0; W.known[t] = 0; }
+  if (p.role === 'specialist') { $('editor').value = 'from mars import rover\n\n'; $('editor').dataset.touched = '1'; }
+  enterGame(st);
+  MR.Tutorial.start(p.role);
+};
+G.api = {myRover:() => myRover(), planActions:() => planActions(), applyPlan:(a, rep) => applyPlan(a, rep), phase:() => G.phase, sol:() => G.state ? G.state.sol : 0, plan:() => G.plan};
 $('joinBtn').onclick = () => joinGame($('joinCode').value);
 $('joinCode').onkeydown = e => { if (e.key === 'Enter') joinGame($('joinCode').value); };
 
@@ -38,7 +55,9 @@ function leave(){
   if (G.wake) { try { G.wake.release(); } catch (e) {} G.wake = null; }
   clearInterval(G.pingTimer);
   G.gen = (G.gen || 0) + 1;
+  if (MR.Tutorial) MR.Tutorial.stop();
   Object.assign(G, {chain:Promise.resolve(), mode:null, net:null, code:null, phase:'home', state:null, plan:[], ready:false, readyPids:[], plans:{}, drafts:{}, cid2pid:{}, pending:[]});
+  document.body.classList.remove('bigmap');
   $('win').hidden = true; $('joinBtn').disabled = false; $('joinBtn').textContent = 'Join'; UI.renderHome(); UI.show('scrHome');
 }
 
@@ -248,7 +267,7 @@ $('leaveLobbyBtn').onclick = () => leave();
 
 /* ---------- game screen ---------- */
 function enterGame(st){
-  G.contAfterWin = false; G.ready = false; G.plan = []; G.phase = 'plan';
+  G.contAfterWin = false; G.ready = false; G.plan = []; G.phase = 'plan'; G.dull = 0; G.hintRes = null;
   R.resetTracks(); setGameState(st);
   UI.show('scrGame'); $('win').hidden = true; $('log').innerHTML = '';
   const M = MR.MAPS[st.map];
@@ -272,7 +291,7 @@ function renderGame(){
   $('planTitle').textContent = code ? "Today's program" : "Today's plan";
   $('howList').innerHTML = MR.HOW[role].map(h => `<li>${esc(h)}</li>`).join('');
   $('chatRow').hidden = !team();
-  renderPalette(); renderPlan(); renderHud(); renderSide(); renderCrewBar(); renderTeam(); renderLock(); renderNet();
+  renderPalette(); renderPlan(); renderHud(); renderSide(); renderCrewBar(); renderTeam(); renderLock(); renderNet(); computeHints(); renderNudges();
 }
 function renderHud(){
   const r = myRover(); if (!r) return;
@@ -287,12 +306,86 @@ function renderHud(){
 }
 function renderSide(){
   const st = G.state, r = myRover(); if (!r) return;
-  $('goals').innerHTML = MR.goalProgress(st).map(g => `<li class="${g.done ? 'done' : ''}"><span class="box">${g.done ? '✓' : ''}</span><span class="t">${esc(g.t)}</span><span class="cnt">${Math.min(g.n, g.of)}/${g.of}</span></li>`).join('');
-  $('solCount').textContent = `Sol ${st.sol} · 3 stars by sol ${MR.MAPS[st.map].par}`;
+  $('goals').innerHTML = MR.goalProgress(st).map(g => `<li class="${g.done ? 'done' : ''}"><span class="box">${g.done ? '✓' : ''}</span><span class="gt"><span class="t">${esc(g.t)}</span>${g.done ? '' : goalHint(g, r)}</span><span class="cnt">${Math.min(g.n, g.of)}/${g.of}</span></li>`).join('');
+  $('solCount').textContent = `Sol ${st.sol} · 3 stars by sol ${MR.parOf(st)}`;
   if (r.role === 'cadet') $('tubes').innerHTML = `<span class="lbl">Team treasures: ${st.team.treasures}</span>`;
   else $('tubes').innerHTML = [...Array(MR.tubesOf(r))].map((_, i) => { const id = r.tubes[i]; return `<span class="tube" title="${id ? esc(MR.CARDS[id].name) : 'Empty tube'}">${id ? `<i style="background:${MR.CARDS[id].color}"></i>` : ''}</span>`; }).join('')
     + `<span class="lbl">${r.tubes.length ? `${r.tubes.length} on board` : 'Sample tubes'} · team delivered ${st.team.delivered}</span>`;
 }
+const COMPASS = ['east','south-east','south','south-west','west','north-west','north','north-east'];
+const dirWord = (r, x, y) => COMPASS[(Math.round(Math.atan2(y - r.y, x - r.x) / (Math.PI/4)) + 8) % 8];
+function goalHint(g, r){
+  const st = G.state;
+  if (g.kind === 'col') {
+    const a = MR.searchArea(st, g.res); if (!a) return '';
+    const dist = Math.hypot(a.x - r.x, a.y - r.y), reg = MR.regionAt(st, Math.round(a.x), Math.round(a.y));
+    const where = dist < 5 ? 'Scan around here' : `Try ${reg.startsWith('the ') ? reg : 'the ' + reg}, ${Math.round(dist)} squares ${dirWord(r, a.x, a.y)}`;
+    return `<span class="hint">${esc(where)}<button class="showb" data-show="${g.res}">Show</button></span>`;
+  }
+  if (g.kind === 'deliver') return `<span class="hint">Drive onto the station with full tubes</span>`;
+  if (g.kind === 'treasure') return `<span class="hint">Look for the sparkly gems</span>`;
+  return '';
+}
+$('goals').addEventListener('click', e => { const b = e.target.closest('[data-show]'); if (!b) return;
+  G.hintRes = b.dataset.show; computeHints(); const a = MR.searchArea(G.state, G.hintRes);
+  if (a) { const [vw, vh] = R.viewTiles(); R.cam.follow = false; R.cam.x = a.x + .5 - vw/2; R.cam.y = a.y + .5 - vh/2; R.clamp(); } });
+function computeHints(){
+  const r = myRover(); if (!r || !G.state) { R.hints = []; return; }
+  const st = G.state, W = st.world, H = [];
+  if (r.role === 'cadet') {
+    const p = MR.findPath(st, r, (x, y) => { const i = y*MW+x; return W.res[i] && W.sig[i] && W.seen[i] && !W.drilled[i] && !MR.CARDS[W.res[i]].artifact; });
+    if (p && p.length) { const [x, y] = p[p.length-1]; H.push({x, y, label:'Gem', color:'#f0bf5a'}); }
+  } else {
+    const S = MR.MAPS[st.map].station;
+    if (r.tubes.length) H.push({x:S.x + .5, y:S.y + .5, label:'Station', color:'#e6ecf1'});
+    const open = MR.goalProgress(st).filter(g => !g.done && g.kind === 'col');
+    const g = open.find(q2 => q2.res === G.hintRes) || open[0];
+    if (g) { const a = MR.searchArea(st, g.res); if (a) H.push({x:a.x, y:a.y, label:MR.CARDS[g.res].name, color:MR.CARDS[g.res].color, area:true, near:Math.hypot(a.x - r.x, a.y - r.y) < 5}); }
+  }
+  R.hints = H;
+}
+function renderNudges(){
+  const r = myRover(), box = $('nudges');
+  if (!r || !G.state || G.phase !== 'plan' || G.ready || r.role === 'cadet') { box.innerHTML = ''; return; }
+  const st = G.state, W = st.world, i = r.y*MW + r.x, out = [];
+  if (r.stuck) out.push(['Your rover is stuck in soft sand.', 'Plan: Back 1', 'back1']);
+  else {
+    if (W.res[i] && W.sig[i] && !W.drilled[i] && !MR.CARDS[W.res[i]].artifact) {
+      if (!W.known[i]) out.push(['There is a mystery signal under your rover.', 'Add Analyze + Drill', 'andrill']);
+      else if (W.res[i] !== 'basalt') out.push([`You are on ${MR.CARDS[W.res[i]].name}!`, 'Add Drill', 'drill']);
+      else out.push(['Just basalt here. Probably not worth a tube.', null, null]);
+    }
+    if (r.tubes.length >= MR.tubesOf(r)) out.push(['Your sample tubes are full.', 'Plan route home', 'home']);
+    else if (r.bat < 30) out.push([`Battery is low (${r.bat}%).`, 'Plan route home', 'home'], ['Or charge with the solar panels.', 'Add Charge', 'charge']);
+    else if (r.tubes.length && MR.goalProgress(st).filter(g => g.kind === 'col').every(g => g.done)) out.push(['All the finds are done. Bring your samples home!', 'Plan route home', 'home']);
+    if ((G.dull || 0) >= 2 && out.length < 2) out.push(['Nothing found lately. Scan finds mystery signals. Tap Show next to an objective to see where to look.', 'Add Scan', 'scan']);
+  }
+  box.innerHTML = out.slice(0, 2).map(([t, b, a]) => `<div class="nudge"><span>${esc(t)}</span>${b ? `<button class="btn" data-nudge="${a}">${esc(b)}</button>` : ''}</div>`).join('');
+}
+const planToPy = acts => acts.map(a => `rover.${MR.CMDS[a.type].py}(${MR.CMDS[a.type].arg ? a.arg : ''})`).join('\n');
+function applyPlan(acts, replace){
+  const r = myRover(); if (!r || G.ready || G.phase !== 'plan') return;
+  if (r.role === 'specialist') {
+    const ta = $('editor'), code = planToPy(acts);
+    ta.value = replace ? `from mars import rover\n\n${code}\n` : ta.value.replace(/\s*$/, '\n') + code + '\n'; ta.dataset.touched = '1';
+  } else {
+    if (replace) G.plan = [];
+    acts.forEach(a => { if (G.plan.length < maxPlan()) G.plan.push({type:a.type, arg:MR.CMDS[a.type].arg ? (a.arg || 1) : undefined}); });
+  }
+  MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); renderNudges();
+}
+$('nudges').addEventListener('click', e => {
+  const b = e.target.closest('[data-nudge]'); if (!b) return; const r = myRover(), st = G.state;
+  switch (b.dataset.nudge) {
+    case 'back1': applyPlan([{type:'back', arg:1}], true); break;
+    case 'drill': applyPlan([{type:'drill'}]); break;
+    case 'andrill': applyPlan([{type:'analyze'}, {type:'drill'}]); break;
+    case 'scan': applyPlan([{type:'scan'}]); break;
+    case 'charge': applyPlan([{type:'charge'}]); break;
+    case 'home': { const p = MR.findPath(st, r, (x, y) => MR.onStation(st.map, x, y));
+      if (p) applyPlan(MR.pathToPlan(r, p, Math.min(maxPlan(), 12)), true); else UI.toast('!', '#f0bf5a', 'No route found yet', 'Explore a bit more so the rover can see a way back.'); break; }
+  }
+});
 function renderCrewBar(){
   if (!G.state) return;
   $('crewBar').innerHTML = G.state.rovers.map(r => {
@@ -314,15 +407,19 @@ function renderTeam(){
   } else t = 'Plan your moves, then send them to Mars.';
   $('teamLine').innerHTML = t;
   $('forceBtn').hidden = !(G.mode === 'host' && G.phase === 'plan' && G.ready && G.state.rovers.length > 1);
-  renderLock();
+  renderLock(); renderNudges();
 }
 
 /* palette + plans */
 function cmdsForMe(){ const r = myRover(); return r ? MR.cmdsFor(r.role, r.job) : []; }
 function maxPlan(){ const r = myRover(); if (!r) return 12; return r.role === 'cadet' ? MR.CADET_LEN(r.rank) : MR.ROLES[r.role].maxCmd; }
+const KEYCAP = {forward:'W', left:'A', back:'S', right:'D', scan:'Q', analyze:'R', drill:'Space', dig:'G', charge:'C'};
 function renderPalette(){
-  $('palette').innerHTML = cmdsForMe().map((k, i) => { const d = MR.CMDS[k];
-    return `<button class="pal cat-${d.cat}" data-c="${k}"><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span><small>${d.cost}</small>${i < 9 ? `<span class="key">${i+1}</span>` : ''}</button>`; }).join('');
+  const have = cmdsForMe(), btn = (k, cls = '') => { const d = MR.CMDS[k];
+    return `<button class="pal cat-${d.cat} ${cls}" data-c="${k}" aria-label="${d.label} (${KEYCAP[k]})"><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span><small>${d.cost}</small><span class="key">${KEYCAP[k]}</span></button>`; };
+  const group = (label, keys, cls) => { const ks = keys.filter(k => have.includes(k)); return ks.length ? `<div class="pgroup ${cls||''}"><span class="pgl">${label}</span><div class="pbtns">${ks.map(k => btn(k)).join('')}</div></div>` : ''; };
+  $('palette').innerHTML = `<div class="pgroup drive"><span class="pgl">Drive</span><div class="dpad">${btn('forward','up')}${btn('left','lf')}${btn('back','dn')}${btn('right','rt')}</div></div>`
+    + group('Science', ['scan','analyze','drill']) + group('Tools', ['dig']) + group('Power', ['charge']);
 }
 const PIC = {forward:'↑', left:'↶', right:'↷', drill:'⛏'};
 function renderPlan(){
@@ -336,7 +433,7 @@ function renderPlan(){
   }
   if (r.role === 'specialist') { $('count').textContent = `max ${MR.ROLES.specialist.maxCmd} moves`; return; }
   $('count').textContent = `${G.plan.length} / ${maxPlan()}`;
-  if (!G.plan.length) $('prog').innerHTML = `<li class="empty">Tap a command above (or press 1–9) to add it to today's plan.</li>`;
+  if (!G.plan.length) $('prog').innerHTML = `<li class="empty">Tap a command above (or use W A S D, Q, R, Space) to add it to today's plan.</li>`;
   else $('prog').innerHTML = G.plan.map((c, i) => { const d = MR.CMDS[c.type], dis = G.ready || G.phase !== 'plan' ? 'disabled' : '';
     return `<li class="cmd cat-${d.cat} ${c.state||''}" data-i="${i}"><span class="num">${i+1}</span><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span>
       ${d.arg ? `<span class="arg"><button class="mini-b" data-a="dec" aria-label="Fewer squares" ${dis}>−</button><b>${c.arg}</b><button class="mini-b" data-a="inc" aria-label="More squares" ${dis}>+</button></span>` : ''}
@@ -379,6 +476,10 @@ function updateGhost(){
 function addCmd(k){
   const r = myRover(); if (!r || G.phase !== 'plan' || G.ready) return;
   if (r.role === 'specialist') return insertPy(k);
+  const last = G.plan[G.plan.length - 1];
+  if (r.role !== 'cadet' && last && last.type === k && (k === 'forward' || k === 'back') && last.arg < 20) {
+    last.arg++; G.plan.forEach(c => c.state = ''); MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); return;
+  }
   if (G.plan.length >= maxPlan()) { MR.sfx.bump(); return; }
   G.plan.forEach(c => c.state = '');
   G.plan.push({type:k, arg: MR.CMDS[k] && MR.CMDS[k].arg ? 1 : undefined});
@@ -459,33 +560,34 @@ async function playEvent(ev){
   switch (ev.t) {
     case 'move': {
       const [fx, fy] = ev.from, [tx, ty] = ev.to;
-      await tween(ev.slow ? 560 : 380, k => { a.px = fx + (tx-fx)*k; a.py = fy + (ty-fy)*k; });
+      await tween(ev.slow ? 1100 : 760, k => { a.px = fx + (tx-fx)*k; a.py = fy + (ty-fy)*k; });
       a.px = tx; a.py = ty; r.x = tx; r.y = ty; r.bat = ev.bat;
       if (!ev.fly) R.tracks.push([fx, fy, tx, ty]);
       seen(ev.seen); (ev.sigs || []).forEach(i => W.sig[i] = 1);
       if (mine) MR.sfx.move();
       break;
     }
-    case 'turn': { const a0 = a.ang; await tween(280, k => a.ang = a0 + 90*ev.sgn*k); a.ang = a0 + 90*ev.sgn; r.dir = ev.dir; r.bat = ev.bat; break; }
+    case 'turn': { const a0 = a.ang; await tween(560, k => a.ang = a0 + 90*ev.sgn*k); a.ang = a0 + 90*ev.sgn; r.dir = ev.dir; r.bat = ev.bat; break; }
     case 'bump': seen(ev.seen); R.addFx({type:'hazard', x:ev.at[0], y:ev.at[1], dur:1300}); a.wob = 1; if (mine) MR.sfx.bump(); await wait(380); a.wob = 0; break;
     case 'stuck': r.stuck = true; W.trapSeen[ev.at[1]*MW + ev.at[0]] = 1; R.addFx({type:'hazard', x:ev.at[0], y:ev.at[1], dur:1500}); if (mine) MR.sfx.bump(); await wait(400); break;
     case 'free': r.stuck = false; break;
-    case 'scan': R.addFx({type:'ring', x:r.x, y:r.y, dur:1000, r:ev.rad + .5}); if (mine) MR.sfx.scan(); await wait(650); seen(ev.seen); ev.sigs.forEach(i => W.sig[i] = 1); ev.traps.forEach(i => W.trapSeen[i] = 1); r.bat = ev.bat; break;
-    case 'analyze': R.addFx({type:'beam', x:r.x, y:r.y, dur:700}); await wait(700); ev.cells.forEach(c => { W.sig[c.i] = 1; W.known[c.i] = 1; }); r.bat = ev.bat; break;
-    case 'drill': { const [x, y] = cell(ev.i); a.busy = 'drill'; R.addFx({type:'dust', x, y, dur:900, parts:MR.dustParts()}); await wait(ev.treasure ? 650 : 900); a.busy = null;
+    case 'scan': R.addFx({type:'ring', x:r.x, y:r.y, dur:1400, r:ev.rad + .5}); if (mine) MR.sfx.scan(); await wait(950); seen(ev.seen); ev.sigs.forEach(i => W.sig[i] = 1); ev.traps.forEach(i => W.trapSeen[i] = 1); r.bat = ev.bat; break;
+    case 'analyze': R.addFx({type:'beam', x:r.x, y:r.y, dur:1000}); await wait(1000); ev.cells.forEach(c => { W.sig[c.i] = 1; W.known[c.i] = 1; }); r.bat = ev.bat; break;
+    case 'drill': { const [x, y] = cell(ev.i); a.busy = 'drill'; R.addFx({type:'dust', x, y, dur:1300, parts:MR.dustParts()}); await wait(ev.treasure ? 1000 : 1300); a.busy = null;
       W.drilled[ev.i] = 1; W.known[ev.i] = 1; W.sig[ev.i] = 1; if (ev.tubes) r.tubes = ev.tubes; if (ev.bat != null) r.bat = ev.bat;
       if (ev.treasure || ev.shiny) R.addFx({type:'confetti', x, y, dur:1400, parts:MR.confetti()});
       if (ev.treasure) st.team.treasures++;
       if (mine) MR.sfx.good(); break; }
     case 'nothing': if (ev.dust) R.addFx({type:'dust', x:r.x, y:r.y, dur:600, parts:MR.dustParts()}); if (ev.bat != null) r.bat = ev.bat; await wait(300); break;
-    case 'dig': if (ev.i != null) { const [x, y] = cell(ev.i); R.addFx({type:'dust', x, y, dur:800, parts:MR.dustParts()}); await wait(700);
+    case 'dig': if (ev.i != null) { const [x, y] = cell(ev.i); R.addFx({type:'dust', x, y, dur:1100, parts:MR.dustParts()}); await wait(1000);
       if (ev.what === 'rock') W.obs[ev.i] = ''; if (ev.what === 'trap') { W.trap[ev.i] = 0; W.trapSeen[ev.i] = 0; } } r.bat = ev.bat; break;
-    case 'charge': R.addFx({type:'sun', x:r.x, y:r.y, dur:1000}); await wait(900); r.bat = ev.bat; break;
+    case 'charge': R.addFx({type:'sun', x:r.x, y:r.y, dur:1300}); await wait(1200); r.bat = ev.bat; break;
     case 'dock': r.bat = ev.bat; r.tubes = []; if (mine && ev.n) MR.sfx.good(); break;
     case 'artifact': { const [x, y] = cell(ev.i); W.drilled[ev.i] = 1; W.known[ev.i] = 1; R.addFx({type:'confetti', x, y, dur:1600, parts:MR.confetti()}); MR.sfx.good(); await wait(500); break; }
     case 'skip': if (mine) markPlan(ev.idx, true); if (mine) log('warn', `${ev.n} remaining step${ev.n > 1 ? 's were' : ' was'} skipped for safety.`); break;
     case 'night': ev.charges.forEach(c => { const q2 = st.rovers.find(x => x.pid === c.pid); if (q2) q2.bat = c.bat; }); st.sol = ev.sol; await wait(250); break;
     case 'win': MR.sfx.win(); break;
+    case 'spawn': ev.cells.forEach(c => { W.res[c.i] = c.res; W.kid[c.i] = 1; W.sig[c.i] = 1; W.known[c.i] = 1; seen(c.seen); W.seen[c.i] = 1; }); await wait(300); break;
     default: await wait(150);
   }
   renderHud();
@@ -518,6 +620,9 @@ async function playSol(timeline, newState){
     UI.notify(notices, myRole() === 'cadet');
   }
   G.planInfo = null;
+  const mineEv = timeline.flat().filter(e => e.pid === G.myPid);
+  const found = mineEv.some(e => e.t === 'drill' || e.t === 'artifact' || (e.t === 'scan' && e.sigs.length) || (e.t === 'analyze' && e.cells.length) || (e.t === 'dock' && e.n) || (e.t === 'move' && e.sigs && e.sigs.length));
+  G.dull = found ? 0 : (G.dull || 0) + 1;
   if (won) {
     const next = MR.MAP_ORDER.filter(k => MR.MAPS[k].unlock === newState.map);
     if (MR.Store.unlock(next)) next.forEach(k => UI.toast('★', '#58cfbe', `New map unlocked: ${MR.MAPS[k].name}`, 'The whole team can explore it now.', 7000));
@@ -532,7 +637,7 @@ async function playSol(timeline, newState){
   if (isHostish()) { broadcast({type:'ready', pids:G.readyPids}); renderTeam(); maybeRun(); }
 }
 function showWin(st){
-  const par = MR.MAPS[st.map].par, s = st.sol <= par ? 3 : st.sol <= Math.ceil(par*1.5) ? 2 : 1;
+  const par = MR.parOf(st), s = st.sol <= par ? 3 : st.sol <= Math.ceil(par*1.5) ? 2 : 1;
   $('winStars').innerHTML = '★'.repeat(s) + `<i>${'★'.repeat(3-s)}</i>`;
   $('winText').textContent = `${MR.MAPS[st.map].name} explored on sol ${st.sol} with ${st.team.score} science points${st.team.treasures ? ` and ${st.team.treasures} treasures` : ''}. Press I to see what you collected.`;
   $('againBtn').hidden = G.mode === 'client';
@@ -582,6 +687,8 @@ $('forceBtn').onclick = () => { if (G.mode === 'host' && G.ready) { log('warn', 
 $('zoomIn').onclick = () => R.zoom(1.25);
 $('zoomOut').onclick = () => R.zoom(.8);
 $('centerBtn').onclick = () => { R.cam.follow = true; };
+G.toggleBig = () => { document.body.classList.toggle('bigmap'); requestAnimationFrame(() => R.resize()); };
+$('bigBtn').onclick = () => G.toggleBig();
 
 /* ---------- keyboard (game) ---------- */
 let tabIdx = 0;
@@ -593,17 +700,21 @@ document.addEventListener('keydown', e => {
   if ((k === 'Enter' || k === ' ') && e.target.closest && e.target.closest('button')) return;
   if (k === 't' || k === 'T') { if (team()) { e.preventDefault(); $('chatIn').focus(); } return; }
   if (k === 'Tab' && (e.target === document.body || !e.target.closest)) { e.preventDefault(); const rs = G.state.rovers; tabIdx = (tabIdx + 1) % rs.length; R.focus(rs[tabIdx].pid, rs[tabIdx].pid === G.myPid); showTip(rs[tabIdx].pid); return; }
-  if (k === 'f' || k === 'F' || k === 'c' || k === 'C') { R.cam.follow = true; return; }
-  if (k === '+' || k === '=') { R.zoom(1.2); return; } if (k === '-' || k === '_') { R.zoom(.83); return; }
-  const pan = {w:[0,-2], a:[-2,0], s:[0,2], d:[2,0], W:[0,-2], A:[-2,0], S:[0,2], D:[2,0]}[k];
-  if (pan) { R.cam.follow = false; R.cam.x += pan[0]; R.cam.y += pan[1]; R.clamp(); return; }
-  if (k === 'Enter') { e.preventDefault(); sendPlan(); return; }
-  if (k === 'Backspace' && role !== 'specialist') { e.preventDefault(); if (!G.ready && G.phase === 'plan' && G.plan.length) { G.plan.pop(); renderPlan(); renderLock(); updateGhost(); } return; }
-  if (role === 'cadet') {
-    const m = {ArrowUp:'forward', ArrowLeft:'left', ArrowRight:'right', ' ':'drill'}[k];
-    if (m) { e.preventDefault(); addCmd(m); }
+  const lk = k.length === 1 ? k.toLowerCase() : k;
+  if (e.shiftKey) {
+    const pan = {w:[0,-2], a:[-2,0], s:[0,2], d:[2,0], ArrowUp:[0,-2], ArrowLeft:[-2,0], ArrowDown:[0,2], ArrowRight:[2,0]}[lk];
+    if (pan) { e.preventDefault(); R.cam.follow = false; R.cam.x += pan[0]; R.cam.y += pan[1]; R.clamp(); }
     return;
   }
-  if (/^[1-9]$/.test(k)) { const c = cmdsForMe()[+k - 1]; if (c) { e.preventDefault(); addCmd(c); } }
+  if (lk === 'f') { R.cam.follow = true; return; }
+  if (lk === 'm') { G.toggleBig(); return; }
+  if (k === '+' || k === '=') { R.zoom(1.2); return; } if (k === '-' || k === '_') { R.zoom(.83); return; }
+  if (k === 'Enter') { e.preventDefault(); sendPlan(); return; }
+  if (k === 'Backspace' && role !== 'specialist') { e.preventDefault(); if (!G.ready && G.phase === 'plan' && G.plan.length) { const last = G.plan[G.plan.length-1]; if (last.arg > 1) last.arg--; else G.plan.pop(); renderPlan(); renderLock(); updateGhost(); } return; }
+  const move = {w:'forward', ArrowUp:'forward', a:'left', ArrowLeft:'left', d:'right', ArrowRight:'right', s:'back', ArrowDown:'back', ' ':'drill'}[lk];
+  const tool = {q:'scan', r:'analyze', g:'dig', c:'charge'}[lk];
+  const cmd = move || tool;
+  if (!cmd || !cmdsForMe().includes(cmd)) return;
+  e.preventDefault(); addCmd(cmd);
 });
 })();

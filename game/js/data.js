@@ -123,16 +123,43 @@ MR.PATCHES = [
   {id:'gusev', name:'Gusev Expedition', icon:'G', desc:'Complete a Gusev expedition', test:s => (s.exp.gusev||0) >= 1},
   {id:'full_crew', name:'Full Crew', icon:'⁂', desc:'Play a team game with 3 or more players', test:s => s.crew3 >= 1},
   {id:'team_player', name:'Team Player', icon:'⇄', desc:'Finish 5 team expeditions', test:s => s.teamWins >= 5},
+  {id:'graduate', name:'Mission Trainee', icon:'✎', desc:'Finish the tutorial', test:s => s.tutorial >= 1},
+  {id:'marathon', name:'Marathon', icon:'∞', desc:'Drive or fly 500 squares', test:s => s.squares + s.flown >= 500},
+  {id:'treasure100', name:'Treasure Legend', icon:'♛', desc:'Find 100 treasures', test:s => s.treasures >= 100},
+  {id:'hauler_100', name:'Supply Chain', icon:'⇉', desc:'Deliver 100 samples', test:s => s.delivered >= 100},
+  {id:'shiny5', name:'Shiny Hunter', icon:'✧', desc:'Find 5 shiny samples', test:s => s.shinies >= 5},
+  {id:'veteran', name:'Mars Veteran', icon:'✺', desc:'Complete 10 expeditions', test:s => Object.values(s.exp).reduce((a,b) => a+b, 0) >= 10},
+  {id:'sticker10', name:'Sticker Fan', icon:'❀', desc:'Collect 10 different stickers', test:s => s.stickerKinds >= 10},
+  {id:'sticker_all', name:'Sticker Master', icon:'✿', desc:'Collect every sticker', test:s => s.stickerKinds >= MR.STICKERS.length},
+  {id:'all_cards', name:'Full Catalog', icon:'▤', desc:'Find every card', test:s => s.cardKinds >= MR.CARD_ORDER.length},
 ];
 
 MR.RANKS = [
   {name:'Trainee', xp:0},
-  {name:'Rover Driver', xp:100},
-  {name:'Field Geologist', xp:300},
-  {name:'Science Lead', xp:700},
-  {name:'Mission Specialist', xp:1300},
-  {name:'Flight Director', xp:2200},
+  {name:'Rover Driver', xp:150},
+  {name:'Field Geologist', xp:450},
+  {name:'Science Lead', xp:1000},
+  {name:'Rover Planner', xp:1800},
+  {name:'Mission Specialist', xp:3000},
+  {name:'Principal Investigator', xp:4600},
+  {name:'Mission Manager', xp:6800},
+  {name:'Flight Director', xp:9500},
+  {name:'Mars Legend', xp:13000},
 ];
+/* Stickers: a big, easy collection for everyone (one per treasure for Cadets, one per delivery or find for others). */
+MR.STICKERS = [
+  ['rocket','🚀','Rocket','C'],['moon','🌙','Moon','C'],['star','⭐','Star','C'],['planet','🪐','Ringed planet','C'],['earth','🌍','Earth','C'],['sun','☀️','Sun','C'],
+  ['comet','☄️','Comet','C'],['satellite','🛰️','Satellite','C'],['telescope','🔭','Telescope','C'],['rock','🪨','Moon rock','C'],['gem','💎','Gem','C'],['magnet','🧲','Magnet','C'],
+  ['battery','🔋','Battery','C'],['antenna','📡','Dish antenna','C'],['mountain','🏔️','Mountain','C'],['volcano','🌋','Volcano','C'],['ice','🧊','Ice','C'],['shooting','🌠','Shooting star','C'],
+  ['astronaut','🧑‍🚀','Astronaut','S'],['ufo','🛸','Flying saucer','S'],['alien','👽','Friendly alien','S'],['galaxy','🌌','Galaxy','S'],['microbe','🦠','Tiny microbe','S'],['robot','🤖','Robot','S'],
+  ['dust','🌪️','Dust devil','S'],['trophy','🏆','Trophy','G'],['crown','👑','Crown','G'],['medal','🏅','Medal','G'],
+  ['heli','🚁','Helicopter','C'],['parachute','🪂','Parachute','C'],['camera','📷','Camera','C'],['wrench','🔧','Wrench','C'],['gear','⚙️','Gear','C'],['toolbox','🧰','Toolbox','C'],
+  ['compass','🧭','Compass','C'],['map','🗺️','Map','C'],['thermo','🌡️','Thermometer','C'],['wind','🌬️','Wind','C'],['desert','🏜️','Desert','C'],['peak','⛰️','Peak','C'],
+  ['drop','💧','Water drop','C'],['sprout','🌱','Sprout','C'],['brick','🧱','Brick','C'],['bulb','💡','Bright idea','C'],['fullmoon','🌕','Full moon','C'],['halfmoon','🌓','Half moon','C'],
+  ['microscope','🔬','Microscope','S'],['testtube','🧪','Test tube','S'],['scientist','🧑‍🔬','Scientist','S'],['sparkle','🌟','Glowing star','S'],['dizzy','💫','Star swirl','S'],['shell','🐚','Lake shell','S'],
+  ['gold1','🥇','Gold medal','G'],['ribbon','🎖️','Honor ribbon','G'],
+].map(([id, e, name, tier]) => ({id, e, name, tier}));
+MR.STICKER_TIER = {C:{name:'Sticker', col:'#9aa7b3'}, S:{name:'Shiny sticker', col:'#6aa8ff'}, G:{name:'Gold sticker', col:'#f0bf5a'}};
 MR.rankOf = xp => { let r = 0; MR.RANKS.forEach((k, i) => { if (xp >= k.xp) r = i; }); return r; };
 
 /* Gameplay perks for Explorer and Specialist, unlocked by rank index. */
@@ -176,7 +203,7 @@ MR.MAPS = {
       {t:'Find organic molecules', kind:'col', res:'organics', of:1},
       {t:`Bring ${2+n} samples to the station`, kind:'deliver', of:2+n},
     ],
-    par:8,
+    par:20, parCadet:14,
   },
   gusev: {
     name:'Gusev Crater', rover:'Spirit', year:'2004–2010', unlock:'jezero',
@@ -190,16 +217,17 @@ MR.MAPS = {
       {t:'Drill sulfate salts', kind:'col', res:'salts', of:1},
       {t:`Bring ${2+n} samples to the station`, kind:'deliver', of:2+n},
     ],
-    par:9,
+    par:26, parCadet:14,
   },
 };
 MR.MAP_ORDER = ['jezero','gusev'];
+MR.parOf = st => st.goals.some(g => g.kind === 'treasure') ? MR.MAPS[st.map].parCadet : MR.MAPS[st.map].par;
 MR.cadetGoals = n => [{t:`Find ${3+2*n} treasures`, kind:'treasure', of:3+2*n}];
 
-const KEYS = 'Keys: I or E opens your inventory, T talks to the team, Tab looks at the next rover, WASD moves the camera, F follows your rover, + and − zoom, Esc closes windows.';
+const KEYS = 'More keys: I or E opens your inventory, T talks to the team, Tab looks at the next rover, Shift + WASD moves the camera, F follows your rover, M makes the map big, + and − zoom, Esc closes windows.';
 MR.HOW = {
-  cadet:['Tap the picture buttons to plan your moves. Each arrow is one square.','Press the big GO button and watch your rover.','Land on a sparkly gem and dig to find treasure!','Press I to open your treasure chest.','Keys: arrow keys add arrows, Space adds dig, Backspace removes, Enter is GO.'],
-  explorer:['Build a plan of up to 12 blocks, then press Send (or Ready in a team game).','Scan shows mystery signals (?). Drive onto one, Analyze it, then Drill to fill a sample tube.','Dunes use more power and can hide sand traps. If you get stuck, Back up 1 square.','Drive onto the station to unload samples and recharge. Each night the solar panels add 30%.','1–9 add commands, Backspace removes the last one, Enter sends.', KEYS],
-  specialist:['Write your plan in Python. Supports rover commands and for loops, up to 40 moves per sol.','Only 6 sample tubes and weaker solar (20% a night). Analyze before you Drill.','Drive onto the station to unload samples and recharge.','Ctrl+Enter sends your program.', KEYS],
+  cadet:['Tap the picture buttons to plan your moves. Each arrow is one square.','Press the big GO button and watch your rover.','Land on a sparkly gem and dig to find treasure!','Press I to open your treasure chest.','Keys: W or ↑ goes forward, A and D turn, Space digs, Backspace removes, Enter is GO. M makes the map big.'],
+  explorer:['Build a plan of up to 12 blocks, then press Send (or Ready in a team game).','Scan shows mystery signals (?). Drive onto one, Analyze it, then Drill to fill a sample tube.','Dunes use more power and can hide sand traps. If you get stuck, Back up 1 square.','Drive onto the station to unload samples and recharge. Each night the solar panels add 30%.','Keys like a PC game: W A S D (or arrows) drive, Q scan, R analyze, Space drill, G dig, C charge. Pressing W again adds a square. Backspace removes, Enter sends.', KEYS],
+  specialist:['Write your plan in Python. Supports rover commands and for loops, up to 40 moves per sol.','Only 6 sample tubes and weaker solar (20% a night). Analyze before you Drill.','Drive onto the station to unload samples and recharge.','Ctrl+Enter sends your program. Click outside the editor to use W A S D, Q, R, Space, G and C to add lines.', KEYS],
 };
 })();
