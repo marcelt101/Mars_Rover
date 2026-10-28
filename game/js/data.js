@@ -40,7 +40,7 @@ MR.ROLES = {
 };
 
 MR.JOBS = {
-  buggy:     {label:'Buggy', roles:['cadet'], desc:'A tough little rover that digs up treasure. It never gets stuck.'},
+  buggy:     {label:'Buggy', roles:['cadet'], desc:'A tough little rover like Sojourner, the first rover on Mars. It digs up treasure and never gets stuck.'},
   heli:      {label:'Helicopter', roles:['cadet'], desc:'Flies over rocks and spots treasure for the team, like Ingenuity.'},
   scout:     {label:'Scout', roles:['explorer','specialist'], desc:'Sees 1 square farther and scans 6 squares wide. Flags finds for the team. In team games it carries 2 fewer tubes.'},
   science:   {label:'Science', roles:['explorer','specialist'], desc:'Analyze identifies every signal within 2 squares.'},

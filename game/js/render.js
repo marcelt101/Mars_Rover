@@ -197,59 +197,121 @@ function wheel(c, x, y, w, h, lod){
     for (let k = 1; k < 5; k++) { const yy = y - h/2 + k*h/5; c.beginPath(); c.moveTo(x - w/2 + w*.12, yy); c.lineTo(x + w/2 - w*.12, yy); c.stroke(); } }
   c.fillStyle = '#8d949c'; c.beginPath(); c.arc(x, y, Math.min(w, h)*.18, 0, Math.PI*2); c.fill();
 }
+/* Perseverance-style rover seen from above, front at the top. Modeled on NASA's top views: a white body (the
+   "warm electronics box"), six aluminum wheels on a dark titanium rocker-bogie, the finned power unit (MMRTG)
+   sticking out at the back, the hexagonal high-gain antenna, the camera mast on the front right and the robotic
+   arm folded across the front. The player's color is a stripe along each side of the deck and the pennant. */
+const WHEEL_Y = [-.36, 0, .36], WHEEL_X = .4;
+function metalWheel(c, x, y, w, h, lod, steer){
+  const g = c.createLinearGradient(x - w/2, 0, x + w/2, 0);
+  g.addColorStop(0, '#80878f'); g.addColorStop(.2, '#b3b9bf'); g.addColorStop(.8, '#a9afb5'); g.addColorStop(1, '#757c84');
+  c.fillStyle = g; rr(c, x - w/2, y - h/2, w, h, Math.min(w, h)*.12); c.fill();
+  c.strokeStyle = '#4a5057'; c.lineWidth = Math.max(.6, w*.06); c.stroke();
+  if (lod >= 2) { /* curved grousers across the tread, like the real wheels */
+    c.strokeStyle = 'rgba(70,76,83,.7)'; c.lineWidth = Math.max(.5, w*.05);
+    for (let k = 1; k < 9; k++) { const yy = y - h/2 + k*h/9; c.beginPath(); c.moveTo(x - w/2 + w*.06, yy); c.quadraticCurveTo(x, yy + h*.035, x + w/2 - w*.06, yy); c.stroke(); } }
+  else if (lod >= 1) { c.fillStyle = 'rgba(70,76,83,.45)'; c.fillRect(x - w/2 + w*.15, y - h*.04, w*.7, h*.08); }
+  if (steer && lod >= 1) { c.fillStyle = '#2b2f34'; c.beginPath(); c.arc(x + (x > 0 ? -1 : 1)*w*.62, y, w*.26, 0, Math.PI*2); c.fill(); }
+}
+function roverShadow(c, r, s){
+  c.fillStyle = 'rgba(30,10,3,.34)';
+  rr(c, -.3*s, -.32*s, .6*s, .62*s, .05*s); c.fill();
+  WHEEL_Y.forEach(y => [-1, 1].forEach(sd => { rr(c, sd*WHEEL_X*s - .09*s, y*s - .12*s, .18*s, .24*s, .04*s); c.fill(); }));
+  rr(c, .06*s, -.42*s, .22*s, .12*s, .03*s); c.fill();
+  rr(c, -.08*s, .24*s, .16*s, .24*s, .04*s); c.fill();
+}
 function drawGroundRover(c, r, a, t, s, lod){
-  const col = MR.colorHex(r.color), P = k => (r.perks || []).includes(k);
-  const ww = P('wide_wheels') ? .21 : .15, wh = .21;
-  // rocker-bogie legs
-  c.strokeStyle = '#9aa1a9'; c.lineWidth = s*.045; c.lineCap = 'round';
-  [-1, 1].forEach(sd => { const X = sd*.4*s;
-    c.beginPath(); c.moveTo(X, -.34*s); c.lineTo(sd*.31*s, -.1*s); c.lineTo(sd*.36*s, .18*s); c.lineTo(X, 0); c.moveTo(sd*.36*s, .18*s); c.lineTo(X, .34*s); c.stroke();
-    if (lod >= 1) { c.fillStyle = '#c7ccd2'; c.beginPath(); c.arc(sd*.31*s, -.1*s, s*.035, 0, Math.PI*2); c.fill(); } });
-  c.lineCap = 'butt';
-  [-.34, 0, .34].forEach(y => [-1, 1].forEach(sd => wheel(c, sd*.4*s, y*s, ww*s, wh*s, lod)));
-  // power unit (MMRTG) at the back
-  if (lod >= 1) { c.save(); c.translate(0, .33*s); c.rotate(.12); c.fillStyle = '#7f858c'; rr(c, -.1*s, -.07*s, .2*s, .16*s, .03*s); c.fill();
-    if (lod >= 2) { c.strokeStyle = '#5d636a'; c.lineWidth = s*.015; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(k*.035*s, -.07*s); c.lineTo(k*.035*s, .09*s); c.stroke(); } }
-    c.restore(); }
-  if (r.job === 'excavator') { c.fillStyle = '#c9ced4'; rr(c, -.32*s, -.62*s, .64*s, .13*s, .03*s); c.fill(); c.fillStyle = col; c.fillRect(-.32*s, -.62*s, .64*s, .035*s);
-    c.strokeStyle = '#8d949c'; c.lineWidth = s*.04; c.beginPath(); c.moveTo(-.18*s, -.5*s); c.lineTo(-.14*s, -.28*s); c.moveTo(.18*s, -.5*s); c.lineTo(.14*s, -.28*s); c.stroke(); }
-  // body
-  const g = c.createLinearGradient(-.26*s, -.3*s, .26*s, .26*s); g.addColorStop(0, '#f4efe6'); g.addColorStop(1, '#cfc6b6');
-  c.fillStyle = g; rr(c, -.26*s, -.3*s, .52*s, .56*s, .06*s); c.fill();
-  c.fillStyle = col; c.fillRect(-.26*s, -.3*s, .045*s, .56*s); c.fillRect(.215*s, -.3*s, .045*s, .56*s);
-  if (lod >= 1) { c.fillStyle = 'rgba(40,48,58,.18)'; rr(c, -.18*s, -.2*s, .36*s, .38*s, .03*s); c.fill(); }
-  // deck gear
-  if (lod >= 1) {
-    const hga = P('hg_antenna'), hr = (hga ? .11 : .07)*s, hx = -.1*s, hy = .06*s;
-    c.fillStyle = hga ? '#e8c46a' : '#aab1b8'; c.beginPath(); for (let k = 0; k < 6; k++) { const an = k/6*Math.PI*2 + .5; c.lineTo(hx + Math.cos(an)*hr, hy + Math.sin(an)*hr); } c.closePath(); c.fill();
-    if (lod >= 2) { c.strokeStyle = hga ? '#a7832e' : '#7d848b'; c.lineWidth = s*.012; c.stroke(); c.fillStyle = '#5d636a'; c.beginPath(); c.arc(hx, hy, hr*.25, 0, Math.PI*2); c.fill(); }
-    if (P('better_radio')) { c.strokeStyle = '#c9ced4'; c.lineWidth = s*.02; c.beginPath(); c.moveTo(.12*s, .14*s); c.lineTo(.12*s, -.02*s); c.stroke(); c.fillStyle = col; c.beginPath(); c.arc(.12*s, -.03*s, s*.03, 0, Math.PI*2); c.fill(); }
-    else { c.fillStyle = '#9aa1a9'; c.beginPath(); c.arc(.12*s, .12*s, s*.025, 0, Math.PI*2); c.fill(); }
-    if (P('big_battery')) { c.fillStyle = '#4e5e52'; rr(c, -.22*s, .14*s, .14*s, .09*s, .02*s); c.fill(); c.fillStyle = '#86d48f'; c.fillRect(-.2*s, .175*s, .1*s, .02*s); }
-    if (r.job === 'hauler') { c.fillStyle = '#8d949c'; rr(c, -.04*s, -.14*s, .2*s, .24*s, .02*s); c.fill();
-      for (let k = 0; k < 8; k++) { const id = (r.tubes || [])[k], x = -.02*s + (k % 4)*.045*s, y = -.11*s + Math.floor(k/4)*.11*s;
-        c.fillStyle = id ? MR.CARDS[id].color : '#3a4048'; rr(c, x, y, .03*s, .08*s, .01*s); c.fill(); } }
-  }
-  // robotic arm, folded across the front (Science stretches it out)
-  if (lod >= 1) { const sci = r.job === 'science', ex = sci ? .02*s : .12*s, ey = sci ? -.6*s : -.37*s;
-    c.strokeStyle = '#a7aeb6'; c.lineWidth = s*.04; c.lineCap = 'round'; c.beginPath(); c.moveTo(-.2*s, -.28*s); c.lineTo(sci ? -.12*s : -.05*s, sci ? -.45*s : -.36*s); c.lineTo(ex, ey); c.stroke(); c.lineCap = 'butt';
-    c.fillStyle = '#c9ced4'; c.beginPath(); c.arc(ex, ey, s*(sci ? .08 : .06), 0, Math.PI*2); c.fill();
-    if (lod >= 2) { c.fillStyle = '#5d636a'; c.beginPath(); c.arc(ex, ey, s*.025, 0, Math.PI*2); c.fill(); }
-    if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.05; c.beginPath(); c.arc(ex, ey, s*.1, t/60, t/60 + 4); c.stroke(); } }
-  // camera mast and head
-  const mx = .14*s, my = -.2*s, tall = r.job === 'scout';
-  c.fillStyle = '#b8bec5'; c.beginPath(); c.arc(mx, my, s*.04, 0, Math.PI*2); c.fill();
-  c.save(); c.translate(mx, my - (tall ? .1 : .06)*s);
-  const sc = P('supercam'), hw = (sc ? .22 : .17)*s, hh = (sc ? .1 : .08)*s;
-  c.fillStyle = 'rgba(0,0,0,.25)'; rr(c, -hw/2 + s*.02, -hh/2 + s*.03, hw, hh, s*.02); c.fill();
-  c.fillStyle = '#e9e4da'; rr(c, -hw/2, -hh/2, hw, hh, s*.02); c.fill();
-  if (lod >= 1) { c.fillStyle = '#1d2a38'; [-1, 1].forEach(sd => { c.beginPath(); c.arc(sd*hw*.28, -hh*.1, s*.025, 0, Math.PI*2); c.fill(); });
-    if (sc) { c.fillStyle = '#ff5a4f'; c.beginPath(); c.arc(0, -hh*.15, s*.03, 0, Math.PI*2); c.fill(); }
-    if (P('sharp_eyes')) { c.fillStyle = '#c9ced4'; [-1, 1].forEach(sd => { rr(c, sd*(hw/2 + s*.01) - (sd < 0 ? s*.05 : 0), -hh*.35, s*.05, s*.045, s*.01); c.fill(); }); } }
+  const col = MR.colorHex(r.color), P = k => (r.perks || []).includes(k), sci = r.job === 'science';
+  const ww = (P('wide_wheels') ? .19 : .14)*s, wh = .22*s;
+  // rocker-bogie suspension (dark titanium tubes)
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  [-1, 1].forEach(sd => { const X = sd*WHEEL_X*s;
+    c.strokeStyle = '#2c3035'; c.lineWidth = s*.05;
+    c.beginPath(); c.moveTo(X, WHEEL_Y[0]*s); c.lineTo(sd*.33*s, -.12*s); c.lineTo(sd*.37*s, .17*s); c.stroke();
+    c.beginPath(); c.moveTo(X, 0); c.lineTo(sd*.37*s, .17*s); c.lineTo(X, WHEEL_Y[2]*s); c.stroke();
+    if (lod >= 1) { c.strokeStyle = 'rgba(150,158,166,.5)'; c.lineWidth = s*.014;
+      c.beginPath(); c.moveTo(X, WHEEL_Y[0]*s); c.lineTo(sd*.33*s, -.12*s); c.lineTo(sd*.37*s, .17*s); c.lineTo(X, WHEEL_Y[2]*s); c.stroke();
+      c.fillStyle = '#4a5057'; [[.33, -.12], [.37, .17]].forEach(([px, py]) => { c.beginPath(); c.arc(sd*px*s, py*s, s*.032, 0, Math.PI*2); c.fill(); }); } });
+  WHEEL_Y.forEach((y, i) => [-1, 1].forEach(sd => metalWheel(c, sd*WHEEL_X*s, y*s, ww, wh, lod, i !== 1)));
+  // power unit (MMRTG) at the back: dark core with cooling fins
+  c.save(); c.translate(0, .36*s);
+  c.fillStyle = '#2a2e33'; rr(c, -.05*s, -.12*s, .1*s, .24*s, .03*s); c.fill();
+  if (lod >= 1) { c.strokeStyle = '#7c838b'; c.lineWidth = s*.016;
+    for (let k = -2; k <= 2; k++) { const y = k*.045*s; c.beginPath(); c.moveTo(-.11*s, y); c.lineTo(.11*s, y); c.stroke(); }
+    c.fillStyle = '#3a3f45'; rr(c, -.05*s, -.12*s, .1*s, .24*s, .03*s); c.fill(); c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(-.035*s, -.11*s, .02*s, .22*s); }
   c.restore();
-  // team flag on the back corner
-  c.strokeStyle = '#8d949c'; c.lineWidth = s*.02; c.beginPath(); c.moveTo(-.21*s, .22*s); c.lineTo(-.21*s, .5*s); c.stroke();
-  c.fillStyle = col; c.beginPath(); c.moveTo(-.21*s, .5*s); c.lineTo(-.03*s, .44*s); c.lineTo(-.21*s, .38*s); c.closePath(); c.fill();
+  if (r.job === 'excavator') { // dozer blade on short arms
+    c.strokeStyle = '#4a5057'; c.lineWidth = s*.04; c.beginPath(); c.moveTo(-.16*s, -.3*s); c.lineTo(-.18*s, -.5*s); c.moveTo(.16*s, -.3*s); c.lineTo(.18*s, -.5*s); c.stroke();
+    const bg = c.createLinearGradient(0, -.62*s, 0, -.5*s); bg.addColorStop(0, '#d3d7db'); bg.addColorStop(1, '#8a9097');
+    c.fillStyle = bg; rr(c, -.34*s, -.62*s, .68*s, .12*s, .025*s); c.fill(); c.strokeStyle = '#4a5057'; c.lineWidth = s*.012; c.stroke();
+    if (lod >= 1) { c.fillStyle = col; c.fillRect(-.3*s, -.535*s, .6*s, .025*s); } }
+  // body: white box with a slightly darker rim (its sides), deck panels and a little gold foil
+  const bx = -.27*s, by = -.3*s, bw = .54*s, bh = .56*s;
+  c.fillStyle = '#9ea4ab'; rr(c, bx, by, bw, bh, .035*s); c.fill();
+  const g = c.createLinearGradient(bx, by, bx + bw, by + bh); g.addColorStop(0, '#f3f4f5'); g.addColorStop(1, '#c9cdd2');
+  c.fillStyle = g; rr(c, bx + .025*s, by + .025*s, bw - .05*s, bh - .05*s, .025*s); c.fill();
+  c.fillStyle = col; c.fillRect(bx + .028*s, by + .06*s, .03*s, bh - .12*s); c.fillRect(bx + bw - .058*s, by + .06*s, .03*s, bh - .12*s);
+  if (lod >= 1) {
+    c.strokeStyle = 'rgba(90,98,108,.35)'; c.lineWidth = Math.max(.5, s*.008);
+    c.beginPath(); c.moveTo(bx + .07*s, -.02*s); c.lineTo(bx + bw - .07*s, -.02*s); c.moveTo(0, -.02*s); c.lineTo(0, by + bh - .04*s); c.stroke();
+    c.fillStyle = 'rgba(120,128,138,.18)'; c.fillRect(bx + .03*s, .02*s, bw - .06*s, by + bh - .045*s - .02*s);
+    const gold = c.createLinearGradient(.02*s, -.2*s, .14*s, -.08*s); gold.addColorStop(0, '#e2c06a'); gold.addColorStop(1, '#a8812f');
+    c.fillStyle = gold; rr(c, -.04*s, -.25*s, .13*s, .08*s, .01*s); c.fill();
+    c.fillStyle = '#30353b'; rr(c, .03*s, .05*s, .09*s, .06*s, .008*s); c.fill();
+    c.fillStyle = '#5d646c'; rr(c, .03*s, .14*s, .14*s, .035*s, .008*s); c.fill();
+    if (lod >= 2) { c.fillStyle = '#9aa1a8'; [[-.2, -.24], [.2, -.03], [-.03, .2]].forEach(([qx, qy]) => { c.beginPath(); c.arc(qx*s, qy*s, s*.012, 0, Math.PI*2); c.fill(); });
+      c.strokeStyle = 'rgba(60,66,72,.45)'; c.lineWidth = s*.006; c.beginPath(); c.moveTo(-.2*s, -.06*s); c.quadraticCurveTo(-.05*s, .0, .03*s, .08*s); c.stroke(); }
+    // differential bar across the deck that links the two rockers
+    c.strokeStyle = '#2c3035'; c.lineWidth = s*.03; c.beginPath(); c.moveTo(-.33*s, -.12*s); c.lineTo(-.2*s, -.1*s); c.lineTo(.2*s, -.1*s); c.lineTo(.33*s, -.12*s); c.stroke();
+    c.fillStyle = '#4a5057'; c.beginPath(); c.arc(0, -.1*s, s*.028, 0, Math.PI*2); c.fill();
+  }
+  // high-gain antenna: hexagonal dish on a gimbal (gold when upgraded)
+  if (lod >= 1) {
+    const hga = P('hg_antenna'), hr = (hga ? .11 : .085)*s, hx = -.12*s, hy = .13*s;
+    c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); for (let k = 0; k < 6; k++) { const an = k/6*Math.PI*2 + .5; c.lineTo(hx + s*.02 + Math.cos(an)*hr, hy + s*.025 + Math.sin(an)*hr); } c.closePath(); c.fill();
+    const hg = c.createLinearGradient(hx - hr, hy - hr, hx + hr, hy + hr); hg.addColorStop(0, hga ? '#f0d488' : '#d5d9dd'); hg.addColorStop(1, hga ? '#a8812f' : '#8e959c');
+    c.fillStyle = hg; c.beginPath(); for (let k = 0; k < 6; k++) { const an = k/6*Math.PI*2 + .5; c.lineTo(hx + Math.cos(an)*hr, hy + Math.sin(an)*hr); } c.closePath(); c.fill();
+    c.strokeStyle = hga ? '#8a6a24' : '#646b72'; c.lineWidth = Math.max(.5, s*.01); c.stroke();
+    if (lod >= 2) { c.beginPath(); for (let k = 0; k < 6; k++) { const an = k/6*Math.PI*2 + .5; c.lineTo(hx + Math.cos(an)*hr*.55, hy + Math.sin(an)*hr*.55); } c.closePath(); c.stroke(); }
+    // UHF antenna (or the taller Better radio mast) with the team pennant
+    const ux = .2*s, uy = .2*s, L = (P('better_radio') ? .2 : .15)*s;
+    c.fillStyle = '#7d848b'; c.beginPath(); c.arc(ux, uy, s*(P('better_radio') ? .03 : .024), 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#4a5057'; c.lineWidth = s*.014; c.beginPath(); c.moveTo(ux, uy); c.lineTo(ux + .03*s, uy + L); c.stroke();
+    c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.moveTo(ux + .05*s, uy + L + .02*s); c.lineTo(ux + .2*s, uy + L - .02*s); c.lineTo(ux + .05*s, uy + L - .08*s); c.closePath(); c.fill();
+    c.fillStyle = col; c.beginPath(); c.moveTo(ux + .03*s, uy + L); c.lineTo(ux + .18*s, uy + L - .04*s); c.lineTo(ux + .03*s, uy + L - .1*s); c.closePath(); c.fill();
+    if (P('big_battery')) { c.fillStyle = '#3d4a42'; rr(c, -.21*s, -.05*s, .12*s, .055*s, .01*s); c.fill(); c.fillStyle = '#86d48f'; c.fillRect(-.195*s, -.03*s, .08*s, .015*s); }
+    if (r.job === 'hauler') { // sample tube rack: each tube shows the color of its sample
+      c.fillStyle = '#3a3f45'; rr(c, -.03*s, -.13*s, .23*s, .1*s, .015*s); c.fill();
+      for (let k = 0; k < 8; k++) { const id = (r.tubes || [])[k]; c.fillStyle = id ? MR.CARDS[id].color : '#9aa1a8'; rr(c, -.015*s + k*.026*s, -.115*s, .018*s, .07*s, .006*s); c.fill(); } }
+  } else { c.fillStyle = col; c.fillRect(-.27*s, .22*s, .54*s, .05*s); }
+  // robotic arm folded across the front, with the turret (coring drill and instruments). Science stretches it out.
+  { const ex = sci ? .03*s : .1*s, ey = sci ? -.62*s : -.38*s, sh = [-.21*s, -.3*s], el = sci ? [-.14*s, -.48*s] : [-.17*s, -.4*s];
+    c.strokeStyle = '#5a6067'; c.lineWidth = s*.055; c.beginPath(); c.moveTo(...sh); c.lineTo(...el); c.lineTo(ex, ey); c.stroke();
+    c.strokeStyle = '#dfe2e5'; c.lineWidth = s*.035; c.beginPath(); c.moveTo(...sh); c.lineTo(...el); c.lineTo(ex, ey); c.stroke();
+    if (lod >= 1) { c.fillStyle = '#3a3f45'; [sh, el].forEach(([jx, jy]) => { c.beginPath(); c.arc(jx, jy, s*.03, 0, Math.PI*2); c.fill(); }); }
+    const tr = s*(sci ? .085 : .07);
+    c.fillStyle = '#4a5057'; c.beginPath(); c.arc(ex, ey, tr, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#c4c9ce'; c.beginPath(); c.arc(ex, ey, tr*.72, 0, Math.PI*2); c.fill();
+    if (lod >= 1) { c.fillStyle = '#2a2e33'; c.fillRect(ex + tr*.35, ey - tr*.95, tr*.35, tr*.9); c.fillStyle = '#e2c06a'; c.fillRect(ex - tr*.8, ey - tr*.25, tr*.45, tr*.5); c.fillStyle = '#2a2e33'; c.beginPath(); c.arc(ex, ey, tr*.22, 0, Math.PI*2); c.fill(); }
+    if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.04; c.beginPath(); c.arc(ex, ey, s*.11, t/60, t/60 + 4); c.stroke(); } }
+  if (lod >= 1 && P('sharp_eyes')) { c.fillStyle = '#1b222b'; [-.12, -.06, .06, .12].forEach(x => { c.beginPath(); c.arc(x*s, -.285*s, s*.014, 0, Math.PI*2); c.fill(); }); }
+  // remote sensing mast and its head (Mastcam-Z eyes and the SuperCam window)
+  const mx = .16*s, my = -.21*s, up = r.job === 'scout' ? .13*s : .09*s, sc = P('supercam');
+  c.fillStyle = '#8e959c'; c.beginPath(); c.arc(mx, my, s*.035, 0, Math.PI*2); c.fill();
+  c.strokeStyle = '#b9bec4'; c.lineWidth = s*.035; c.beginPath(); c.moveTo(mx, my); c.lineTo(mx, my - up); c.stroke();
+  c.save(); c.translate(mx, my - up);
+  const hw = (sc ? .21 : .18)*s, hh = .085*s;
+  c.fillStyle = 'rgba(0,0,0,.28)'; rr(c, -hw/2 + s*.025, -hh/2 + s*.035, hw, hh, s*.015); c.fill();
+  const mg = c.createLinearGradient(0, -hh/2, 0, hh/2); mg.addColorStop(0, '#f6f7f8'); mg.addColorStop(1, '#c3c8cd');
+  c.fillStyle = mg; rr(c, -hw/2, -hh/2, hw, hh, s*.015); c.fill(); c.strokeStyle = '#7d848b'; c.lineWidth = Math.max(.5, s*.008); c.stroke();
+  if (lod >= 1) {
+    c.fillStyle = '#2a2f36'; rr(c, -hw*.18, -hh*.42, hw*.36, hh*.62, s*.01); c.fill();
+    c.fillStyle = sc ? '#ff5a4f' : '#5f8fb3'; c.beginPath(); c.arc(0, -hh*.12, s*(sc ? .022 : .016), 0, Math.PI*2); c.fill();
+    c.fillStyle = '#11161c'; [-1, 1].forEach(sd => { rr(c, sd*hw*.36 - s*.018, -hh*.5 - s*.006, s*.036, s*.026, s*.006); c.fill(); });
+    if (P('sharp_eyes') && lod >= 2) { c.fillStyle = '#11161c'; [-1, 1].forEach(sd => { c.beginPath(); c.arc(sd*hw*.2, hh*.25, s*.01, 0, Math.PI*2); c.fill(); }); }
+  }
+  c.restore();
+  c.lineCap = 'butt'; c.lineJoin = 'miter';
 }
 /* Apollo Lunar Roving Vehicle, seen from above: open frame, wire-mesh wheels, two astronauts, umbrella antenna. */
 function drawLRV(c, r, a, t, s, lod){
@@ -275,18 +337,30 @@ function drawLRV(c, r, a, t, s, lod){
   c.fillStyle = col; c.beginPath(); c.moveTo(-.26*s, .6*s); c.lineTo(-.08*s, .54*s); c.lineTo(-.26*s, .48*s); c.closePath(); c.fill();
   if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.05; c.beginPath(); c.arc(0, -.55*s, s*.09, t/60, t/60 + 4); c.stroke(); }
 }
+/* The Cadet's rover, styled on Sojourner (Mars Pathfinder, 1997): a small six-wheeled rover with a flat solar
+   panel on top, cameras at the front and a whip antenna. The solar panel frame is the player's color. */
 function drawBuggy(c, r, a, t, s, lod){
-  const col = MR.colorHex(r.color);
-  [[-.31, -.25], [.31, -.25], [-.31, .27], [.31, .27]].forEach(([x, y]) => wheel(c, x*s, y*s, .2*s, .27*s, lod));
-  c.strokeStyle = '#9aa1a9'; c.lineWidth = s*.05; c.beginPath(); c.moveTo(-.31*s, -.25*s); c.lineTo(.31*s, -.25*s); c.moveTo(-.31*s, .27*s); c.lineTo(.31*s, .27*s); c.stroke();
-  const g = c.createRadialGradient(-.08*s, -.12*s, s*.02, 0, 0, s*.38); g.addColorStop(0, '#ffffff'); g.addColorStop(.25, col); g.addColorStop(1, col);
-  c.fillStyle = g; rr(c, -.23*s, -.32*s, .46*s, .62*s, .16*s); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(0, -.14*s, .13*s, .1*s, 0, 0, Math.PI*2); c.fill();
-  c.fillStyle = '#1d2a38'; c.beginPath(); c.arc(0, -.14*s, .055*s, 0, Math.PI*2); c.fill();
-  if (lod >= 1) { c.fillStyle = '#fff'; c.beginPath(); c.arc(-.02*s, -.16*s, .018*s, 0, Math.PI*2); c.fill(); }
-  c.strokeStyle = '#e6ecf1'; c.lineWidth = s*.03; c.beginPath(); c.moveTo(.1*s, .14*s); c.lineTo(.18*s, .44*s); c.stroke();
-  c.fillStyle = '#f2d15c'; c.beginPath(); for (let k = 0; k < 10; k++) { const rad = (k % 2 ? .03 : .07)*s, an = k/10*Math.PI*2 - Math.PI/2; c.lineTo(.18*s + Math.cos(an)*rad, .46*s + Math.sin(an)*rad); } c.closePath(); c.fill();
-  if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.05; c.beginPath(); c.arc(0, -.4*s, s*.1, t/60, t/60 + 4); c.stroke(); }
+  const col = MR.colorHex(r.color), ys = [-.28, 0, .28];
+  c.strokeStyle = '#2c3035'; c.lineWidth = s*.045; c.lineCap = 'round';
+  [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd*.34*s, ys[0]*s); c.lineTo(sd*.3*s, -.06*s); c.lineTo(sd*.34*s, ys[2]*s); c.moveTo(sd*.3*s, .1*s); c.lineTo(sd*.34*s, 0); c.stroke(); });
+  c.lineCap = 'butt';
+  ys.forEach(y => [-1, 1].forEach(sd => metalWheel(c, sd*.34*s, y*s, .14*s, .19*s, lod, false)));
+  // body under the panel, with the front camera pair
+  c.fillStyle = '#9ea4ab'; rr(c, -.2*s, -.3*s, .4*s, .58*s, .03*s); c.fill();
+  c.fillStyle = '#d9dcdf'; rr(c, -.14*s, -.4*s, .28*s, .1*s, .02*s); c.fill();
+  c.fillStyle = '#11161c'; [-1, 1].forEach(sd => { c.beginPath(); c.arc(sd*.07*s, -.37*s, s*.022, 0, Math.PI*2); c.fill(); });
+  // solar panel: dark blue cells inside a frame in the player's color
+  c.fillStyle = col; rr(c, -.27*s, -.29*s, .54*s, .52*s, .04*s); c.fill();
+  const pg = c.createLinearGradient(-.24*s, -.26*s, .24*s, .2*s); pg.addColorStop(0, '#2d4a78'); pg.addColorStop(.5, '#1c2f52'); pg.addColorStop(1, '#253f69');
+  c.fillStyle = pg; c.fillRect(-.235*s, -.255*s, .47*s, .45*s);
+  if (lod >= 1) { c.strokeStyle = 'rgba(150,180,230,.35)'; c.lineWidth = Math.max(.5, s*.008);
+    for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(-.235*s + k*.47*s/4, -.255*s); c.lineTo(-.235*s + k*.47*s/4, .195*s); c.stroke(); }
+    for (let k = 1; k < 5; k++) { c.beginPath(); c.moveTo(-.235*s, -.255*s + k*.45*s/5); c.lineTo(.235*s, -.255*s + k*.45*s/5); c.stroke(); }
+    c.fillStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.moveTo(-.235*s, -.255*s); c.lineTo(-.05*s, -.255*s); c.lineTo(-.235*s, -.02*s); c.closePath(); c.fill(); }
+  // whip antenna with a star on top (Cadets love the star)
+  c.strokeStyle = '#c9ced4'; c.lineWidth = s*.025; c.beginPath(); c.moveTo(.16*s, .2*s); c.lineTo(.2*s, .44*s); c.stroke();
+  c.fillStyle = '#f2d15c'; c.beginPath(); for (let k = 0; k < 10; k++) { const rad = (k % 2 ? .028 : .065)*s, an = k/10*Math.PI*2 - Math.PI/2; c.lineTo(.2*s + Math.cos(an)*rad, .46*s + Math.sin(an)*rad); } c.closePath(); c.fill();
+  if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.05; c.beginPath(); c.arc(0, -.44*s, s*.1, t/60, t/60 + 4); c.stroke(); }
 }
 function drawHeli(c, r, a, t, s, lod){
   const col = MR.colorHex(r.color);
@@ -307,7 +381,7 @@ R.drawPreview = (cv, r) => {
   c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
   const s = cv.width*.62; c.save(); c.translate(cv.width/2, cv.height/2);
   const moon = R.view && MR.MAPS[R.view.map].airless;
-  if (r.job === 'heli') drawHeli(c, r, {}, performance.now(), s, 2); else if (r.job === 'buggy') drawBuggy(c, r, {}, 0, s, 2); else if (r.job === 'lab') drawLab(c, r, s, 2); else if (moon) drawLRV(c, r, {}, 0, s, 2); else drawGroundRover(c, r, {}, 0, s, 2);
+  if (r.job === 'heli') drawHeli(c, r, {}, performance.now(), s, 2); else if (r.job === 'buggy') drawBuggy(c, r, {}, 0, s, 2); else if (r.job === 'lab') drawLab(c, r, s, 2); else if (moon) drawLRV(c, r, {}, 0, s, 2); else { c.save(); c.translate(s*.05, s*.06); roverShadow(c, r, s); c.restore(); drawGroundRover(c, r, {}, 0, s, 2); }
   if ((r.dust || 0) > 10) { c.fillStyle = `rgba(200,140,90,${Math.min(.5, r.dust/200)})`; c.beginPath(); c.arc(0, 0, s*.45, 0, Math.PI*2); c.fill(); }
   c.restore();
 };
@@ -325,7 +399,10 @@ function drawRover(c, r, a, t, ts, ghost){
   c.save(); c.translate(cx, cy);
   if (ghost) c.globalAlpha = .35;
   if (heli) { c.fillStyle='rgba(40,12,4,0.28)'; c.beginPath(); c.ellipse(s*.12, s*.25, s*.32, s*.17, 0, 0, Math.PI*2); c.fill(); c.translate(0, -s*.12); }
-  else { c.fillStyle='rgba(40,12,4,0.32)'; c.beginPath(); c.ellipse(s*.06,s*.08,s*.5,s*.5,0,0,Math.PI*2); c.fill(); }
+  const moon0 = R.view && MR.MAPS[R.view.map].airless, perse = !heli && r.job !== 'buggy' && r.job !== 'lab' && !moon0;
+  if (perse) { c.save(); c.translate(s*.07, s*.09); c.rotate(a.ang*Math.PI/180); roverShadow(c, r, s); c.restore(); }
+  else if (r.job === 'buggy') { c.save(); c.translate(s*.06, s*.08); c.rotate(a.ang*Math.PI/180); c.fillStyle = 'rgba(30,10,3,.34)'; rr(c, -.42*s, -.4*s, .84*s, .72*s, .06*s); c.fill(); c.restore(); }
+  else if (!heli) { c.fillStyle='rgba(40,12,4,0.32)'; c.beginPath(); c.ellipse(s*.06,s*.08,s*.5,s*.5,0,0,Math.PI*2); c.fill(); }
   c.rotate(a.ang*Math.PI/180);
   if (a.busy || a.wob > 0) c.translate((Math.random()-.5)*s*.03, (Math.random()-.5)*s*.03);
   const moon = R.view && MR.MAPS[R.view.map].airless;
