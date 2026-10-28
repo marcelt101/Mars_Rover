@@ -202,13 +202,14 @@ function wheel(c, x, y, w, h, lod){
    sticking out at the back, the hexagonal high-gain antenna, the camera mast on the front right and the robotic
    arm folded across the front. The player's color is a stripe along each side of the deck and the pennant. */
 const WHEEL_Y = [-.36, 0, .36], WHEEL_X = .4;
-function metalWheel(c, x, y, w, h, lod, steer){
+function metalWheel(c, x, y, w, h, lod, steer, dark){
   const g = c.createLinearGradient(x - w/2, 0, x + w/2, 0);
-  g.addColorStop(0, '#80878f'); g.addColorStop(.2, '#b3b9bf'); g.addColorStop(.8, '#a9afb5'); g.addColorStop(1, '#757c84');
+  if (dark) { g.addColorStop(0, '#3b4047'); g.addColorStop(.25, '#6a7178'); g.addColorStop(.75, '#5f666d'); g.addColorStop(1, '#353a40'); }
+  else { g.addColorStop(0, '#80878f'); g.addColorStop(.2, '#b3b9bf'); g.addColorStop(.8, '#a9afb5'); g.addColorStop(1, '#757c84'); }
   c.fillStyle = g; rr(c, x - w/2, y - h/2, w, h, Math.min(w, h)*.12); c.fill();
   c.strokeStyle = '#4a5057'; c.lineWidth = Math.max(.6, w*.06); c.stroke();
   if (lod >= 2) { /* curved grousers across the tread, like the real wheels */
-    c.strokeStyle = 'rgba(70,76,83,.7)'; c.lineWidth = Math.max(.5, w*.05);
+    c.strokeStyle = dark ? 'rgba(150,158,166,.55)' : 'rgba(70,76,83,.7)'; c.lineWidth = Math.max(.5, w*.05);
     for (let k = 1; k < 9; k++) { const yy = y - h/2 + k*h/9; c.beginPath(); c.moveTo(x - w/2 + w*.06, yy); c.quadraticCurveTo(x, yy + h*.035, x + w/2 - w*.06, yy); c.stroke(); } }
   else if (lod >= 1) { c.fillStyle = 'rgba(70,76,83,.45)'; c.fillRect(x - w/2 + w*.15, y - h*.04, w*.7, h*.08); }
   if (steer && lod >= 1) { c.fillStyle = '#2b2f34'; c.beginPath(); c.arc(x + (x > 0 ? -1 : 1)*w*.62, y, w*.26, 0, Math.PI*2); c.fill(); }
@@ -331,7 +332,7 @@ function drawGroundRover(c, r, a, t, s, lod){
     if (lod >= 1) { c.strokeStyle = 'rgba(150,158,166,.5)'; c.lineWidth = s*.014;
       c.beginPath(); c.moveTo(X, WHEEL_Y[0]*s); c.lineTo(sd*.33*s, -.12*s); c.lineTo(sd*.37*s, .17*s); c.lineTo(X, WHEEL_Y[2]*s); c.stroke();
       c.fillStyle = '#4a5057'; [[.33, -.12], [.37, .17]].forEach(([px, py]) => { c.beginPath(); c.arc(sd*px*s, py*s, s*.032, 0, Math.PI*2); c.fill(); }); } });
-  WHEEL_Y.forEach((y, i) => [-1, 1].forEach(sd => metalWheel(c, sd*WHEEL_X*s, y*s, ww, wh, lod, i !== 1)));
+  WHEEL_Y.forEach((y, i) => [-1, 1].forEach(sd => metalWheel(c, sd*WHEEL_X*s, y*s, ww, wh, lod, i !== 1, true)));
   // power unit (MMRTG) at the back: dark core with cooling fins
   c.save(); c.translate(0, .36*s);
   c.fillStyle = '#2a2e33'; rr(c, -.05*s, -.12*s, .1*s, .24*s, .03*s); c.fill();
@@ -360,6 +361,8 @@ function drawGroundRover(c, r, a, t, s, lod){
     c.fillStyle = '#5d646c'; rr(c, .03*s, .14*s, .14*s, .035*s, .008*s); c.fill();
     if (lod >= 2) { c.fillStyle = '#9aa1a8'; [[-.2, -.24], [.2, -.03], [-.03, .2]].forEach(([qx, qy]) => { c.beginPath(); c.arc(qx*s, qy*s, s*.012, 0, Math.PI*2); c.fill(); });
       c.strokeStyle = 'rgba(60,66,72,.45)'; c.lineWidth = s*.006; c.beginPath(); c.moveTo(-.2*s, -.06*s); c.quadraticCurveTo(-.05*s, .0, .03*s, .08*s); c.stroke(); }
+    // copper-colored cable harnesses, like on the real deck
+    c.strokeStyle = '#b8643a'; c.lineWidth = s*.012; c.beginPath(); c.moveTo(-.22*s, -.2*s); c.quadraticCurveTo(-.05*s, -.15*s, .1*s, -.2*s); c.moveTo(.2*s, .02*s); c.quadraticCurveTo(.12*s, .12*s, .2*s, .2*s); c.stroke();
     // differential bar across the deck that links the two rockers
     c.strokeStyle = '#2c3035'; c.lineWidth = s*.03; c.beginPath(); c.moveTo(-.33*s, -.12*s); c.lineTo(-.2*s, -.1*s); c.lineTo(.2*s, -.1*s); c.lineTo(.33*s, -.12*s); c.stroke();
     c.fillStyle = '#4a5057'; c.beginPath(); c.arc(0, -.1*s, s*.028, 0, Math.PI*2); c.fill();
@@ -386,12 +389,18 @@ function drawGroundRover(c, r, a, t, s, lod){
   // robotic arm folded across the front, with the turret (coring drill and instruments). Science stretches it out.
   { const ex = sci ? .03*s : .1*s, ey = sci ? -.62*s : -.38*s, sh = [-.21*s, -.3*s], el = sci ? [-.14*s, -.48*s] : [-.17*s, -.4*s];
     c.strokeStyle = '#5a6067'; c.lineWidth = s*.055; c.beginPath(); c.moveTo(...sh); c.lineTo(...el); c.lineTo(ex, ey); c.stroke();
-    c.strokeStyle = '#dfe2e5'; c.lineWidth = s*.035; c.beginPath(); c.moveTo(...sh); c.lineTo(...el); c.lineTo(ex, ey); c.stroke();
-    if (lod >= 1) { c.fillStyle = '#3a3f45'; [sh, el].forEach(([jx, jy]) => { c.beginPath(); c.arc(jx, jy, s*.03, 0, Math.PI*2); c.fill(); }); }
-    const tr = s*(sci ? .085 : .07);
-    c.fillStyle = '#4a5057'; c.beginPath(); c.arc(ex, ey, tr, 0, Math.PI*2); c.fill();
-    c.fillStyle = '#c4c9ce'; c.beginPath(); c.arc(ex, ey, tr*.72, 0, Math.PI*2); c.fill();
-    if (lod >= 1) { c.fillStyle = '#2a2e33'; c.fillRect(ex + tr*.35, ey - tr*.95, tr*.35, tr*.9); c.fillStyle = '#e2c06a'; c.fillRect(ex - tr*.8, ey - tr*.25, tr*.45, tr*.5); c.fillStyle = '#2a2e33'; c.beginPath(); c.arc(ex, ey, tr*.22, 0, Math.PI*2); c.fill(); }
+    c.strokeStyle = '#e4e6e9'; c.lineWidth = s*.036; c.beginPath(); c.moveTo(...sh); c.lineTo(...el); c.lineTo(ex, ey); c.stroke();
+    if (lod >= 1) { c.strokeStyle = '#c0703f'; c.lineWidth = s*.012; c.beginPath(); c.moveTo(...sh); c.lineTo(...el); c.lineTo(ex, ey); c.stroke();
+      c.fillStyle = '#3a3f45'; [sh, el].forEach(([jx, jy]) => { c.beginPath(); c.arc(jx, jy, s*.032, 0, Math.PI*2); c.fill(); }); }
+    // turret: a dark cluster of instruments (PIXL, SHERLOC with WATSON, the coring drill)
+    const tr = s*(sci ? .1 : .085);
+    c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.arc(ex + s*.02, ey + s*.025, tr, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#2e3238'; c.beginPath(); c.arc(ex, ey, tr, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#545b62'; c.beginPath(); c.arc(ex, ey, tr*.55, 0, Math.PI*2); c.fill();
+    if (lod >= 1) { c.fillStyle = '#9aa1a8'; rr(c, ex + tr*.3, ey - tr*1.05, tr*.42, tr*.75, tr*.08); c.fill(); // coring drill
+      c.fillStyle = '#c9b48a'; rr(c, ex - tr*1.05, ey - tr*.35, tr*.5, tr*.7, tr*.08); c.fill(); // PIXL
+      c.fillStyle = '#7fa6c9'; c.beginPath(); c.arc(ex - tr*.15, ey + tr*.55, tr*.2, 0, Math.PI*2); c.fill(); // SHERLOC window
+      c.fillStyle = '#15181c'; c.beginPath(); c.arc(ex, ey, tr*.2, 0, Math.PI*2); c.fill(); }
     if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.04; c.beginPath(); c.arc(ex, ey, s*.11, t/60, t/60 + 4); c.stroke(); } }
   if (lod >= 1 && P('sharp_eyes')) { c.fillStyle = '#1b222b'; [-.12, -.06, .06, .12].forEach(x => { c.beginPath(); c.arc(x*s, -.285*s, s*.014, 0, Math.PI*2); c.fill(); }); }
   // remote sensing mast and its head (Mastcam-Z eyes and the SuperCam window)
@@ -399,15 +408,22 @@ function drawGroundRover(c, r, a, t, s, lod){
   c.fillStyle = '#8e959c'; c.beginPath(); c.arc(mx, my, s*.035, 0, Math.PI*2); c.fill();
   c.strokeStyle = '#b9bec4'; c.lineWidth = s*.035; c.beginPath(); c.moveTo(mx, my); c.lineTo(mx, my - up); c.stroke();
   c.save(); c.translate(mx, my - up);
-  const hw = (sc ? .21 : .18)*s, hh = .085*s;
-  c.fillStyle = 'rgba(0,0,0,.28)'; rr(c, -hw/2 + s*.025, -hh/2 + s*.035, hw, hh, s*.015); c.fill();
-  const mg = c.createLinearGradient(0, -hh/2, 0, hh/2); mg.addColorStop(0, '#f6f7f8'); mg.addColorStop(1, '#c3c8cd');
-  c.fillStyle = mg; rr(c, -hw/2, -hh/2, hw, hh, s*.015); c.fill(); c.strokeStyle = '#7d848b'; c.lineWidth = Math.max(.5, s*.008); c.stroke();
+  // the head: a big white box seen a little from the front, so its face shows SuperCam's big round window
+  // and the two Mastcam-Z eyes below it (like the real head in NASA's pictures)
+  const hw = .26*s, top = .12*s, face = .085*s;
+  const tg = c.createLinearGradient(0, -top*.5, 0, top*.5); tg.addColorStop(0, '#f7f8f9'); tg.addColorStop(1, '#c6cbd0');
+  c.fillStyle = tg; rr(c, -hw/2, -top*.5, hw, top, s*.014); c.fill();
+  c.fillStyle = '#dfe2e5'; rr(c, -hw/2, -top*.5 - face, hw, face + s*.012, s*.014); c.fill();
+  c.strokeStyle = '#7d848b'; c.lineWidth = Math.max(.5, s*.008); rr(c, -hw/2, -top*.5 - face, hw, face + top, s*.014); c.stroke();
   if (lod >= 1) {
-    c.fillStyle = '#2a2f36'; rr(c, -hw*.18, -hh*.42, hw*.36, hh*.62, s*.01); c.fill();
-    c.fillStyle = sc ? '#ff5a4f' : '#5f8fb3'; c.beginPath(); c.arc(0, -hh*.12, s*(sc ? .022 : .016), 0, Math.PI*2); c.fill();
-    c.fillStyle = '#11161c'; [-1, 1].forEach(sd => { rr(c, sd*hw*.36 - s*.018, -hh*.5 - s*.006, s*.036, s*.026, s*.006); c.fill(); });
-    if (P('sharp_eyes') && lod >= 2) { c.fillStyle = '#11161c'; [-1, 1].forEach(sd => { c.beginPath(); c.arc(sd*hw*.2, hh*.25, s*.01, 0, Math.PI*2); c.fill(); }); }
+    const fy = -top*.5 - face*.55;
+    c.fillStyle = '#9aa1a8'; c.beginPath(); c.arc(hw*.18, fy, s*.036, 0, Math.PI*2); c.fill();      // SuperCam window
+    c.fillStyle = '#0d1116'; c.beginPath(); c.arc(hw*.18, fy, s*.027, 0, Math.PI*2); c.fill();
+    c.fillStyle = sc ? '#ff5a4f' : 'rgba(140,190,255,.85)'; c.beginPath(); c.arc(hw*.18 - s*.008, fy - s*.008, s*(sc ? .011 : .007), 0, Math.PI*2); c.fill();
+    c.fillStyle = '#2a2f36'; rr(c, -hw*.46, fy - s*.02, hw*.38, s*.04, s*.008); c.fill();             // Mastcam-Z pair
+    c.fillStyle = '#0d1116'; [-.38, -.18].forEach(x => { c.beginPath(); c.arc(x*hw, fy, s*.014, 0, Math.PI*2); c.fill(); });
+    if (lod >= 2) { c.fillStyle = 'rgba(140,190,255,.7)'; [-.38, -.18].forEach(x => { c.beginPath(); c.arc(x*hw - s*.004, fy - s*.004, s*.004, 0, Math.PI*2); c.fill(); }); }
+    if (P('sharp_eyes') && lod >= 2) { c.fillStyle = '#0d1116'; [-1, 1].forEach(sd => { c.beginPath(); c.arc(sd*hw*.3, top*.15, s*.01, 0, Math.PI*2); c.fill(); }); }
   }
   c.restore();
   c.lineCap = 'butt'; c.lineJoin = 'miter';
