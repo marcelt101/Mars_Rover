@@ -140,4 +140,15 @@ Replace the generated terrain with real data so the game shows the actual ground
 - **Pipeline:** download, crop and downsample each site offline into a tile image plus a small height and terrain grid shipped with the game. Real features (Séítah, Home Plate, Mount Sharp) then sit where they really are.
 - Keep the gameplay grid; derive terrain types (sand, bedrock, steep) from the real imagery and slope.
 
+## Rule: science and story stay separate
+
+Everything in the main game is real science: cards, facts, maps and rover history. Anything imaginary goes in a clearly labeled story mode with its own look, its own cards and its own collection, and is never mixed into the science content.
+
+## Future idea: Mars Legends (imaginary story mode, top ranks)
+
+- A deep-ground scanner unlocked at the top ranks (Principal Investigator or Mars Legend), after the RIMFAX deep radar.
+- Reveals imaginary structures buried under sand (old power stations, living quarters, landing pads, tunnels) as faint outlines. The Excavator digs them out in stages, and the Lab studies the pieces.
+- Its own "Mars Legends" card set, patches and museum shelf, always marked as science fiction.
+- A real-science counterpart next to it: fossil traces of ancient microbes, which is what Perseverance is actually looking for.
+
 Later updates: survival, Meridiani / Gale / North Polar / Moon maps, Epic and Ultimate perks, Engineer coding perks (`sense_ahead()`, `if`, `while`, `def`), map editor, installable app.
