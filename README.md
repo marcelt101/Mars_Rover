@@ -2,6 +2,8 @@
 
 A browser game where you plan commands, send them to Mars, and watch a rover carry them out. It's set in Jezero Crater, where NASA's Perseverance rover explores.
 
+**Play now: https://marcelt101.github.io/Mars_Rover/**
+
 No install needed: open `game/index.html` in any browser (Chrome, Edge, Firefox, Safari).
 
 ## Games
