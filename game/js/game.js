@@ -31,7 +31,7 @@ R.init($('map'), $('mini'), $('mapbox'));
 const q = new URLSearchParams(location.search);
 if (q.get('join')) $('joinCode').value = 'MARS-' + MR.cleanCode(q.get('join'));
 UI.renderHome(); UI.show('scrHome');
-if (!MR.Store.profiles().length) UI.profileModal(null);
+/* First visit: the title screen shows a big "Create your crew member" button instead of opening the window. */
 if (!MR.netAvailable()) { $('joinErr').hidden = false; $('joinErr').textContent = 'Team games need an internet connection to find each other. Solo play works offline.'; }
 G.onProfileChanged = () => { if (G.phase === 'lobby') { refreshMyLobbyEntry(); } UI.renderMe(); };
 

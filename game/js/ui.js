@@ -43,7 +43,7 @@ UI.renderHome = () => {
   const list = MR.Store.profiles(), cur = MR.Store.current();
   $('profiles').innerHTML = list.map(p => { const ri = MR.rankInfo(p);
     return `<button class="pcard" data-id="${p.id}" aria-pressed="${cur && cur.id === p.id}">${UI.avatar(p)}<span style="min-width:0;flex:1"><b>${esc(p.name)}</b><small>${MR.ROLES[p.role].label} · ${ri.name}</small><div class="xpbar"><span style="width:${Math.round(ri.frac*100)}%"></span></div></span></button>`; }).join('')
-    + `<button class="pcard new" id="newProfile">+ New crew member</button>`;
+    + (list.length ? `<button class="pcard new" id="newProfile">+ New crew member</button>` : `<button class="pcard new first" id="newProfile"><b>+ Create your crew member</b><small>Pick a name, a color and your level to start</small></button>`);
   $('modes').style.opacity = cur ? 1 : .4;
   $('tutBar').hidden = !cur || (cur.tutDone && !cur.tutShow) || cur.tutHide;
   ['soloBtn','hostBtn','joinBtn'].forEach(id => $(id).disabled = !cur);
