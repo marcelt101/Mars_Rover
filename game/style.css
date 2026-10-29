@@ -625,8 +625,8 @@ svg.chart .gt{fill:#8fa0b0;font-size:11px;font-family:var(--mono)}
 .rparts li b{display:block;font-size:14px;margin-bottom:2px}
 .rparts.sci li{border-left:3px solid var(--sci)}
 .rimg{margin:0}
-.rimg img{width:100%;border-radius:10px;display:block;background:#f3ece8}
-.rimg figcaption{color:var(--muted);font-size:12px;margin-top:4px}
+.rimg img{width:100%;max-width:620px;margin:0 auto;border-radius:10px;display:block;background:#fff}
+.rimg figcaption{color:var(--muted);font-size:12px;margin-top:4px;text-align:center}
 .coach{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .coach.dragging{cursor:grabbing;opacity:.92;box-shadow:0 16px 40px rgba(0,0,0,.65)}
 .coach .cs{display:flex;align-items:center;gap:8px}
