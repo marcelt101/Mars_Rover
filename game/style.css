@@ -633,3 +633,23 @@ svg.chart .gt{fill:#8fa0b0;font-size:11px;font-family:var(--mono)}
 .coach .cs small{margin-left:auto;white-space:nowrap;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px}
 .coach .grip{font-size:16px;line-height:1;color:var(--muted)}
 .coach button{cursor:pointer}
+/* Batch 6: What the game teaches */
+.glede{margin:0;font-size:16px;line-height:1.5;color:var(--soft);max-width:70ch}
+.subjects{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.subj{background:var(--raise);border:1px solid var(--line);border-top:3px solid var(--sc);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.subj .subh{display:flex;align-items:center;gap:10px}
+.subj .subi{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:color-mix(in srgb,var(--sc) 18%,transparent);color:var(--sc);font-weight:700;flex:none;font-size:15px}
+.subj b{font-family:var(--display);font-size:16px}
+.subj p{margin:0;font-size:13.5px;line-height:1.45}
+.subj .subw{color:var(--muted)}
+.subj .subw b{font-family:var(--body);font-size:13.5px;color:var(--soft)}
+.groles{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.groles div{background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.groles b{font-family:var(--display);font-size:16px;display:block}
+.groles small{color:var(--signal);font-family:var(--mono);font-size:12px}
+.groles p{margin:4px 0 0;font-size:13.5px}
+.gmaps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.gmaps li{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:6px}
+.gmaps small{color:var(--muted)}
+.gmaps span{flex-basis:100%;font-size:13.5px;color:var(--soft)}
+.gsteps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;line-height:1.45}

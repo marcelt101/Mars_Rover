@@ -50,6 +50,8 @@ Scouts and Haulers look like Spirit and Opportunity (big winged solar array, Pan
 
 ## Getting started
 
+**What the game teaches** (on the start screen, first in the tutorial bar and the links) is a page for teachers and parents. It describes the game world and, subject by subject, what children learn and where they meet it: engineering, programming, rocks and minerals, chemistry, weather, space science, astrobiology, history of space exploration, math, the scientific method and teamwork. It also has a typical one-hour Mission Log day and tips for adults.
+
 New players can take the optional **tutorial** from the start screen. It has different steps for Cadet, Explorer and Specialist, points at the real buttons, and reads the steps aloud for Cadets. It also walks through the mission bar, plan cards, Health, Mission Control, Inventory, photos and the Mission Log. The tutorial bubble can be dragged anywhere with a finger or the mouse (handy on phones); double-tap it to snap it back. While playing, each objective shows a hint with a **Show** button, arrows at the map edge point to where to look, and helpers like **Plan route home** build the plan for you.
 
 ## Planning helpers

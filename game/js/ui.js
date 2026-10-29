@@ -243,6 +243,8 @@ UI.parents = () => {
 };
 $('parentsBtn').addEventListener('click', () => UI.parents());
 $('tutBtn').addEventListener('click', () => MR.Game.startTutorial());
+$('guideBtn').addEventListener('click', () => UI.guide('teach'));
+$('guideLink').addEventListener('click', () => UI.guide('teach'));
 $('tutLink').addEventListener('click', () => { if (MR.Store.current()) MR.Game.startTutorial(); });
 $('tutNo').addEventListener('click', () => { const p = MR.Store.current(); if (p) { p.tutHide = true; MR.Store.save(); } UI.renderHome(); });
 

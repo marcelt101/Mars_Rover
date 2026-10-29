@@ -28,8 +28,8 @@
     <div class="ph"><h2>Who's playing?</h2><span class="muted">Each player picks their own profile on their own device.</span></div>
     <div class="profiles" id="profiles"></div>
     <div class="tutbar" id="tutBar" hidden>
-      <span><b>New here?</b> Take the 3-minute tutorial for your role. You can skip it anytime.</span>
-      <span class="row"><button class="btn primary" id="tutBtn">Start tutorial</button><button class="btn" id="tutNo">No thanks</button></span>
+      <span><b>New here?</b> Start with what the game teaches, then take the 3-minute tutorial for your role. You can skip it anytime.</span>
+      <span class="row"><button class="btn" id="guideBtn">What the game teaches</button><button class="btn primary" id="tutBtn">Start tutorial</button><button class="btn" id="tutNo">No thanks</button></span>
     </div>
     <div class="panel resume" id="resumePanel" hidden>
       <div><h3 class="t">Continue your expedition</h3><p id="resumeText"></p></div>
@@ -58,6 +58,7 @@
       </div>
     </div>
     <div class="links">
+      <button id="guideLink">What the game teaches</button>
       <button id="tutLink">Tutorial</button>
       <button id="parentsBtn">Parents and saves</button>
       <a href="../v1/">Play version 1</a>
@@ -247,6 +248,7 @@
 <script src="js/ui.js"></script>
 <script src="js/log-ui.js"></script>
 <script src="js/rover-info.js"></script>
+<script src="js/guide.js"></script>
 <script src="js/ops.js"></script>
 <script src="js/game.js"></script>
 <script src="js/tutorial.js"></script>
