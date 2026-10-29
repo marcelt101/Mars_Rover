@@ -46,8 +46,11 @@ and upload again.
 
 - Kind of project: HTML. Upload `itch-full` as the paid file with "This file will be played in the browser", and
   `itch-demo` marked as the demo.
-- Price (settled): free demo; full game **$9.99** for families, with **$29.99 suggested for schools** (itch.io's
-  "let people pay more" option, honor system). Early access launch at **$6.99** (itch.io sale), then $9.99.
+- itch.io account: **MarsHorizon**, page `https://marshorizon.itch.io/crater-crew` (the demo's "Get the full game"
+  button links there; change `buyUrl` in `edition.js` if the page address is different).
+- Price (settled): free demo; full game at an introductory **$6.99**, going to **$9.99** after one or two months;
+  **$29.99 suggested for schools** (itch.io's "let people pay more" option, honor system).
+  Simplest on itch.io: set the price to $9.99 and run a sale (about 30% off) for the first weeks.
   Only the host needs the full game: demo players can join a full-game room and play every map in it.
 - Embed: about 1280 × 800, with "Fullscreen button" and "Mobile friendly" on.
 - When the page exists, put its address in `buyUrl` for `itch-demo` in `edition.js`, so the demo's
@@ -55,8 +58,7 @@ and upload again.
 
 ## Beta and bug reports
 
-- `beta:true` in an edition shows the yellow BETA badge. Keep it on for the closed beta and early access, set it
-  to `false` for the full release.
+- `beta:true` in an edition shows a yellow BETA badge. It is off for release 1.0.
 - Players report problems from Settings, the Parents page or the BETA badge, and the game offers a report when an
   error happens. Nothing is sent without a tap on Send, and reports carry no names and no chat.
 - Reports go to a Google Form: set `MR.REPORT` in `edition.js` to the form's `formResponse` address and its three

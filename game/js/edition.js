@@ -8,9 +8,9 @@ MR.EDITIONS = {
   /* GitHub Pages: everything, plus the links to version 1 and the classic missions. */
   web:         {label:'Web', maps:null, logDays:30, oldVersions:true, qr:true},
   /* Free itch.io demo: Jezero Crater and week 1 of the Mission Log. */
-  'itch-demo': {label:'Free demo', demo:true, beta:true, maps:['jezero'], logDays:7, oldVersions:false, qr:false, buyUrl:null},
+  'itch-demo': {label:'Free demo', demo:true, maps:['jezero'], logDays:7, oldVersions:false, qr:false, buyUrl:'https://marshorizon.itch.io/crater-crew'},
   /* Paid itch.io game: everything. */
-  'itch-full': {label:'Full game', beta:true, maps:null, logDays:30, oldVersions:false, qr:false},
+  'itch-full': {label:'Full game', maps:null, logDays:30, oldVersions:false, qr:false},
   /* Desktop app (Electron or Tauri), later. */
   desktop:     {label:'Desktop', maps:null, logDays:30, oldVersions:false, qr:true},
 };
