@@ -127,5 +127,107 @@ function backdrop(kind){
   for (let i = 0; i < 260; i++) { ctx.fillStyle = `rgba(255,255,255,${.25 + rnd()*.7})`; ctx.beginPath(); ctx.arc(rnd()*W, rnd()*H, rnd()*1.8 + .3, 0, Math.PI*2); ctx.fill(); }
   ctx.fillStyle = '#0b0f15'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over';
 }
+/* ---------- New look: spacecraft-material letters and three worlds on a mission path ---------- */
+function brushed(W, H){ const a = noise2(W, H, 3), b = new Float32Array(W*H); // streaks along x
+  for (let y = 0; y < H; y++) { let acc = 0; for (let x = 0; x < W; x++) { acc = acc*.92 + a[y*W+x]*.08; b[y*W+x] = acc; } } return b; }
+function material(W, H, draw, kind){
+  const m = document.createElement('canvas'); m.width = W; m.height = H; const g = m.getContext('2d'); g.strokeStyle = '#fff'; draw(g);
+  const md = g.getImageData(0, 0, W, H).data, M = new Float32Array(W*H); for (let i = 0; i < W*H; i++) M[i] = md[i*4+3]/255;
+  const bev = blur(M, W, H, kind === 'gold' ? 9 : 12), Hh = new Float32Array(W*H);
+  const tex = kind === 'gold' ? noise2(W, H, 9) : kind === 'metal' ? brushed(W, H) : noise2(W, H, 40), t2 = kind === 'gold' ? noise2(W, H, 26) : null;
+  for (let i = 0; i < W*H; i++) if (M[i]) Hh[i] = Math.min(1, bev[i]*1.7) + (kind === 'gold' ? (tex[i]-.5)*.22 + (t2[i]-.5)*.18 : kind === 'metal' ? (tex[i]-.5)*.05 : 0);
+  const out = new Uint8ClampedArray(W*H*4), Lx = -.5, Ly = -.66, Lz = .56, k = kind === 'gold' ? 30 : 20;
+  const PAL = {metal:[[38,44,52],[96,106,118],[168,178,190],[222,228,236],[255,255,255]], gold:[[70,40,6],[150,96,20],[214,160,56],[246,214,120],[255,248,214]], glow:[[8,14,20],[16,28,38],[26,46,58],[40,70,84],[70,110,124]]}[kind];
+  for (let y = 1; y < H-1; y++) for (let x = 1; x < W-1; x++) { const i = y*W+x; if (M[i] < .02) continue;
+    const dx = (Hh[i+1]-Hh[i-1])*k, dy = (Hh[i+W]-Hh[i-W])*k, nl = Math.hypot(dx, dy, 1), nx = -dx/nl, ny = -dy/nl, nz = 1/nl;
+    const lam = Math.max(0, nx*Lx + ny*Ly + nz*Lz), rim = Math.max(0, nx*.7 + ny*.55) * (1 - nz);
+    let t = .05 + lam*.9; if (kind === 'metal') t = .1 + lam*.8 + (tex[i]-.5)*.25;
+    const c = lerp3(PAL, Math.min(1, Math.max(0, t))), spec = Math.pow(Math.max(0, nz*.85 + nx*Lx*.35 + ny*Ly*.35), kind === 'gold' ? 14 : 30)*(kind === 'glow' ? .1 : .45);
+    let r = c[0] + spec*255, gg = c[1] + spec*240, b = c[2] + spec*225;
+    if (kind === 'metal' || kind === 'glow') { const rr = rim*(kind === 'glow' ? 2.4 : 1.4); r += rr*60; gg += rr*210; b += rr*190; }
+    out[i*4] = r; out[i*4+1] = gg; out[i*4+2] = b; out[i*4+3] = M[i]*255; }
+  return {img:new ImageData(out, W, H), mask:m};
+}
+/* A world, lit from the upper left: Mars (dusty red), the Moon (gray, cratered) or Europa (icy, cracked). */
+function world(ctx, x, y, r, kind){
+  const S = Math.ceil(r*2) + 4, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
+  const n1 = noise2(S, S, Math.max(4, r/3)), n2 = noise2(S, S, Math.max(3, r/9)), cr = [];
+  if (kind === 'moon') for (let k = 0; k < 26; k++) cr.push([rnd()*S, rnd()*S, r*(.04 + Math.pow(rnd(), 2)*.22)]);
+  for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) { const dx = (px - S/2)/r, dy = (py - S/2)/r, rr = dx*dx + dy*dy, i = (py*S+px)*4; if (rr > 1) continue;
+    const z = Math.sqrt(1 - rr), lam = Math.max(0, -dx*.55 - dy*.45 + z*.7), sh = .08 + lam*1.0, n = n1[py*S+px], m = n2[py*S+px];
+    let col;
+    if (kind === 'mars') col = [150 + n*95 + m*20, 62 + n*55, 30 + n*30];
+    else if (kind === 'moon') { let t = .55 + (n - .5)*.5 + (m - .5)*.2; for (const [qx, qy, qr] of cr) { const e = Math.hypot(px - qx, py - qy)/qr; if (e < 1) t -= .16*(1 - e*e); else if (e < 1.2) t += .12; } col = [t*230, t*230, t*232]; }
+    else col = [222 + n*28, 208 + n*24, 186 + n*20];
+    const limb = Math.pow(z, .25); d[i] = col[0]*sh*limb; d[i+1] = col[1]*sh*limb; d[i+2] = col[2]*sh*limb; d[i+3] = 255; }
+  g.putImageData(img, 0, 0);
+  if (kind === 'europa') { g.save(); g.beginPath(); g.arc(S/2, S/2, r, 0, Math.PI*2); g.clip(); g.strokeStyle = 'rgba(140,70,40,.75)'; g.lineCap = 'round';
+    for (let k = 0; k < 14; k++) { g.lineWidth = .6 + rnd()*2.2; g.beginPath(); let px = rnd()*S, py = rnd()*S, a = rnd()*Math.PI*2; g.moveTo(px, py);
+      for (let q = 0; q < 6; q++) { a += (rnd() - .5)*.6; px += Math.cos(a)*r*.3; py += Math.sin(a)*r*.3; g.lineTo(px, py); } g.stroke(); }
+    const sh = g.createRadialGradient(S/2 - r*.45, S/2 - r*.4, r*.1, S/2, S/2, r); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(.75, 'rgba(0,0,0,.1)'); sh.addColorStop(1, 'rgba(0,0,0,.75)'); g.fillStyle = sh; g.fillRect(0, 0, S, S); g.restore(); }
+  const glow = ctx.createRadialGradient(x, y, r*.9, x, y, r*1.35); glow.addColorStop(0, kind === 'mars' ? 'rgba(255,150,100,.25)' : 'rgba(200,220,255,.18)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, r*1.35, 0, Math.PI*2); ctx.fill();
+  ctx.drawImage(c, x - S/2, y - S/2);
+}
+function make2(kind){
+  const W = 1800, H = 1000, out = document.getElementById('out'); out.width = W; out.height = H; const ctx = out.getContext('2d'); seed = 31;
+  // space, mission path, worlds
+  ctx.fillStyle = '#070b12'; ctx.fillRect(0, 0, W, H);
+  const neb = ctx.createRadialGradient(W*.7, H*.35, 50, W*.7, H*.35, 900); neb.addColorStop(0, 'rgba(60,90,140,.22)'); neb.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = neb; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 380; i++) { ctx.fillStyle = `rgba(255,255,255,${.2 + rnd()*.75})`; ctx.beginPath(); ctx.arc(rnd()*W, rnd()*H, rnd()*1.7 + .3, 0, Math.PI*2); ctx.fill(); }
+  ctx.save(); ctx.strokeStyle = 'rgba(240,191,90,.7)'; ctx.lineWidth = 4; ctx.setLineDash([16, 16]);
+  ctx.beginPath(); ctx.ellipse(W/2, H*.62, W*.47, H*.36, -.06, Math.PI*.98, Math.PI*2.02); ctx.stroke(); ctx.restore();
+  world(ctx, 230, 560, 150, 'mars'); world(ctx, 900, 130, 62, 'moon'); world(ctx, 1600, 520, 110, 'europa');
+  // letters
+  const h1 = 190, lw = 56, gap = 70, w1 = width('CRATER', h1, gap), w2 = width('CREW', h1, gap);
+  const A = material(W, H, g => strokeWord(g, 'CRATER', (W - w1)/2, 290, h1, lw, gap), kind);
+  const B = material(W, H, g => strokeWord(g, 'CREW', (W - w2)/2, 560, h1, lw, gap), kind);
+  const side = kind === 'gold' ? '#4a2c06' : kind === 'metal' ? '#1c2630' : '#0a1a20';
+  if (kind === 'glow') { [A, B].forEach(L => { const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.filter = 'blur(18px)'; g.drawImage(L.mask, 0, 0); g.globalCompositeOperation = 'source-in'; g.filter = 'none'; g.fillStyle = '#58cfbe'; g.fillRect(0, 0, W, H); ctx.globalAlpha = .9; ctx.drawImage(c, 0, 0); ctx.globalAlpha = 1; }); }
+  composite(ctx, A, 18, side); composite(ctx, B, 18, side);
+  const sub = 'INTERPLANETARY MISSIONS', sz = 42, gp = 22;
+  const S = material(W, H, g => strokeWord(g, sub, (W - width(sub, sz, gp))/2, 838, sz, 12, gp), kind === 'gold' ? 'metal' : 'gold');
+  composite(ctx, S, 5, '#1a1408');
+}
+window.make2 = make2;
+/* ---------- Moon horizon with Mars rising (own drawing), or any background picture ---------- */
+function moonHorizon(W, H, cx, cy, R){
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), img = g.createImageData(W, H), d = img.data;
+  const n1 = noise2(W, H, 160), n2 = noise2(W, H, 40), n3 = noise2(W, H, 9), cr = [];
+  for (let k = 0; k < 420; k++) cr.push([rnd()*W, cy - R + 20 + Math.pow(rnd(), .7)*(H - (cy - R)), 2 + Math.pow(rnd(), 3)*46]);
+  const rays = [[W*.36, H*.86], [W*.08, H*1.02]];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const dx = (x - cx)/R, dy = (y - cy)/R, rr = dx*dx + dy*dy, i = (y*W + x)*4; if (rr > 1) continue;
+    const z = Math.sqrt(1 - rr), fore = Math.min(1, (y - (cy - R))/(H*.5));      // squash craters near the horizon
+    const mare = n1[y*W+x] < .42 ? (.42 - n1[y*W+x])*1.6 : 0;
+    let t = .62 + (n2[y*W+x] - .5)*.35 + (n3[y*W+x] - .5)*.12 - mare*.55;
+    for (const [qx, qy, qr] of cr) { const ex = (x - qx)/qr, ey = (y - qy)/(qr*(.25 + .75*fore)), e = Math.hypot(ex, ey); if (e < 1) t += ey < 0 ? -.2*(1 - e*e) : -.06*(1 - e*e); else if (e < 1.18) t += (ey < 0 ? .06 : .22)*(1.18 - e)/.18; }
+    for (const [rx, ry] of rays) { const a = Math.atan2(y - ry, x - rx), dd = Math.hypot(x - rx, (y - ry)*1.6); t += Math.max(0, Math.cos(a*9 + 1.3)) * Math.exp(-dd/520)*.25 + Math.exp(-dd/40)*.5; }
+    const warm = .5 + (n1[(y*W + x + 777) % (W*H)] - .5)*1.2, limb = Math.pow(z, .18), sh = Math.min(1.25, Math.max(.05, t))*limb;
+    d[i] = (150 + warm*40)*sh; d[i+1] = (136 + warm*10)*sh; d[i+2] = (128 - warm*14)*sh; d[i+3] = 255;
+    const edge = Math.pow(1 - z, 10); d[i] += edge*60; d[i+1] += edge*60; d[i+2] += edge*70;
+  }
+  g.putImageData(img, 0, 0); return c;
+}
+function marsDisk(ctx, x, y, r){
+  const g = ctx.createRadialGradient(x - r*.35, y - r*.35, r*.1, x, y, r); g.addColorStop(0, '#ffb070'); g.addColorStop(.6, '#e0702e'); g.addColorStop(1, '#8a3410');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(110,40,16,.55)'; ctx.beginPath(); ctx.ellipse(x + r*.1, y - r*.1, r*.5, r*.18, -.3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(x, y - r*.86, r*.32, r*.1, 0, 0, Math.PI*2); ctx.fill();
+}
+async function make3(src){
+  const W = 1800, H = 915, out = document.getElementById('out'); out.width = W; out.height = H; const ctx = out.getContext('2d'); seed = 41;
+  if (src === 'own') {
+    ctx.fillStyle = '#05070b'; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 160; i++) { ctx.fillStyle = `rgba(255,255,255,${.15 + rnd()*.55})`; ctx.beginPath(); ctx.arc(rnd()*W, rnd()*H*.5, rnd()*1.4 + .2, 0, Math.PI*2); ctx.fill(); }
+    marsDisk(ctx, 900, 452, 30);
+    ctx.drawImage(moonHorizon(W, H, 900, 470 + 2400, 2400), 0, 0);
+  } else { const im = new Image(); im.src = src; await im.decode(); ctx.drawImage(im, 0, 0, W, H); }
+  const h = 108, gap = 44, lw = 34, w = width('CRATER CREW', h, gap);
+  const A = material(W, H, g => strokeWord(g, 'CRATER CREW', (W - w)/2, 100, h, lw, gap), 'metal'); composite(ctx, A, 12, '#1c2630');
+  const sub = 'INTERPLANETARY MISSIONS', sz = 36, gp = 19;
+  const S = material(W, H, g => strokeWord(g, sub, (W - width(sub, sz, gp))/2, 266, sz, 11, gp), 'gold'); composite(ctx, S, 4, '#1a1408');
+}
+window.make3 = make3;
 window.make = make; window.backdrop = backdrop;
 </script></body></html>
