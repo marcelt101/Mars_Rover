@@ -18,10 +18,12 @@ UI.settings = () => {
       ${tog('stFast', s.fast, 'Fast mode', 'Rovers drive faster when a plan runs.')}
       ${tog('stLook', look, 'Game-style look', 'Turn off for the plain look. The page reloads.')}
       <div class="sset"><span><b>Tutorial</b><small>Show the tutorial bar on the start screen again.</small></span><button class="btn" id="stTut" ${p ? '' : 'disabled'}>Show again</button></div></section>
-    <section><h3 class="t">Messages in team games</h3>
+    <section><h3 class="t">Team games</h3>
       ${host ? `<p class="muted">${g.mode === 'host' ? 'You are the host of this game, so you decide for everyone.' : 'When this device hosts a team game, these choices apply to everyone in it.'}</p>` : '<p class="muted">The host of this game decides. Ask them to change it.</p>'}
       ${tog('stDm', rules.dm, 'Private messages', `Players can send each other short messages (up to ${MR.DM_MAX} characters) from the crew list or by tapping a rover.`, !host)}
       ${tog('stChat', rules.chat, 'Team chat', 'Messages everyone on the team sees, in the Mission log.', !host)}
+      <label class="sset ${host ? '' : 'dis'}"><span><b>Start the sol automatically</b><small>So nobody waits too long: once the first plan reaches Mars, the sol starts after this time even if someone has not sent. Their rover waits.</small></span>
+        <select class="input" id="stAuto" ${host ? '' : 'disabled'}>${[[0, 'Off'], [30, '30 s'], [60, '1 min'], [90, '1½ min'], [120, '2 min'], [180, '3 min']].map(([v, l]) => `<option value="${v}" ${v === (host ? (s.autoStart ?? 60) : (g.lobby.auto ?? 60)) ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       ${inTeam && host ? '<p class="muted" style="font-size:13px">Changes apply right away for everyone in this game.</p>' : ''}</section>
     <section><h3 class="t">Parents</h3>
       <label class="sset"><span><b>Break reminder</b><small>A friendly reminder to take a break.</small></span><select class="input" id="stBrk">${[0, 30, 45, 60, 90].map(v => `<option value="${v}" ${v === (s.breakMins ?? 60) ? 'selected' : ''}>${v ? `After ${v} min` : 'Off'}</option>`).join('')}</select></label>
@@ -40,6 +42,7 @@ UI.settings = () => {
   if (host) {
     $('stDm').onchange = e => { s.dmAllow = e.target.checked; MR.Store.save(); api.rulesChanged(); };
     $('stChat').onchange = e => { s.chatAllow = e.target.checked; MR.Store.save(); api.rulesChanged(); };
+    $('stAuto').onchange = e => { s.autoStart = +e.target.value; MR.Store.save(); api.rulesChanged(); };
   }
   $('stBrk').onchange = e => { s.breakMins = +e.target.value; MR.Store.save(); };
   $('stParents').onclick = () => UI.parents();

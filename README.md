@@ -52,6 +52,8 @@ Scouts and Haulers look like Spirit and Opportunity (big winged solar array, Pan
 
 **Settings** (the gear button on every screen, or the Settings link) gathers sound, music, fast mode, the game look, the tutorial bar, team-game messages and the break reminder. In a game the gear opens a quick menu with a link to all settings.
 
+**Own transmitters:** in a team game each player's signal leaves as soon as they press Send, with their own countdown, and the crew bar shows whose signal is on its way (📡) and whose has reached Mars (✓). The rovers drive together once every plan has arrived. So nobody waits forever, the host can set **Start the sol automatically** in Settings (off, 30 s to 3 min, 1 min by default): once the first plan reaches Mars, the sol starts after that time and rovers without a plan wait.
+
 **Private messages:** in a team game, send a player a short message (up to 200 characters) from the lobby crew list, the crew bar, or by tapping or right-clicking their rover. Quick picture messages need no typing, so Cadets can use them too. The host can turn private messages and team chat on or off in Settings, for everyone.
 
 **Avatars:** pick one of 32 young-scientist avatars (or your first letter) in the profile editor.

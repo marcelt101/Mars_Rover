@@ -9,6 +9,7 @@ const G = MR.Game = {
   state:null, plan:[], ready:false, readyPids:[], plans:{}, drafts:{}, cid2pid:{},
   planInfo:null, contAfterWin:false, showCode:false, pending:[], lastPing:null, wake:null, lastSeen:{}, lastPong:0, chain:Promise.resolve(), markers:{},
   planSum:{}, replays:[], replaying:false, sessionMins:0,
+  arrive:{}, left:{}, autoAt:null, autoLeft:null,
 };
 const me = () => MR.Store.current();
 const myRover = () => G.state && G.state.rovers.find(r => r.pid === G.myPid);
@@ -82,7 +83,7 @@ G.startTutorial = () => {
   MR.Tutorial.start(p.role);
 };
 G.api = {toHost:m => toHost(m), msgRules:() => msgRules(), log:(kind, text) => log(kind, text), players:() => (G.lobby && G.lobby.players) || [], isTeam:() => G.mode === 'host' || G.mode === 'client',
-  rulesChanged:() => { if (G.mode === 'host') { broadcast(lobbyMsg()); if (G.phase === 'lobby') renderLobby(); else { renderTeam(); $('chatRow').hidden = !team() || !msgRules().chat; } } },
+  rulesChanged:() => { if (G.mode === 'host') { broadcast(lobbyMsg()); if (G.phase === 'plan') sendReady(); if (G.phase === 'lobby') renderLobby(); else { renderTeam(); $('chatRow').hidden = !team() || !msgRules().chat; } } },
   myRover:() => myRover(), planActions:() => planActions(), applyPlan:(a, rep) => applyPlan(a, rep), phase:() => G.phase, sol:() => G.state ? G.state.sol : 0, plan:() => G.plan,
   team:() => team(), me:() => me(), replay:k => replaySol(k), canReplay:() => G.phase === 'plan' && !G.ready && G.replays.length > 0};
 $('joinBtn').onclick = () => joinGame($('joinCode').value);
@@ -128,7 +129,7 @@ const broadcast = m => { if (G.mode === 'host' && G.net) G.net.broadcast(m); };
 const replyTo = (pid, m) => { if (pid === G.myPid) clientMessage(m); else send(pid, m); };
 /* Message rules are the host's choice (Settings > Messages) and travel with the lobby. */
 const msgRules = () => G.mode === 'client' ? {dm:!!G.lobby && G.lobby.dm !== false, chat:!!G.lobby && G.lobby.chat !== false} : {dm:MR.Store.settings.dmAllow !== false, chat:MR.Store.settings.chatAllow !== false};
-const lobbyMsg = () => { const r = msgRules(); G.lobby.dm = r.dm; G.lobby.chat = r.chat; return {type:'lobby', lobby:G.lobby, code:G.code}; };
+const lobbyMsg = () => { const r = msgRules(); G.lobby.dm = r.dm; G.lobby.chat = r.chat; G.lobby.auto = MR.Store.settings.autoStart ?? 60; return {type:'lobby', lobby:G.lobby, code:G.code}; };
 function uniqueColor(p){
   const used = G.lobby.players.filter(x => x.pid !== p.pid).map(x => x.color);
   if (!used.includes(p.color)) return p.color;
@@ -176,8 +177,9 @@ function hostHandle(pid, m){
       G.plans[pid] = {actions:Array.isArray(m.actions) ? m.actions.slice(0, 60) : [], program:MR.validProgram(m.program) ? m.program : null, cancel:!!m.cancel, loop:!!m.loop};
       G.planSum[pid] = G.plans[pid].program ? ['program'] : G.plans[pid].actions.slice(0, 40).map(a => String(a.type).slice(0, 12));
       if (!G.readyPids.includes(pid)) G.readyPids.push(pid);
-      broadcast({type:'ready', pids:G.readyPids, sums:G.planSum}); renderTeam(); maybeRun(); break;
-    case 'unready': G.readyPids = G.readyPids.filter(x => x !== pid); delete G.plans[pid]; delete G.planSum[pid]; broadcast({type:'ready', pids:G.readyPids, sums:G.planSum}); renderTeam(); break;
+      { const r = G.state && G.state.rovers.find(q => q.pid === pid); G.arrive[pid] = Date.now() + (r && team() ? MR.uplinkMs(G.state, r) : 0); }
+      sendReady(); renderTeam(); maybeRun(); break;
+    case 'unready': G.readyPids = G.readyPids.filter(x => x !== pid); delete G.plans[pid]; delete G.planSum[pid]; delete G.arrive[pid]; sendReady(); renderTeam(); break;
     case 'claim': case 'rename': { const site = G.state && G.state.sites && G.state.sites[m.i]; if (!site || !lp) return;
       if (m.type === 'claim') site.claim = m.on ? pid : (site.claim === pid ? null : site.claim);
       else if (site.by === pid) site.name = String(m.name || '').replace(/[<>]/g, '').trim().slice(0, 22) || site.name;
@@ -215,12 +217,32 @@ function kickPlayer(pid){
   else { lp.connected = false; lp.kicked = true; broadcast(lobbyMsg()); broadcast({type:'ready', pids:G.readyPids, sums:G.planSum}); log('warn', `${lp.name} was removed from the game by the host.`); renderTeam(); maybeRun(); }
   UI.toast('✕', '#ff7b6c', `${lp.name} was removed`, 'They can not join this room again.', 3500);
 }
+/* Every player has their own transmitter: a plan leaves when its player presses Send and reaches Mars after that
+   rover's signal delay. The sol starts when every plan has arrived, or (team games) when the host's auto-start
+   time is up, counted from the first plan that arrived. */
+const autoSecs = () => G.mode === 'client' ? (G.lobby.auto ?? 60) : (MR.Store.settings.autoStart ?? 60);
+function sendReady(){
+  if (G.mode !== 'host') return;
+  const now = Date.now(), left = {};
+  G.readyPids.forEach(pid => { left[pid] = Math.max(0, (G.arrive[pid] || 0) - now); });
+  const firstArr = Math.min(...G.readyPids.map(pid => G.arrive[pid] || now));
+  G.autoAt = autoSecs() && G.readyPids.length && G.state && G.state.rovers.length > 1 ? firstArr + autoSecs() * 1000 : null;
+  G.left = left; G.leftAt = now; G.autoLeft = G.autoAt ? G.autoAt - now : null;
+  broadcast({type:'ready', pids:G.readyPids, sums:G.planSum, left, auto:G.autoLeft});
+}
+setInterval(() => {
+  if (!G.state || G.phase !== 'plan' || !team()) return;
+  if (G.mode === 'host') { if (G.autoAt && Date.now() >= G.autoAt && G.readyPids.length) { log('info', 'Time is up: the sol starts. Rovers without a plan stay put.'); maybeRun(true); return; } maybeRun(); }
+  renderTeam();
+}, 500);
 function maybeRun(force){
   if (!isHostish() || (G.phase !== 'plan' && !G.replaying)) return;
   const need = G.state.rovers.filter(r => { const lp = G.lobby.players.find(x => x.pid === r.pid); return lp && lp.connected; }).map(r => r.pid);
-  if (!force && (!need.length || !need.every(pid => G.readyPids.includes(pid)))) return;
+  const now = Date.now(), arrived = pid => G.readyPids.includes(pid) && (G.arrive[pid] || 0) <= now;
+  if (!force && (!need.length || !need.every(arrived))) return;
   stopReplay();
-  const plans = G.plans; G.plans = {}; G.readyPids = []; G.drafts = {}; R.drafts = {}; G.planSum = {};
+  /* A forced or auto start also takes plans still on their way, so nobody loses a plan they sent. */
+  const plans = G.plans; G.plans = {}; G.readyPids = []; G.drafts = {}; R.drafts = {}; G.planSum = {}; G.arrive = {}; G.autoAt = null;
   const {timeline, state} = MR.simulateSol(G.state, plans);
   broadcast({type:'sol', timeline, state:MR.stateToWire(state)});
   playSol(timeline, state);
@@ -276,7 +298,7 @@ function clientMessage(m){
     case 'start': G.lobby = m.lobby || G.lobby; G.lostCode = null; G.lostTries = 0; enterGame(MR.stateFromWire(m.state)); break;
     case 'state': stopReplay(); G.chain = G.chain.then(() => setGameState(MR.stateFromWire(m.state, G.state && G.state.world))).catch(e => console.error(e)); break;
     case 'sol': stopReplay(); G.chain = G.chain.then(() => playSol(m.timeline, MR.stateFromWire(m.state))).catch(e => console.error(e)); break;
-    case 'ready': G.readyPids = m.pids || []; G.planSum = m.sums || {}; renderTeam(); break;
+    case 'ready': G.readyPids = m.pids || []; G.planSum = m.sums || {}; G.left = m.left || {}; G.leftAt = Date.now(); G.autoLeft = m.auto ?? null; renderTeam(); break;
     case 'drafts': G.drafts = m.drafts || {}; R.drafts = G.drafts; break;
     case 'sites': if (G.state) { G.state.sites = m.sites || {}; R.view && (R.view.sites = G.state.sites); renderFinds(); } break;
     case 'markers': { const before = Object.keys(G.markers).length; G.markers = m.markers || {}; const added = Object.values(G.markers).find(x => !G.lastMarkerKeys || !G.lastMarkerKeys.includes(x.x + ',' + x.y)); onMarkers(Object.keys(G.markers).length > before ? added : null, added && added.pid); break; }
@@ -349,7 +371,7 @@ $('startBtn').onclick = () => {
   if (ex) { st = MR.stateFromWire(ex.state); players.forEach(p => { if (!st.rovers.some(r => r.pid === p.pid)) MR.addRover(st, p); }); }
   else st = MR.newGame({map:G.lobby.map, seed:Math.floor(Math.random()*1e9), players, day:G.lobby.day || undefined});
   G.resume = null;
-  G.plans = {}; G.readyPids = []; G.drafts = {};
+  G.plans = {}; G.readyPids = []; G.drafts = {}; G.arrive = {}; G.autoAt = null; G.left = {}; G.autoLeft = null;
   broadcast({type:'start', state:MR.stateToWire(st), lobby:G.lobby, code:G.code});
   enterGame(st);
   if (ex) { G.contAfterWin = !!ex.keep; log('good', `Welcome back! The expedition continues on sol ${st.sol}.`); }
@@ -657,11 +679,14 @@ function onMarkers(added, pid){
   G.lastMarkerKeys = Object.keys(G.markers); renderMarkers();
   if (added && pid !== G.myPid) { MR.sfx.join(); log('info', `${added.name} placed a marker: ${MARKS[added.kind].icon} ${MARKS[added.kind].name}.`); }
 }
+/* How long until a player's signal reaches Mars, from the host's last report. */
+const sigLeft = pid => G.mode === 'host' ? Math.max(0, (G.arrive[pid] || 0) - Date.now()) : Math.max(0, ((G.left || {})[pid] || 0) - (Date.now() - (G.leftAt || 0)));
+const autoLeftNow = () => G.mode === 'host' ? (G.autoAt ? G.autoAt - Date.now() : null) : G.autoLeft == null ? null : G.autoLeft - (Date.now() - (G.leftAt || 0));
 function renderCrewBar(){
   if (!G.state) return;
   $('crewBar').innerHTML = G.state.rovers.map(r => {
     const lp = G.lobby.players.find(x => x.pid === r.pid), on = !lp || lp.connected, rd = G.readyPids.includes(r.pid);
-    const status = lp && lp.kicked ? 'removed' : !on ? 'offline' : G.phase === 'run' ? 'driving' : rd ? '✓ ready' : 'planning';
+    const ms = sigLeft(r.pid), status = lp && lp.kicked ? 'removed' : !on ? 'offline' : G.phase === 'run' ? 'driving' : rd ? (ms > 0 ? `📡 ${Math.ceil(ms / 1000)} s` : '✓ on Mars') : 'planning';
     return `<button class="cchip ${r.pid === G.myPid ? 'me' : ''}" data-pid="${r.pid}">${UI.avatar(r)}<span><b>${esc(r.name)}</b><small>${MR.JOBS[r.job].label}${r.role !== 'cadet' ? ` · ${r.bat}%` : ''}</small></span>${team() ? `<span class="rd ${rd ? 'ok' : ''}">${status}</span>` : ''}</button>`; }).join('');
 }
 $('crewBar').onclick = e => { const b = e.target.closest('.cchip'); if (!b) return; R.focus(b.dataset.pid, b.dataset.pid === G.myPid); showTip(b.dataset.pid);
@@ -675,8 +700,10 @@ function renderTeam(){
   else if (G.phase === 'won' && !G.contAfterWin) t = 'Expedition complete!';
   else if (team()) {
     const waiting = G.state.rovers.filter(r => { const lp = G.lobby.players.find(x => x.pid === r.pid); return lp && lp.connected && !G.readyPids.includes(r.pid); });
-    t = waiting.length ? `Waiting for: <b>${waiting.map(r => esc(r.name)).join(', ')}</b>` : 'Everyone is ready. Uplinking…';
-    if (G.ready) t = `<b>You're ready.</b> ` + t;
+    const flying = G.state.rovers.filter(r => G.readyPids.includes(r.pid) && sigLeft(r.pid) > 0), al = autoLeftNow();
+    t = waiting.length ? `Waiting for: <b>${waiting.map(r => esc(r.name)).join(', ')}</b>` : flying.length ? 'Everyone has sent. Waiting for the signals to reach Mars…' : 'All plans are on Mars. Starting the sol…';
+    if (waiting.length && al != null && al > 0) t += ` · the sol starts in <b>${Math.ceil(al / 1000)} s</b>`;
+    if (G.ready) t = `<b>${sigLeft(G.myPid) > 0 ? 'Your signal is on its way.' : 'Your plan is on Mars.'}</b> ` + t;
   } else t = 'Plan your moves, then send them to Mars.';
   $('teamLine').innerHTML = t;
   $('forceBtn').hidden = !(G.mode === 'host' && G.phase === 'plan' && G.ready && G.state.rovers.length > 1);
@@ -1026,6 +1053,7 @@ function sendPlan(){
   G.planInfo = pa.info || null; G.ready = true; MR.sfx.click(); $('solCard').innerHTML = '';
   G.plan.forEach(c => c.state = ''); G.cursor = null;
   toHost({type:'plan', actions:pa.actions, program:pa.program || null, cancel:!!G.cancelProg && !pa.program, loop:!!(pa.info && pa.info.loops)});
+  if (team()) uplink(true);
   if (pa.program && myRole() === 'specialist') $('editor').dataset.touched = '';
   renderPlan(); renderTeam();
 }
@@ -1118,8 +1146,9 @@ async function replaySol(k){
   R.setView(cur, G.myPid, myRole()); renderGame(); updateGhost();
   if (isHostish()) maybeRun();
 }
-function uplink(){
+function uplink(own){
   if (!G.state) return Promise.resolve();
+  const gen = G.gen;
   const r = myRover(), ms = MR.uplinkMs(G.state, r);
   $('uplink').hidden = false;
   $('ulSub').textContent = `${r ? MR.antennaName(r) : 'Stock antenna'}. Real signals take 4 to 24 minutes.` + (r && r.role !== 'cadet' && !(r.perks||[]).includes('hg_antenna') ? ' Radio and antenna perks make it faster.' : '');
@@ -1127,14 +1156,15 @@ function uplink(){
     (function step(t){ const k = ms ? Math.min(1, (t - t0) / ms) : 1;
       $('ulBar').style.width = (k*100) + '%';
       $('ulTitle').textContent = `Signal on its way to Mars… ${Math.max(0, Math.ceil((ms - (t - t0)) / 1000))} s`;
-      if (k < 1) requestAnimationFrame(step); else { $('uplink').hidden = true; $('ulBar').style.width = '0'; res(); } })(t0); });
+      if (own && (gen !== G.gen || !G.ready || G.phase !== 'plan')) { $('uplink').hidden = true; $('ulBar').style.width = '0'; res(); return; }
+      if (k < 1) requestAnimationFrame(step); else { $('uplink').hidden = true; $('ulBar').style.width = '0'; if (own) MR.sfx.click(); res(); } })(t0); });
 }
 async function playSol(timeline, newState){
   const gen = G.gen;
   try { G.replays = (G.replays || []).concat([{sol:G.state.sol, before:MR.stateToWire(G.state), timeline}]).slice(-3); } catch (e) {}
   G.solPlayed = G.state.sol; G.solStorm = !!(G.state.wx && G.state.wx.storm); G.phase = 'run'; G.ready = false; if (!isHostish()) G.readyPids = []; R.running = true; R.ghost = []; R.drafts = {}; G.drafts = {};
   renderTeam(); renderPlan();
-  await uplink();
+  if (!team()) await uplink();
   if (gen !== G.gen) return;
   MR.music.setMode('drive');
   R.cam.follow = true;
