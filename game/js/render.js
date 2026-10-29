@@ -122,6 +122,7 @@ function drawStation(c, t, ts){
   const S = MR.MAPS[R.view.map].station, sx = (S.x-R.cam.x)*ts, sy = (S.y-R.cam.y)*ts, s = ts*2;
   drawUpgrades(c, ts);
   if (MR.MAPS[R.view.map].airless) return drawLM(c, sx, sy, s);
+  if (MR.PREVIEW && MR.PREVIEW.includes('station')) return drawBase(c, t, sx, sy, s, ts < 20 ? 0 : ts < 32 ? 1 : 2);
   c.fillStyle='rgba(40,14,6,0.35)'; c.fillRect(sx+s*.08, sy+s*.1, s*.92, s*.92);
   c.fillStyle='#9aa3ab'; c.fillRect(sx+s*.06, sy+s*.06, s*.88, s*.88);
   c.strokeStyle='rgba(240,191,90,0.9)'; c.lineWidth=Math.max(1.5,ts*.05); c.setLineDash([ts*.14,ts*.1]); c.strokeRect(sx+s*.12, sy+s*.12, s*.76, s*.76); c.setLineDash([]);
@@ -132,6 +133,59 @@ function drawStation(c, t, ts){
   c.fillStyle=g; c.beginPath(); c.arc(sx+s*.5, sy+s*.5, s*.15, 0, Math.PI*2); c.fill();
   c.fillStyle = Math.sin(t/400) > 0 ? '#58cfbe' : '#2a6b62'; c.beginPath(); c.arc(sx+s*.5, sy+s*.5, s*.035, 0, Math.PI*2); c.fill();
 }
+/* The robotic base station, seen from above: a landing pad, a gold lander body on three legs, two round fan
+   solar panels like InSight's, a dish antenna that slowly turns toward Earth, a radio whip antenna and two
+   charging plugs for the rovers. Machines only, no rooms for people. */
+function drawBase(c, t, x, y, s, lod){
+  const cx = x + s/2, cy = y + s/2, P = Math.PI;
+  c.save();
+  // landing pad with hazard edge
+  c.fillStyle = 'rgba(40,14,6,.35)'; c.beginPath(); octo(c, cx + s*.04, cy + s*.05, s*.49); c.fill();
+  c.fillStyle = '#5d636a'; c.beginPath(); octo(c, cx, cy, s*.48); c.fill();
+  c.fillStyle = '#4b5056'; c.beginPath(); octo(c, cx, cy, s*.4); c.fill();
+  if (lod >= 1) { c.save(); c.beginPath(); octo(c, cx, cy, s*.48); octo(c, cx, cy, s*.41, true); c.clip('evenodd');
+    c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.035; for (let k = -12; k < 12; k++) { c.beginPath(); c.moveTo(x + k*s*.09, y); c.lineTo(x + k*s*.09 + s, y + s); c.stroke(); } c.restore(); }
+  // corner lights
+  for (let k = 0; k < 4; k++) { const a = P/4 + k*P/2, on = Math.sin(t/350 + k*1.6) > .2;
+    c.fillStyle = on ? '#ff7b6c' : '#6b2d28'; c.beginPath(); c.arc(cx + Math.cos(a)*s*.43, cy + Math.sin(a)*s*.43, s*.025, 0, P*2); c.fill(); }
+  // round fan solar panels left and right
+  for (const side of [-1, 1]) { const px = cx + side*s*.27, r = s*.17;
+    c.fillStyle = 'rgba(20,8,4,.35)'; c.beginPath(); c.arc(px + s*.02, cy + s*.03, r, 0, P*2); c.fill();
+    c.fillStyle = '#24456a'; c.beginPath(); for (let k = 0; k < 10; k++) { const a = k*P/5; c.lineTo(px + Math.cos(a)*r, cy + Math.sin(a)*r); } c.closePath(); c.fill();
+    if (lod >= 1) { c.strokeStyle = 'rgba(150,200,245,.55)'; c.lineWidth = 1; c.beginPath(); for (let k = 0; k < 10; k++) { const a = k*P/5; c.moveTo(px, cy); c.lineTo(px + Math.cos(a)*r, cy + Math.sin(a)*r); } c.stroke(); }
+    c.fillStyle = '#c9ced4'; c.beginPath(); c.arc(px, cy, s*.03, 0, P*2); c.fill(); }
+  // three legs with footpads
+  c.strokeStyle = '#8d949c'; c.lineWidth = Math.max(1.5, s*.03);
+  for (let k = 0; k < 3; k++) { const a = -P/2 + k*2*P/3 + P/3, fx = cx + Math.cos(a)*s*.2, fy = cy + Math.sin(a)*s*.2;
+    c.beginPath(); c.moveTo(cx, cy); c.lineTo(fx, fy); c.stroke(); c.fillStyle = '#b0b7be'; c.beginPath(); c.arc(fx, fy, s*.035, 0, P*2); c.fill(); }
+  // lander body: gold foil hexagon with a silver deck
+  const g = c.createLinearGradient(cx - s*.14, cy - s*.14, cx + s*.14, cy + s*.14); g.addColorStop(0, '#f2d27a'); g.addColorStop(.5, '#c99a3a'); g.addColorStop(1, '#8a6320');
+  c.fillStyle = g; c.beginPath(); for (let k = 0; k < 6; k++) { const a = P/6 + k*P/3; c.lineTo(cx + Math.cos(a)*s*.15, cy + Math.sin(a)*s*.15); } c.closePath(); c.fill();
+  c.fillStyle = '#d7dce1'; c.beginPath(); for (let k = 0; k < 6; k++) { const a = P/6 + k*P/3; c.lineTo(cx + Math.cos(a)*s*.09, cy + Math.sin(a)*s*.09); } c.closePath(); c.fill();
+  if (lod >= 1) { c.strokeStyle = 'rgba(120,80,20,.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx - s*.12, cy - s*.04); c.lineTo(cx - s*.05, cy + s*.1); c.moveTo(cx + s*.06, cy - s*.12); c.lineTo(cx + s*.12, cy + s*.03); c.stroke(); }
+  // charging plugs (top and bottom) where rovers dock
+  for (const side of [-1, 1]) { const py = cy + side*s*.33, glow = .55 + .45*Math.sin(t/500 + side);
+    c.fillStyle = '#3a3f47'; rr(c, cx - s*.05, py - s*.035, s*.1, s*.07, s*.02); c.fill();
+    c.fillStyle = `rgba(88,207,190,${glow})`; c.beginPath(); c.arc(cx, py, s*.02, 0, P*2); c.fill(); }
+  // radio whip antenna with a blinking tip
+  const wx = cx - s*.07, wy = cy - s*.06; c.strokeStyle = '#e6e8ea'; c.lineWidth = Math.max(1, s*.012);
+  c.beginPath(); c.moveTo(wx, wy); c.lineTo(wx - s*.1, wy - s*.16); c.stroke();
+  c.fillStyle = Math.sin(t/260) > 0 ? '#58cfbe' : '#2a6b62'; c.beginPath(); c.arc(wx - s*.1, wy - s*.16, s*.022, 0, P*2); c.fill();
+  // dish antenna on a short mast, turning slowly toward Earth
+  const dx = cx + s*.05, dy = cy + s*.02, da = t/9000;
+  c.fillStyle = 'rgba(20,8,4,.35)'; c.beginPath(); c.ellipse(dx + s*.05, dy + s*.06, s*.12, s*.09, da, 0, P*2); c.fill();
+  c.save(); c.translate(dx, dy); c.rotate(da);
+  const dg = c.createRadialGradient(-s*.03, -s*.03, s*.01, 0, 0, s*.12); dg.addColorStop(0, '#ffffff'); dg.addColorStop(1, '#b9c0c8');
+  c.fillStyle = dg; c.beginPath(); c.ellipse(0, 0, s*.12, s*.1, 0, 0, P*2); c.fill();
+  c.strokeStyle = '#8d949c'; c.lineWidth = 1; c.beginPath(); c.ellipse(0, 0, s*.12, s*.1, 0, 0, P*2); c.stroke();
+  if (lod >= 1) { c.strokeStyle = '#8d949c'; c.beginPath(); c.moveTo(-s*.1, 0); c.lineTo(s*.06, 0); c.moveTo(0, -s*.08); c.lineTo(s*.06, 0); c.moveTo(0, s*.08); c.lineTo(s*.06, 0); c.stroke(); }
+  c.fillStyle = '#3a3f47'; c.beginPath(); c.arc(s*.06, 0, s*.022, 0, P*2); c.fill();
+  c.restore();
+  c.restore();
+}
+function octo(c, cx, cy, r, rev){ const pts = []; for (let k = 0; k < 8; k++) { const a = P8 + k*Math.PI/4; pts.push([cx + Math.cos(a)*r, cy + Math.sin(a)*r]); }
+  if (rev) pts.reverse(); c.moveTo(pts[0][0], pts[0][1]); pts.slice(1).forEach(p => c.lineTo(p[0], p[1])); c.closePath(); }
+const P8 = Math.PI/8;
 function drawGem(c, cx, cy, r, color, t, seed){
   const bob = Math.sin(t/300 + seed)*r*.15;
   c.fillStyle='rgba(40,14,6,0.3)'; c.beginPath(); c.ellipse(cx, cy+r*.9, r*.8, r*.25, 0, 0, Math.PI*2); c.fill();
