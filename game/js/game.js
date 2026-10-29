@@ -81,7 +81,9 @@ G.startTutorial = () => {
   enterGame(st);
   MR.Tutorial.start(p.role);
 };
-G.api = {myRover:() => myRover(), planActions:() => planActions(), applyPlan:(a, rep) => applyPlan(a, rep), phase:() => G.phase, sol:() => G.state ? G.state.sol : 0, plan:() => G.plan,
+G.api = {toHost:m => toHost(m), msgRules:() => msgRules(), log:(kind, text) => log(kind, text), players:() => (G.lobby && G.lobby.players) || [], isTeam:() => G.mode === 'host' || G.mode === 'client',
+  rulesChanged:() => { if (G.mode === 'host') { broadcast(lobbyMsg()); if (G.phase === 'lobby') renderLobby(); else { renderTeam(); $('chatRow').hidden = !team() || !msgRules().chat; } } },
+  myRover:() => myRover(), planActions:() => planActions(), applyPlan:(a, rep) => applyPlan(a, rep), phase:() => G.phase, sol:() => G.state ? G.state.sol : 0, plan:() => G.plan,
   team:() => team(), me:() => me(), replay:k => replaySol(k), canReplay:() => G.phase === 'plan' && !G.ready && G.replays.length > 0};
 $('joinBtn').onclick = () => joinGame($('joinCode').value);
 $('joinCode').onkeydown = e => { if (e.key === 'Enter') joinGame($('joinCode').value); };
@@ -122,7 +124,11 @@ document.addEventListener('visibilitychange', () => { if (G.mode === 'host' && d
 
 const send = (pid, m) => { if (G.mode !== 'host') return; Object.entries(G.cid2pid).forEach(([cid, p]) => { if (p === pid) G.net.send(cid, m); }); };
 const broadcast = m => { if (G.mode === 'host' && G.net) G.net.broadcast(m); };
-const lobbyMsg = () => ({type:'lobby', lobby:G.lobby, code:G.code});
+/* To one player: over the network, or straight to this device when it is the host's own player. */
+const replyTo = (pid, m) => { if (pid === G.myPid) clientMessage(m); else send(pid, m); };
+/* Message rules are the host's choice (Settings > Messages) and travel with the lobby. */
+const msgRules = () => G.mode === 'client' ? {dm:!!G.lobby && G.lobby.dm !== false, chat:!!G.lobby && G.lobby.chat !== false} : {dm:MR.Store.settings.dmAllow !== false, chat:MR.Store.settings.chatAllow !== false};
+const lobbyMsg = () => { const r = msgRules(); G.lobby.dm = r.dm; G.lobby.chat = r.chat; return {type:'lobby', lobby:G.lobby, code:G.code}; };
 function uniqueColor(p){
   const used = G.lobby.players.filter(x => x.pid !== p.pid).map(x => x.color);
   if (!used.includes(p.color)) return p.color;
@@ -179,7 +185,16 @@ function hostHandle(pid, m){
       if (m.kind && MARKS[m.kind]) G.markers[key] = {x:m.x|0, y:m.y|0, kind:m.kind, pid, name:lp.name, color:lp.color}; else delete G.markers[key];
       broadcast({type:'markers', markers:G.markers}); onMarkers(m.kind ? G.markers[key] : null, pid); break; }
     case 'draft': G.drafts[pid] = Array.isArray(m.path) ? m.path.slice(0, 60) : []; R.drafts = G.drafts; broadcast({type:'drafts', drafts:G.drafts}); break;
-    case 'chat': { const text = String(m.text||'').slice(0,120).trim(); if (!text || !lp) return; const c = {type:'chat', pid, name:lp.name, color:lp.color, text}; broadcast(c); showChat(c); break; }
+    case 'dm': {
+      if (!lp || !msgRules().dm) { replyTo(pid, {type:'dmFail', text:'The host has turned messages off.'}); return; }
+      const to = G.lobby.players.find(x => x.pid === m.to && x.connected && x.pid !== pid), text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, MR.DM_MAX).trim();
+      if (!to || !text) return;
+      const now = Date.now(); G.dmLast = G.dmLast || {};
+      if (now - (G.dmLast[pid] || 0) < 1500) { replyTo(pid, {type:'dmFail', text:'Wait a moment before sending another message.'}); return; }
+      G.dmLast[pid] = now;
+      const d = {type:'dm', from:pid, to:to.pid, name:lp.name, color:lp.color, avatar:lp.avatar ?? null, toName:to.name, text};
+      replyTo(to.pid, d); replyTo(pid, {...d, type:'dmSent'}); break; }
+    case 'chat': { if (!msgRules().chat) return; const text = String(m.text||'').slice(0,120).trim(); if (!text || !lp) return; const c = {type:'chat', pid, name:lp.name, color:lp.color, text}; broadcast(c); showChat(c); break; }
   }
 }
 function playerGone(pid){
@@ -253,6 +268,9 @@ function clientMessage(m){
     case 'sites': if (G.state) { G.state.sites = m.sites || {}; R.view && (R.view.sites = G.state.sites); renderFinds(); } break;
     case 'markers': { const before = Object.keys(G.markers).length; G.markers = m.markers || {}; const added = Object.values(G.markers).find(x => !G.lastMarkerKeys || !G.lastMarkerKeys.includes(x.x + ',' + x.y)); onMarkers(Object.keys(G.markers).length > before ? added : null, added && added.pid); break; }
     case 'chat': showChat(m); break;
+    case 'dm': MR.Msg.receive(m); break;
+    case 'dmSent': MR.Msg.sent(m); break;
+    case 'dmFail': UI.toast('✉', '#f0bf5a', 'Message not sent', m.text, 4000); break;
   }
 }
 const toHost = m => { if (G.mode === 'client') G.net.send(m); else hostHandle(G.myPid, m); };
@@ -284,7 +302,7 @@ function renderLobby(){
   renderNet();
   const players = G.lobby.players;
   $('crewCount').textContent = `${players.length} / ${MR.MAX_PLAYERS}`;
-  $('crewList').innerHTML = players.map(x => `<li>${UI.avatar(x)}<span class="who"><b>${esc(x.name)}${x.pid === G.myPid ? ' (you)' : ''}</b><small>${MR.ROLES[x.role].label} · ${MR.JOBS[x.job] ? MR.JOBS[x.job].label : ''} · ${MR.RANKS[x.rank|0].name}</small></span>${x.host ? '<span class="tag">Host</span>' : ''}<span class="dot ${x.connected ? '' : 'off'}" title="${x.connected ? 'Connected' : 'Offline'}"></span></li>`).join('');
+  $('crewList').innerHTML = players.map(x => `<li>${UI.avatar(x)}<span class="who"><b>${esc(x.name)}${x.pid === G.myPid ? ' (you)' : ''}</b><small>${MR.ROLES[x.role].label} · ${MR.JOBS[x.job] ? MR.JOBS[x.job].label : ''} · ${MR.RANKS[x.rank|0].name}</small></span>${MR.Msg.can(x.pid) ? `<button class="btn dmb" data-dm="${esc(x.pid)}" aria-label="Send a message to ${esc(x.name)}">✉</button>` : ''}${x.host ? '<span class="tag">Host</span>' : ''}<span class="dot ${x.connected ? '' : 'off'}" title="${x.connected ? 'Connected' : 'Offline'}"></span></li>`).join('');
   const mine = players.find(x => x.pid === G.myPid) || (p && MR.playerSummary(p));
   const airless = MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless;
   if (mine) $('jobPick').innerHTML = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(mine.role) && !(k === 'lab' && G.mode === 'solo')).map(([k, j]) => `<div class="jobw"><button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(airless && k === 'heli' ? 'There is no air on the Moon, so helicopters can not fly there. On this map you drive the Buggy.' : j.desc)}</small></button><button class="jinfo" data-info="${k}" aria-label="About the ${j.label} rover" title="About this rover">i</button></div>`).join('');
@@ -303,6 +321,7 @@ function renderNet(){
   const t = G.mode === 'host' ? `Hosting · ${G.lobby.players.filter(x => x.connected).length} connected` : G.mode === 'client' ? (G.lastPing != null ? `Connected · ${G.lastPing} ms` : 'Connecting…') : 'Solo';
   $('netStatus').textContent = G.mode === 'host' && !G.net ? '' : t; $('gameNet').textContent = t;
 }
+$('crewList').onclick = e => { const b = e.target.closest('[data-dm]'); if (b) MR.Msg.compose(b.dataset.dm); };
 $('jobPick').onclick = e => { const inf = e.target.closest('.jinfo'); if (inf) { UI.roverInfo(inf.dataset.info, MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless, null, G.lobby.map === 'gale'); MR.sfx.click(); return; }
   const b = e.target.closest('.job'); if (!b) return; const p = me(); p.job = b.dataset.job; MR.Store.save();
   if (G.mode === 'client') G.net.send({type:'job', job:p.job}); else hostHandle(G.myPid, {type:'job', job:p.job}); MR.sfx.click();
@@ -348,7 +367,7 @@ function renderGame(){
   $('tabs').hidden = code; $('editor').hidden = !code; $('prog').hidden = code || G.showCode; $('code').hidden = code || !G.showCode;
   $('planTitle').textContent = code ? "Today's program" : "Today's plan";
   $('howList').innerHTML = MR.HOW[role].map(h => `<li>${esc(h)}</li>`).join('');
-  $('chatRow').hidden = !team();
+  $('chatRow').hidden = !team() || !msgRules().chat;
   renderPalette(); renderPlan(); renderHud(); renderSide(); renderCrewBar(); renderTeam(); renderLock(); renderNet(); computeHints(); renderNudges(); renderFinds(); renderWeather(); renderLab(); renderRelay();
 }
 const WX_ICON = {clear:'☀', hazy:'⛅', storm:'🌪', none:'☾'};
@@ -630,9 +649,10 @@ function renderCrewBar(){
     const status = !on ? 'offline' : G.phase === 'run' ? 'driving' : rd ? '✓ ready' : 'planning';
     return `<button class="cchip ${r.pid === G.myPid ? 'me' : ''}" data-pid="${r.pid}">${UI.avatar(r)}<span><b>${esc(r.name)}</b><small>${MR.JOBS[r.job].label}${r.role !== 'cadet' ? ` · ${r.bat}%` : ''}</small></span>${team() ? `<span class="rd ${rd ? 'ok' : ''}">${status}</span>` : ''}</button>`; }).join('');
 }
-$('crewBar').onclick = e => { const b = e.target.closest('.cchip'); if (!b) return; R.focus(b.dataset.pid, b.dataset.pid === G.myPid); showTip(b.dataset.pid); };
+$('crewBar').onclick = e => { const b = e.target.closest('.cchip'); if (!b) return; R.focus(b.dataset.pid, b.dataset.pid === G.myPid); showTip(b.dataset.pid);
+  if (MR.Msg.can(b.dataset.pid)) { const rc = b.getBoundingClientRect(); roverMenu(b.dataset.pid, rc.left, rc.bottom - 8); } };
 function renderTeam(){
-  renderCrewBar();
+  renderCrewBar(); $('chatRow').hidden = !team() || !msgRules().chat;
   if (!G.state) return;
   R.offline = new Set(team() ? G.lobby.players.filter(x => !x.connected).map(x => x.pid) : []);
   let t = '';
@@ -1221,11 +1241,18 @@ function showTip(pid, x, y){
   $('tip').innerHTML = `<b style="color:${MR.colorHex(r.color)}">${esc(r.name)}</b>${r.pid === G.myPid ? ' (you)' : ''}<small>${MR.ROLES[r.role].label} · ${MR.JOBS[r.job].label} · ${MR.RANKS[r.rank|0].name}</small>`
     + (r.role !== 'cadet' ? `<small>Battery ${r.bat}% · Tubes ${r.tubes.length}/${MR.tubesOf(r)}</small>` : '')
     + (r.perks.length ? `<small>Perks: ${r.perks.map(k => MR.PERKS[k].name).join(', ')}</small>` : '')
-    + (r.stuck ? '<small style="color:var(--bad)">Stuck in sand</small>' : '') + (lp && !lp.connected ? '<small style="color:var(--bad)">Offline</small>' : '');
+    + (MR.Msg.can(pid) ? '<small style="color:var(--signal)">✉ Tap or right-click to send a message</small>' : '') + (r.stuck ? '<small style="color:var(--bad)">Stuck in sand</small>' : '') + (lp && !lp.connected ? '<small style="color:var(--bad)">Offline</small>' : '');
   $('tip').style.left = Math.max(90, Math.min(innerWidth - 90, pos.x)) + 'px'; $('tip').style.top = Math.max(70, pos.y) + 'px'; $('tip').hidden = false;
   clearTimeout(tipTimer); tipTimer = setTimeout(() => $('tip').hidden = true, 3500);
 }
-R.onTapRover = (pid, x, y) => { $('tapMenu').hidden = true; if (pid) showTip(pid, x, y); else $('tip').hidden = true; };
+R.onTapRover = (pid, x, y) => { $('tapMenu').hidden = true; if (pid) { showTip(pid, x, y); if (MR.Msg.can(pid)) roverMenu(pid, x, y); } else $('tip').hidden = true; };
+/* Right-click (or tap) on another player's rover: send them a message. */
+R.onRoverMenu = (pid, x, y) => { if (MR.Msg.can(pid)) { showTip(pid, x, y); roverMenu(pid, x, y); } };
+function roverMenu(pid, x, y){
+  const lp = G.lobby.players.find(q => q.pid === pid), menu = $('tapMenu'); if (!lp) return;
+  menu.innerHTML = `<button data-dm="${esc(pid)}">✉ Send a message to ${esc(lp.name)}</button>`;
+  menu.hidden = false; menu.style.left = Math.min(innerWidth - menu.offsetWidth - 10, x + 8) + 'px'; menu.style.top = Math.min(innerHeight - menu.offsetHeight - 10, y + 16) + 'px';
+}
 /* Tap the map: build plan steps for you, or drop a team marker. */
 const MARKS = {dig:{icon:'⛏', name:'Dig here'}, danger:{icon:'⚠', name:'Danger'}, meet:{icon:'★', name:'Meet here'}};
 function planEnd(){ const r = myRover(); if (!r) return null; const g = R.ghost[R.ghost.length-1]; return g ? {...r, x:g[0], y:g[1], dir:g[2]} : r; }
@@ -1246,6 +1273,7 @@ R.onTapMap = (x, y, cx, cy) => {
   menu.hidden = false; menu.style.left = Math.min(innerWidth - menu.offsetWidth - 10, cx + 8) + 'px'; menu.style.top = Math.min(innerHeight - menu.offsetHeight - 10, cy + 8) + 'px';
 };
 $('tapMenu').addEventListener('click', e => {
+  const dm = e.target.closest('[data-dm]'); if (dm) { $('tapMenu').hidden = true; $('tip').hidden = true; MR.Msg.compose(dm.dataset.dm); return; }
   const b = e.target.closest('[data-tap]'); if (!b) return; const m = $('tapMenu'), x = +m.dataset.x, y = +m.dataset.y, a = b.dataset.tap; m.hidden = true;
   if (a.startsWith('mark:')) { toHost({type:'marker', x, y, kind:a.slice(5) || null}); return; }
   const st = G.state, from = planEnd(); if (!from) return;

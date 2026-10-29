@@ -28,6 +28,7 @@ R.init = (canvas, mini, box) => {
     drag = null; canvas.style.cursor = 'grab'; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('pointerleave', () => { R.hoverPid = null; });
+  canvas.addEventListener('contextmenu', e => { const pid = R.hit(e.clientX, e.clientY); if (pid && R.onRoverMenu) { e.preventDefault(); R.onRoverMenu(pid, e.clientX, e.clientY); } });
   /* Mouse wheel and trackpad pinch zoom toward the pointer. Small trackpad steps give small zoom steps. */
   canvas.addEventListener('wheel', e => { e.preventDefault(); const b = canvas.getBoundingClientRect();
     const d = Math.max(-1, Math.min(1, e.deltaY / (e.deltaMode ? 3 : 100)));

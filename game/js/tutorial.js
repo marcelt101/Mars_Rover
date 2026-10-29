@@ -108,7 +108,7 @@ function advance(){
 function finish(){
   const p = MR.Store.current();
   if (p) {
-    p.tutDone = true; p.stats.tutorial = 1;
+    p.tutDone = true; p.tutShow = false; p.stats.tutorial = 1;
     const notices = MR.applyRewards(p, MR.Game.myPid, [], {map:'jezero', players:1});
     UI.notify(notices, p.role === 'cadet');
   }

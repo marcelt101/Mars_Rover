@@ -50,6 +50,12 @@ Scouts and Haulers look like Spirit and Opportunity (big winged solar array, Pan
 
 ## Getting started
 
+**Settings** (the gear button on every screen, or the Settings link) gathers sound, music, fast mode, the game look, the tutorial bar, team-game messages and the break reminder. In a game the gear opens a quick menu with a link to all settings.
+
+**Private messages:** in a team game, send a player a short message (up to 200 characters) from the lobby crew list, the crew bar, or by tapping or right-clicking their rover. Quick picture messages need no typing, so Cadets can use them too. The host can turn private messages and team chat on or off in Settings, for everyone.
+
+**Avatars (preview):** add `?preview=avatars` to pick one of 24 young-scientist avatars in the profile editor. `?preview=off` hides them again.
+
 **Game look:** the start screen is a title screen, panels look like a mission console, settings sit in the gear menu during a game, Send to Mars is a big launch button, phones get a Plan / Mission / Log tab bar with the map on top, the lobby shows rover pictures and map art, and screens slide in. Add `?ui=off` to the address to see the old look (remembered on the device), `?ui=all` to go back.
 
 **What the game teaches** (on the start screen, first in the tutorial bar and the links) is a page for teachers and parents. It describes the game world and, subject by subject, what children learn and where they meet it: engineering, programming, rocks and minerals, chemistry, weather, space science, astrobiology, history of space exploration, math, the scientific method and teamwork. It also has a typical one-hour Mission Log day and tips for adults.

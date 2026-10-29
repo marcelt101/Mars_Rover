@@ -38,13 +38,15 @@ if (on('title')) {
   [['soloBtn','rover'],['hostBtn','dish'],['joinBtn','key']].forEach(([id, ic]) => { const m = $(id).closest('.mode'); if (m) { const i = document.createElement('span'); i.className = 'micon'; i.innerHTML = ICON[ic]; m.prepend(i); } });
 }
 
-/* 3. In-game HUD: a small top bar and a gear menu for the settings under the map. */
-if (on('hud')) {
+/* Gear button on every screen: Settings at home and in the lobby. In a game with the HUD look it opens a quick
+   menu (fast mode, sound, music, leave) with a button to all settings. */
+{
   const g = document.createElement('button'); g.className = 'btn gearbtn'; g.id = 'gearBtn'; g.title = 'Settings'; g.setAttribute('aria-label', 'Settings'); g.innerHTML = ICON.gear;
   $('invBtn').before(g);
   const tools = document.querySelector('.maptools'), how = document.querySelector('details.how');
-  tools.classList.add('gearmenu'); tools.insertAdjacentHTML('afterbegin', '<b class="gmt">Settings</b>'); if (how) tools.append(how);
-  g.onclick = e => { e.stopPropagation(); document.body.classList.toggle('toolsopen'); };
+  if (on('hud')) { tools.classList.add('gearmenu'); tools.insertAdjacentHTML('afterbegin', '<b class="gmt">Settings</b>'); tools.insertAdjacentHTML('beforeend', '<button class="btn" id="allSetBtn">All settings…</button>'); if (how) tools.append(how);
+    $('allSetBtn').onclick = () => { document.body.classList.remove('toolsopen'); UI.settings(); }; }
+  g.onclick = e => { e.stopPropagation(); if (on('hud') && document.body.dataset.scr === 'scrGame') document.body.classList.toggle('toolsopen'); else UI.settings(); };
   document.addEventListener('click', e => { if (!e.target.closest('.maptools') && !e.target.closest('#gearBtn')) document.body.classList.remove('toolsopen'); });
 }
 

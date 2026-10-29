@@ -52,9 +52,8 @@ body.ui-hud[data-scr="scrGame"] .top .sub{display:none}
 body.ui-hud[data-scr="scrGame"] .top h1{font-size:17px}
 body.ui-hud[data-scr="scrGame"] .top .mark{width:26px;height:26px}
 body.ui-hud[data-scr="scrGame"] .app{gap:10px;padding-top:10px}
-.gearbtn{display:none}
-body.ui-hud[data-scr="scrGame"] .gearbtn{display:grid;place-items:center;padding:6px 9px}
-body.ui-hud #gearBtn svg{width:20px;height:20px}
+.gearbtn{display:grid;place-items:center;padding:6px 9px}
+#gearBtn svg{width:20px;height:20px}
 body.ui-hud .maptools.gearmenu{display:none}
 body.ui-hud.toolsopen .maptools.gearmenu{display:flex;flex-direction:column;align-items:stretch;position:fixed;z-index:32;right:16px;top:58px;width:min(280px,calc(100vw - 32px));
   background:var(--panel);border:1px solid var(--signal);border-radius:14px;padding:14px;gap:10px;box-shadow:0 14px 40px rgba(0,0,0,.6)}

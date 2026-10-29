@@ -33,6 +33,7 @@ MR.COLORS = [
 ];
 MR.colorHex = id => (MR.COLORS.find(c => c.id === id) || MR.COLORS[0]).hex;
 
+MR.DM_MAX = 200;   /* longest private message, in characters */
 MR.ROLES = {
   cadet:      {label:'Cadet', ages:'Ages 4–7', desc:'Picture buttons. No reading needed.', solar:0, maxCmd:5, tubes:0, slots:0},
   explorer:   {label:'Explorer', ages:'Ages 8–12', desc:'Plan with blocks and numbers.', solar:30, maxCmd:12, tubes:8, slots:3},

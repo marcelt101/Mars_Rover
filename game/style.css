@@ -661,3 +661,37 @@ svg.chart .gt{fill:#8fa0b0;font-size:11px;font-family:var(--mono)}
 .avo .avsvg{width:100%;height:100%;display:block}
 .avo[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 2px var(--signal)}
 .avo .avl{align-self:center;font-family:var(--display);font-weight:700;font-size:24px;color:#0b1015}
+/* Batch 6: settings and private messages */
+.settings section{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.settings section:first-child{border-top:0;padding-top:0}
+.settings section p{margin:0}
+.sset{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.sset>span{display:flex;flex-direction:column;min-width:0}
+.sset small{color:var(--muted);font-size:12.5px}
+.sset.dis{opacity:.6;cursor:not-allowed}
+.sset input[type=range]{width:min(200px,45%)}
+.swi{appearance:none;-webkit-appearance:none;width:46px;height:26px;border-radius:13px;background:#2a3440;position:relative;flex:none;cursor:pointer;transition:background .15s;margin:0}
+.swi::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#c3ced8;transition:transform .15s}
+.swi:checked{background:var(--signal)}
+.swi:checked::after{transform:translateX(20px);background:#fff}
+.swi:disabled{cursor:not-allowed}
+.dmto{display:flex;gap:10px;align-items:center}
+.dmto .av{width:44px;height:44px;border-radius:12px;font-size:20px}
+.dmto b{display:block;font-family:var(--display);font-size:17px}
+.dmto small{color:var(--muted)}
+.dmquick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.dmquick .btn{text-align:left;display:flex;gap:8px;align-items:center}
+.dmquick .qe{font-size:18px}
+.dmtext{resize:vertical;min-height:64px;font-family:var(--body)}
+.dmpops{position:fixed;left:16px;bottom:16px;z-index:29;display:flex;flex-direction:column;gap:8px;width:min(330px,calc(100vw - 32px));pointer-events:none}
+.dmpop{pointer-events:auto;display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:2px solid var(--signal);border-radius:14px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.55);animation:dmIn .25s ease-out}
+.dmpop .av{width:40px;height:40px;border-radius:11px;font-size:18px}
+.dmpop .dmb{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.dmpop p{margin:0;font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+.dmpop small{color:var(--muted)}
+.dmpop .row{justify-content:flex-end}
+@keyframes dmIn{from{opacity:0;transform:translateY(12px)}}
+@media (prefers-reduced-motion:reduce){.dmpop{animation:none}}
+body.ui-phone[data-scr="scrGame"] .dmpops{bottom:90px}
+.crew .dmb{padding:4px 9px;font-size:14px}
+.log .dm{color:#9fe3d6}

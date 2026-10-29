@@ -45,7 +45,7 @@ UI.renderHome = () => {
     return `<button class="pcard" data-id="${p.id}" aria-pressed="${cur && cur.id === p.id}">${UI.avatar(p)}<span style="min-width:0;flex:1"><b>${esc(p.name)}</b><small>${MR.ROLES[p.role].label} · ${ri.name}</small><div class="xpbar"><span style="width:${Math.round(ri.frac*100)}%"></span></div></span></button>`; }).join('')
     + `<button class="pcard new" id="newProfile">+ New crew member</button>`;
   $('modes').style.opacity = cur ? 1 : .4;
-  $('tutBar').hidden = !cur || cur.tutDone || cur.tutHide;
+  $('tutBar').hidden = !cur || (cur.tutDone && !cur.tutShow) || cur.tutHide;
   ['soloBtn','hostBtn','joinBtn'].forEach(id => $(id).disabled = !cur);
   const ex = MR.Store.expedition(), canResume = !!(ex && cur && ex.pid === cur.id && (!ex.won || ex.keep) && MR.MAPS[ex.map]);
   $('resumePanel').hidden = !canResume;
@@ -65,7 +65,7 @@ $('profiles').addEventListener('click', e => {
 
 /* ---------- modal helpers ---------- */
 let modalClose = null;
-UI.openModal = (html, narrow, onClose) => { $('sheet').className = 'sheet' + (narrow ? ' narrow' : ''); $('sheet').innerHTML = html; $('modal').hidden = false; modalClose = onClose || null; };
+UI.openModal = (html, narrow, onClose) => { $('tapMenu').hidden = true; $('tip').hidden = true; $('sheet').className = 'sheet' + (narrow ? ' narrow' : ''); $('sheet').innerHTML = html; $('modal').hidden = false; modalClose = onClose || null; };
 UI.closeModal = () => { if ($('modal').hidden) return; $('modal').hidden = true; $('sheet').innerHTML = ''; const f = modalClose; modalClose = null; if (f) f(); };
 UI.modalOpen = () => !$('modal').hidden;
 $('modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.closest('[data-close]')) UI.closeModal(); });
@@ -254,6 +254,7 @@ $('parentsBtn').addEventListener('click', () => UI.parents());
 $('tutBtn').addEventListener('click', () => MR.Game.startTutorial());
 $('guideBtn').addEventListener('click', () => UI.guide('teach'));
 $('guideLink').addEventListener('click', () => UI.guide('teach'));
+$('setLink').addEventListener('click', () => UI.settings());
 $('tutLink').addEventListener('click', () => { if (MR.Store.current()) MR.Game.startTutorial(); });
 $('tutNo').addEventListener('click', () => { const p = MR.Store.current(); if (p) { p.tutHide = true; MR.Store.save(); } UI.renderHome(); });
 
