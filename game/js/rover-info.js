@@ -40,13 +40,16 @@ const MER = {
   science:[
     ['Pancam', 'Two color cameras on the head, for big panoramas of the land.'],
     ['Navcam and Hazcams', 'Black-and-white cameras for driving: Navcams on the head look far, Hazcams low on the body spot rocks right in front.'],
-    ['Mini-TES', 'Feels the heat glow of rocks from far away to tell which minerals they are.'],
+    ['Mini-TES', 'Feels the heat glow of rocks from far away to tell which minerals they are. It hides in the body and looks out through a mirror at the top of the mast.'],
     ['APXS', 'Held against a rock to measure which chemical elements it contains.'],
     ['Mössbauer spectrometer', 'Finds iron minerals. It discovered hematite "blueberries" and jarosite.'],
     ['Microscopic Imager', 'A camera that works like a magnifying glass.'],
     ['Rock Abrasion Tool (RAT)', 'Grinds away the dusty outside of a rock to see the fresh inside.'],
+    ['Magnet arrays', 'Small magnets on the rover catch the dust that blows by. The dust stuck to them, which showed it has iron minerals in it.'],
+    ['Pancam calibration target', 'A sundial on the deck with colored corners. The cameras photograph it to check that their colors are right. It says "Two worlds, one sun".'],
   ],
   fact:'Opportunity drove more than 45 kilometers, longer than a marathon.',
+  img:['img/mer-instruments.jpg', 'Where the science tools sit on Spirit and Opportunity. MB is the Mössbauer spectrometer and MI the Microscopic Imager. Picture: NASA/JPL'],
 };
 MR.ROVER_INFO = {
   science:{...PERSEVERANCE, game:'In the game, the Science rover\'s Analyze identifies every signal within 2 squares, like SuperCam and PIXL working together.'},
