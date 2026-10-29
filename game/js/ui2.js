@@ -35,7 +35,7 @@ if (on('title')) {
   const hero = document.createElement('div'); hero.className = 'hero';
   /* The title picture (tools/make-title.js), or the text title until it is approved. */
   if (MR.PREVIEW && MR.PREVIEW.includes('title')) { hero.classList.add('pic');
-    hero.innerHTML = '<img class="htimg" src="img/title.jpg" alt="Crater Crew: Interplanetary Missions"><p>Plan. Send. Explore. Real places on Mars and the Moon, played together.</p>'; }
+    hero.innerHTML = '<img class="htimg" src="img/title.jpg" alt="Crater Crew"><p>Plan. Send. Explore. Real places on Mars and the Moon, played together.</p>'; }
   else hero.innerHTML = '<div class="planet" aria-hidden="true"></div><div class="htxt"><h2 class="htitle">Crater Crew</h2><p class="hsub">Mars Rover Missions</p><p>Plan. Send. Explore. Real places on Mars and the Moon, played together.</p></div>';
   $('scrHome').prepend(hero);
   [['soloBtn','rover'],['hostBtn','dish'],['joinBtn','key']].forEach(([id, ic]) => { const m = $(id).closest('.mode'); if (m) { const i = document.createElement('span'); i.className = 'micon'; i.innerHTML = ICON[ic]; m.prepend(i); } });
