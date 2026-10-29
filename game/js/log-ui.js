@@ -95,7 +95,7 @@ L.stars = (m, r) => {
 L.certificate = () => {
   const p = MR.Store.current(); if (!p) return; const lg = logOf(p), n = Object.keys(lg).length, stars = Object.values(lg).reduce((s, x) => s + (x.stars || 0), 0);
   const full = n >= 30, weeks = [1, 2, 3, 4].filter(w => MR.MISSIONS.filter(m => m.week === w).every(m => lg[m.day])).map(w => MR.LOG_WEEKS[w].name);
-  modal('Certificate', `<div class="certificate" id="cert"><div class="cbd"><small>MARS ROVER OPS · 30-DAY MISSION LOG</small>
+  modal('Certificate', `<div class="certificate" id="cert"><div class="cbd"><small>CRATER CREW · 30-DAY MISSION LOG</small>
       <h1>${full ? 'Mission Specialist' : 'Mission Progress'}</h1><p>This certifies that</p><h2>${esc(p.name)}</h2>
       <p>${full ? 'completed all 30 days of the Mission Log' : `completed ${n} of 30 days of the Mission Log`}, exploring real places on Mars and the Moon, with ${stars} stars.</p>
       ${weeks.length ? `<p class="cw">${weeks.map(esc).join(' · ')}</p>` : ''}

@@ -17,6 +17,7 @@ body.ui-title .hero .planet{width:96px;height:96px;border-radius:50%;flex:none;b
 body.ui-title .hero .htitle{font-family:var(--display);font-weight:700;font-size:clamp(30px,6vw,54px);letter-spacing:.06em;text-transform:uppercase;line-height:1;margin:0;
   background:linear-gradient(180deg,#fff 20%,#f2b183 95%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 12px rgba(232,132,79,.35))}
 body.ui-title .hero p{margin:8px 0 0;color:var(--soft);font-size:15px}
+body.ui-title .hero .hsub{margin:6px 0 0;font-family:var(--display);font-weight:600;font-size:clamp(15px,2.4vw,20px);letter-spacing:.18em;text-transform:uppercase;color:#f2b183}
 body.ui-title .modes{gap:14px}
 body.ui-title .mode{position:relative;align-items:center;text-align:center;padding:20px 18px 18px;border-radius:18px;border:1px solid #3a2c28;
   background:linear-gradient(180deg,rgba(60,32,24,.65),rgba(20,24,32,.85));box-shadow:0 10px 30px rgba(0,0,0,.4)}

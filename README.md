@@ -1,4 +1,4 @@
-# Mars Rover Ops
+# Crater Crew: Mars Rover Missions
 
 A co-op browser game where you plan rover commands, send them to Mars, and watch the rovers carry them out. Up to 32 players (a whole class), each on their own device. Set in real places: Jezero Crater (Perseverance), Gusev Crater (Spirit), Meridiani Planum (Opportunity) and Gale Crater (Curiosity) on Mars, and Hadley Rille on the Moon (Apollo 15).
 

@@ -1,5 +1,5 @@
 /* Run with: node tools/playtest-bots.js  (prints pacing and stuck metrics for robot players) */
-/* Robot playtesters for Mars Rover Ops. Uses the real game rules (data, world, sim, profile). */
+/* Robot playtesters for Crater Crew. Uses the real game rules (data, world, sim, profile). */
 global.window = global; global.location = {search:''};
 const mem = {}; global.localStorage = {getItem:k => mem[k] ?? null, setItem:(k,v) => { mem[k] = v; }};
 global.btoa = s => Buffer.from(s, 'binary').toString('base64'); global.atob = s => Buffer.from(s, 'base64').toString('binary');

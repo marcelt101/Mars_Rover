@@ -1,4 +1,4 @@
-# Releasing Mars Rover Ops
+# Releasing Crater Crew
 
 There is one game, in `game/`, on the `main` branch. Every release (the web version on GitHub Pages, the itch.io
 demo, the itch.io full game and, later, the desktop app) is built from it. There are no separate branches to keep
@@ -31,7 +31,7 @@ python3 tools/build.py              # itch-demo and itch-full
 python3 tools/build.py desktop      # any edition by name
 ```
 
-The zip files land in `dist/` (not saved in git), named like `mars-rover-ops-itch-full-itch-1.0.zip`. Each has
+The zip files land in `dist/` (not saved in git), named like `crater-crew-itch-full-itch-1.0.zip`. Each has
 `index.html` at the top, which is what itch.io expects. The build name comes from the git tag, so tag first:
 
 ```

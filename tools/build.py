@@ -5,7 +5,7 @@
     python3 tools/build.py itch-demo web    # pick editions
 
 Each edition is copied to dist/<edition>/ with its MR.EDITION and MR.BUILD set in js/edition.js, then zipped to
-dist/mars-rover-ops-<edition>-<build>.zip, with index.html at the top of the zip as itch.io expects.
+dist/crater-crew-<edition>-<build>.zip, with index.html at the top of the zip as itch.io expects.
 The build name is the current git tag or commit. What each edition includes is decided in game/js/edition.js.
 """
 import os, re, shutil, subprocess, sys, zipfile
@@ -31,7 +31,7 @@ def build(edition, name):
     if n1 != 1 or n2 != 1:
         sys.exit('edition.js: could not find the MR.EDITION and MR.BUILD lines')
     open(path, 'w', encoding='utf-8').write(js)
-    zpath = os.path.join(DIST, f'mars-rover-ops-{edition}-{name}.zip')
+    zpath = os.path.join(DIST, f'crater-crew-{edition}-{name}.zip')
     with zipfile.ZipFile(zpath, 'w', zipfile.ZIP_DEFLATED) as z:
         for base, _, files in os.walk(out):
             for f in sorted(files):

@@ -43,7 +43,7 @@ UI.guide = t => {
   const tabs = [['teach','What it teaches'],['world','The game world'],['day','A typical day'],['adults','For teachers and parents']];
   let body = '';
   if (tab === 'teach') {
-    body = `<p class="glede">Mars Rover Ops is a co-op game where children run real NASA rovers on real places on Mars and the Moon. Everything in it is real science. Here is what it teaches and where children meet it.</p>
+    body = `<p class="glede">Crater Crew is a co-op game where children run real NASA rovers on real places on Mars and the Moon. Everything in it is real science. Here is what it teaches and where children meet it.</p>
       <div class="subjects">${SUBJECTS.map(s => `<div class="subj" style="--sc:${s.col}"><div class="subh"><span class="subi">${esc(s.icon)}</span><b>${esc(s.name)}</b></div><p>${esc(s.learn)}</p><p class="subw"><b>In the game:</b> ${esc(s.where)}</p></div>`).join('')}</div>`;
   } else if (tab === 'world') {
     body = `<p class="glede">The players are the mission team on Earth. Each sol (a Mars day) they plan what their rover should do, send the plan to Mars, wait for the signal to arrive, and watch the rover carry it out. Then they plan again.</p>

@@ -33,7 +33,7 @@ document.body.dataset.scr = 'scrHome';
 /* 1. Title screen: a hero with the planet and big mode tiles with icons. */
 if (on('title')) {
   const hero = document.createElement('div'); hero.className = 'hero';
-  hero.innerHTML = '<div class="planet" aria-hidden="true"></div><div class="htxt"><h2 class="htitle">Mars Rover Ops</h2><p>Plan. Send. Explore. Real places on Mars and the Moon, played together.</p></div>';
+  hero.innerHTML = '<div class="planet" aria-hidden="true"></div><div class="htxt"><h2 class="htitle">Crater Crew</h2><p class="hsub">Mars Rover Missions</p><p>Plan. Send. Explore. Real places on Mars and the Moon, played together.</p></div>';
   $('scrHome').prepend(hero);
   [['soloBtn','rover'],['hostBtn','dish'],['joinBtn','key']].forEach(([id, ic]) => { const m = $(id).closest('.mode'); if (m) { const i = document.createElement('span'); i.className = 'micon'; i.innerHTML = ICON[ic]; m.prepend(i); } });
 }

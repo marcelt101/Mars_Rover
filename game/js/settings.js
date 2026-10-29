@@ -27,7 +27,7 @@ UI.settings = () => {
       <label class="sset"><span><b>Break reminder</b><small>A friendly reminder to take a break.</small></span><select class="input" id="stBrk">${[0, 30, 45, 60, 90].map(v => `<option value="${v}" ${v === (s.breakMins ?? 60) ? 'selected' : ''}>${v ? `After ${v} min` : 'Off'}</option>`).join('')}</select></label>
       <div class="sset"><span><b>Parents and saves</b><small>Progress, saves and backups for each child.</small></span><button class="btn" id="stParents">Open</button></div>
       <div class="sset"><span><b>What the game teaches</b><small>For teachers and parents.</small></span><button class="btn" id="stGuide">Open</button></div></section>
-    <p class="muted" style="margin:0;font-size:12px">Mars Rover Ops · ${esc(MR.ED.label)} · build ${esc(MR.BUILD)}</p>
+    <p class="muted" style="margin:0;font-size:12px">Crater Crew · ${esc(MR.ED.label)} · build ${esc(MR.BUILD)}</p>
     ${g.phase !== 'home' && g.phase !== 'lobby' && g.state ? '<div class="row" style="justify-content:flex-end"><button class="btn danger" id="stLeave">Leave game</button></div>' : ''}</div>`);
   $('stSound').onchange = e => viaControl('sound', e.target.checked);
   $('stMusic').onchange = e => { viaControl('music', e.target.checked); $('stVol').disabled = !e.target.checked; };
