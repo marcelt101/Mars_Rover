@@ -1,15 +1,16 @@
-/* Batch 6 UI preview: game-style look, behind a switch so it can be compared before it goes live.
-   ?ui=all turns every change on, ?ui=title,console picks some, ?ui=off goes back. The choice is remembered
-   on this device. Changes: title, console, hud, launch, phone, cards, motion. */
+/* Batch 6 game-style look (approved): title screen, console panels, in-game HUD with a settings menu, launch
+   button, phone tab bar, lobby picture cards and motion. All are on by default. For testing, ?ui=off turns them
+   off, ?ui=title,console picks some and ?ui=all goes back to all; the choice is remembered on this device. */
 (function () {
 const MR = window.MR, UI = MR.UI, $ = UI.$;
 const ALL = ['title','console','hud','launch','phone','cards','motion'];
-let pick = null;
+const parse = v => v === 'off' ? [] : v === 'all' || v == null ? ALL : v.split(',').filter(k => ALL.includes(k));
+let pick = ALL;
 try {
   const q = new URLSearchParams(location.search).get('ui');
-  if (q != null) { pick = q === 'off' || q === '' ? [] : q === 'all' ? ALL : q.split(',').filter(k => ALL.includes(k)); localStorage.setItem('mr2.ui', pick.join(',')); }
-  else pick = (localStorage.getItem('mr2.ui') || '').split(',').filter(k => ALL.includes(k));
-} catch (e) { pick = []; }
+  if (q != null) { pick = parse(q); localStorage.setItem('mr2.look', q); }
+  else pick = parse(localStorage.getItem('mr2.look'));
+} catch (e) { pick = ALL; }
 const on = k => pick.includes(k);
 pick.forEach(k => document.body.classList.add('ui-' + k));
 const svg = (d, vb = '0 0 24 24') => `<svg viewBox="${vb}" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
