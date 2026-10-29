@@ -203,6 +203,17 @@ Several of these are already cards (clay, carbonate, silica, olivine, salts). Th
 - Missions are short data entries (map, objectives, rules, briefing, quiz), so parents can change them or write their own later.
 - Not now: a classroom teacher dashboard for 20–30 students (maybe later).
 
+**Batch 5 addition: mission control tools inspired by NASA's Open MCT** (the open-source mission control software from NASA Ames, used to watch spacecraft and rover data). Simple, kid-sized versions:
+- **Mission Control screen** (like Open MCT display layouts): one dashboard with every rover's latest status (battery, tubes, wheels, dust, location, what it is doing) in a table, with colored alerts. The Lab player, or a parent on the PC, can act as Mission Control.
+- **Photo strip** (like the imagery view): each sol every rover takes a Navcam picture of the area around it; the pictures collect in an album with the sol and place.
+- **Science notebook** (like the Open MCT notebook): finds are logged automatically; players add their own notes and photos. This is also the daily journal of the 30-day Mission Log.
+- **Charts** (like telemetry plots): simple line charts of battery, dust and distance per sol, to practice reading graphs.
+- **Sol replay** (like the time conductor): a slider to re-watch any earlier sol on the map.
+- **Alarm rules** (like condition sets and limits): Explorers write their own rules ("if battery < 30, turn red"), a first step into if-then logic.
+- **Sol timeline** (like the plan view): bars showing what each rover will do during the sol, so the team can coordinate before pressing Ready.
+- **Mars clock and staleness:** sol and local Mars time (a sol is 24 h 39 min), and rovers of disconnected players shown grayed out.
+- Recommended first: the Mission Control screen, the photo strip and the science notebook.
+
 ## Next revision (v3): real NASA maps
 
 Replace the generated terrain with real data so the game shows the actual ground:
