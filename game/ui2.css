@@ -164,3 +164,44 @@ body.ui-title.bgpic[data-scr="scrHome"] .panel,body.ui-title.bgpic[data-scr="scr
   linear-gradient(180deg,rgba(7,10,16,0) 0,rgba(7,10,16,0) 200px,rgba(7,10,16,.9) 300px,rgba(7,10,16,.95) 100%),
   url(img/title.jpg) center 62px/150% auto no-repeat,#0b0f15}
   body.ui-title.bgpic[data-scr="scrHome"] .hero.pic{min-height:190px} }
+
+/* Short screens (laptops, the itch.io frame): a smaller title area and compact play tiles */
+@media (max-height:980px){
+  body.ui-title.bgpic[data-scr="scrHome"] .hero.pic{min-height:clamp(140px,27vh,300px)}
+  body.ui-title.bgpic[data-scr="scrHome"]{background:
+    linear-gradient(180deg,rgba(7,10,16,0) 0,rgba(7,10,16,.15) 22vh,rgba(7,10,16,.8) 50vh,rgba(7,10,16,.92) 100%),
+    url(img/title.jpg) center top/cover no-repeat fixed,#0b0f15}
+  body.ui-title .mode{padding:12px 14px;gap:6px;flex-direction:row;flex-wrap:wrap;justify-content:center;text-align:center}
+  body.ui-title .mode .micon{width:36px;height:36px;border-radius:10px}
+  body.ui-title .mode .micon svg{width:22px;height:22px}
+  body.ui-title .mode h3.t{font-size:16px}
+  body.ui-title .mode p{flex-basis:100%;font-size:13px}
+  body.ui-title .mode .btn.big{padding:10px 16px;font-size:16px}
+  body.ui-title .pcard{padding:10px}
+  body.ui-title .pcard .av{width:44px;height:44px}
+  .screen{gap:12px}
+}
+@media (max-height:980px) and (max-width:560px){ body.ui-title.bgpic[data-scr="scrHome"]{background:
+  linear-gradient(180deg,rgba(7,10,16,0) 0,rgba(7,10,16,0) 200px,rgba(7,10,16,.9) 300px,rgba(7,10,16,.95) 100%),
+  url(img/title.jpg) center 62px/150% auto no-repeat,#0b0f15} }
+
+/* ---------- Game-style main menu (preview) ---------- */
+body.menu[data-scr="scrHome"] #tutBar, body.menu[data-scr="scrHome"] #logPanel, body.menu[data-scr="scrHome"] .links, body.menu[data-scr="scrHome"] #scrHome>.ph{display:none!important}
+.mmenu{display:flex;justify-content:center}
+.mview{display:flex;flex-direction:column;align-items:center;gap:12px;width:min(560px,100%)}
+.mview[data-v="play"],.mview[data-v="crew"]{width:min(1100px,100%)}
+.mbtn-big{width:min(420px,100%);display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 20px;border-radius:16px;border:1px solid rgba(255,255,255,.14);border-bottom:4px solid rgba(0,0,0,.45);
+  background:rgba(16,22,30,.82);backdrop-filter:blur(6px);color:var(--fg);font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:transform .08s}
+.mbtn-big span{font-size:20px}
+.mbtn-big.primary{background:linear-gradient(180deg,#ffb27a,#e8844f 55%,#c25e2c);border:0;border-bottom:5px solid #7a3517;color:#2a0f04;font-size:28px;padding:20px;box-shadow:0 0 30px rgba(232,132,79,.45)}
+.mbtn-big:hover{transform:translateY(-1px)} .mbtn-big:active{transform:translateY(2px)}
+.msmall{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:4px}
+.msmall button{display:flex;align-items:center;gap:6px;background:rgba(16,22,30,.78);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:7px 14px;color:var(--soft);font-size:14px;cursor:pointer}
+.msmall button .av{width:24px;height:24px;border-radius:7px;font-size:12px}
+.mbig{width:min(420px,100%)} .mbig .panel{margin:0}
+.mhead{display:flex;align-items:center;gap:12px;width:100%}
+.mhead b{font-family:var(--display);font-size:22px;letter-spacing:.04em;text-shadow:0 2px 8px #000}
+.mback{background:rgba(16,22,30,.82);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 14px;color:var(--fg);cursor:pointer;font-size:15px}
+.mview #profiles,.mview #modes{width:100%}
+body.menu.ui-title.bgpic[data-scr="scrHome"] .hero.pic{min-height:clamp(150px,34vh,380px)}
+body.ui-title.bgpic[data-scr="scrHome"]{min-height:100vh;min-height:100dvh}

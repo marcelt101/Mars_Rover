@@ -37,6 +37,8 @@ if (on('title')) {
   { hero.classList.add('pic'); document.body.classList.add('bgpic');   /* approved: the title picture as the page background */
     hero.innerHTML = '<img class="htimg" src="img/title.jpg" alt="Crater Crew"><p>Plan. Send. Explore. Real places on Mars and the Moon, played together.</p>'; }
   $('scrHome').prepend(hero);
+  /* The play buttons come right after the profiles, so they fit on screen; the Mission Log and resume panels follow. */
+  $('profiles').after($('modes'));
   [['soloBtn','rover'],['hostBtn','dish'],['joinBtn','key']].forEach(([id, ic]) => { const m = $(id).closest('.mode'); if (m) { const i = document.createElement('span'); i.className = 'micon'; i.innerHTML = ICON[ic]; m.prepend(i); } });
 }
 
@@ -99,5 +101,39 @@ if (on('cards')) {
   };
   new MutationObserver(deco).observe($('jobPick'), {childList:true});
   new MutationObserver(deco).observe($('mapPick'), {childList:true});
+}
+/* Game-style main menu (preview: ?preview=menu): a few big buttons, each leading to the next screen.
+   Main: Continue / Play / Mission Log, plus small Crew, Tutorial, Guide, Settings, Parents buttons.
+   Play: Solo, Host, Join.  Crew: the profiles. The existing panels are moved in, so they keep working. */
+if (MR.PREVIEW && MR.PREVIEW.includes('menu')) {
+  document.body.classList.add('menu');
+  const H = $('scrHome'), m = document.createElement('div'); m.className = 'mmenu'; m.id = 'mMenu';
+  m.innerHTML = `<div class="mview" data-v="main">
+      <div class="mbig" id="mResume"></div>
+      <button class="mbtn-big primary" id="mPlay"><span>▶</span>Play</button>
+      <button class="mbtn-big" id="mLog"><span>🗓</span>30-day Mission Log</button>
+      <div class="msmall">
+        <button id="mCrew"></button><button id="mTut">🎓 Tutorial</button><button id="mGuide">📖 What it teaches</button><button id="mSet">⚙ Settings</button><button id="mPar">👪 Parents</button>
+      </div></div>
+    <div class="mview" data-v="play" hidden><div class="mhead"><button class="mback">‹ Back</button><b>Play</b></div><div id="mPlaySlot"></div></div>
+    <div class="mview" data-v="crew" hidden><div class="mhead"><button class="mback">‹ Back</button><b>Who's playing?</b></div><div id="mCrewSlot"></div></div>`;
+  H.querySelector('.hero') ? H.querySelector('.hero').after(m) : H.prepend(m);
+  $('mResume').append($('resumePanel')); $('mPlaySlot').append($('modes')); $('mCrewSlot').append($('profiles'));
+  const view = v => { m.querySelectorAll('.mview').forEach(x => x.hidden = x.dataset.v !== v); MR.sfx && MR.sfx.click(); };
+  MR.UI2.menu = view;
+  m.querySelectorAll('.mback').forEach(b => b.onclick = () => view('main'));
+  $('mPlay').onclick = () => MR.Store.current() ? view('play') : UI.profileModal(null);
+  $('mLog').onclick = () => MR.Store.current() ? MR.LogUI.calendar() : UI.profileModal(null);
+  $('mCrew').onclick = () => MR.Store.profiles().length ? view('crew') : UI.profileModal(null);
+  $('mTut').onclick = () => MR.Store.current() ? MR.Game.startTutorial() : UI.profileModal(null);
+  $('mGuide').onclick = () => UI.guide('teach'); $('mSet').onclick = () => UI.settings(); $('mPar').onclick = () => UI.parents();
+  /* Picking a profile in the Crew view goes back to the main menu. */
+  $('profiles').addEventListener('click', e => { if (e.target.closest('.pcard:not(.new)')) setTimeout(() => view('main'), 60); });
+  const rh = UI.renderHome;
+  UI.renderHome = () => { rh(); const cur = MR.Store.current();
+    $('mCrew').innerHTML = cur ? `${UI.avatar(cur)} <span>${UI.esc(cur.name)}</span>` : '👤 Create crew member';
+    $('mPlay').innerHTML = cur ? '<span>▶</span>Play' : '<span>+</span>Create your crew member';
+    $('mResume').hidden = $('resumePanel').hidden; };
+  UI.renderHome();
 }
 })();
