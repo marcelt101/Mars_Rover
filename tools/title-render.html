@@ -1,4 +1,5 @@
-<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#0b0f15}canvas{display:block}</style></head><body>
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Audiowide&family=Russo+One&family=Exo+2:wght@900&family=Michroma&display=swap">
+<style>body{margin:0;background:#0b0f15}canvas{display:block}</style></head><body>
 <canvas id="out"></canvas>
 <script>
 /* Hand-drawn letters: strokes on a 1 x 1 box (y down). No fonts. */
@@ -229,5 +230,19 @@ async function make3(src){
   const S = material(W, H, g => strokeWord(g, sub, (W - width(sub, sz, gp))/2, 266, sz, 11, gp), 'gold'); composite(ctx, S, 4, '#1a1408');
 }
 window.make3 = make3;
+/* ---------- Font titles: the same metal and gold materials, letters from a font ---------- */
+function fontWord(g, text, cx, y, size, font, spacing){ g.font = `${font}`.replace('SIZE', size + 'px'); g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  try { g.letterSpacing = (spacing || 0) + 'px'; } catch (e) {} g.fillStyle = '#fff'; g.fillText(text, cx, y); }
+async function make4(src, font, size, spacing){
+  await document.fonts.load(font.replace('SIZE', '100px'));
+  const im = new Image(); im.src = src; await im.decode();
+  const W = 1800, H = Math.round(1800 * im.height / im.width), out = document.getElementById('out'); out.width = W; out.height = H; const ctx = out.getContext('2d'); seed = 51;
+  ctx.drawImage(im, 0, 0, W, H);
+  const fade = ctx.createLinearGradient(0, 0, 0, H*.5); fade.addColorStop(0, 'rgba(0,0,0,.45)'); fade.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = fade; ctx.fillRect(0, 0, W, H*.5);
+  const top = H*.2;
+  const A = material(W, H, g => fontWord(g, 'CRATER CREW', W/2, top, size, font, spacing), 'metal'); composite(ctx, A, Math.round(size/10), '#1c2630');
+  const S = material(W, H, g => fontWord(g, 'INTERPLANETARY MISSIONS', W/2, top + size*.62, Math.round(size*.3), font, Math.round(spacing*.6 + 8)), 'gold'); composite(ctx, S, 4, '#1a1408');
+}
+window.make4 = make4;
 window.make = make; window.backdrop = backdrop;
 </script></body></html>
