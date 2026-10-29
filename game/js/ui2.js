@@ -102,10 +102,10 @@ if (on('cards')) {
   new MutationObserver(deco).observe($('jobPick'), {childList:true});
   new MutationObserver(deco).observe($('mapPick'), {childList:true});
 }
-/* Game-style main menu (preview: ?preview=menu): a few big buttons, each leading to the next screen.
+/* Game-style main menu: a few big buttons, each leading to the next screen.
    Main: Continue / Play / Mission Log, plus small Crew, Tutorial, Guide, Settings, Parents buttons.
    Play: Solo, Host, Join.  Crew: the profiles. The existing panels are moved in, so they keep working. */
-if (MR.PREVIEW && MR.PREVIEW.includes('menu')) {
+if (!/[?&]nomenu=1/.test(location.search)) {   /* approved: the game-style menu (?nomenu=1 skips it, for tests) */
   document.body.classList.add('menu');
   const H = $('scrHome'), m = document.createElement('div'); m.className = 'mmenu'; m.id = 'mMenu';
   m.innerHTML = `<div class="mview" data-v="main">
@@ -121,6 +121,7 @@ if (MR.PREVIEW && MR.PREVIEW.includes('menu')) {
   $('mResume').append($('resumePanel')); $('mPlaySlot').append($('modes')); $('mCrewSlot').append($('profiles'));
   const view = v => { m.querySelectorAll('.mview').forEach(x => x.hidden = x.dataset.v !== v); MR.sfx && MR.sfx.click(); };
   MR.UI2.menu = view;
+  const sh = UI.show; UI.show = name => { sh(name); if (name === 'scrHome') m.querySelectorAll('.mview').forEach(x => x.hidden = x.dataset.v !== 'main'); };
   m.querySelectorAll('.mback').forEach(b => b.onclick = () => view('main'));
   $('mPlay').onclick = () => MR.Store.current() ? view('play') : UI.profileModal(null);
   $('mLog').onclick = () => MR.Store.current() ? MR.LogUI.calendar() : UI.profileModal(null);
@@ -136,9 +137,9 @@ if (MR.PREVIEW && MR.PREVIEW.includes('menu')) {
     $('mResume').hidden = $('resumePanel').hidden; };
   UI.renderHome();
 }
-/* Title screen (preview: ?preview=splash): only the picture and one PLAY button. PLAY opens the start screen.
+/* Title screen: only the picture and one PLAY button. PLAY opens the start screen.
    It shows once per visit; coming back from a game goes straight to the start screen. */
-if (MR.PREVIEW && MR.PREVIEW.includes('splash')) {
+if (!/[?&]nomenu=1/.test(location.search)) {   /* approved: the title screen */
   const sp = document.createElement('div'); sp.className = 'splash'; sp.id = 'splash';
   sp.innerHTML = '<button class="splashplay" id="splashPlay">▶&nbsp; PLAY</button><p class="splashtag">Plan. Send. Explore. Real places on Mars and the Moon, played together.</p>';
   document.body.append(sp); document.body.classList.add('onsplash');
