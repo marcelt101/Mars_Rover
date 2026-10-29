@@ -100,6 +100,7 @@ MR.ROVER_INFO = {
       ['MARDI', 'A camera under the body that filmed the ground coming closer while Curiosity landed.']],
     fact:'Curiosity found that Gale Crater once had a lake with fresh water that tiny life could have lived in.', game:'On the Gale Crater map, the team explores the same crater as Curiosity, near Mount Sharp.'},
   lab:{real:'A Mars lab (not built yet)', when:'There is no lab on Mars yet',
+    img:['img/curiosity-labs.svg', 'How the two labs inside Curiosity work. Drawing: Crater Crew, simplified and not to scale'],
     how:'Today, rovers carry small labs inside their bodies, and the best studies happen in labs on Earth. In the game, the Lab stays at the station and studies what the team brings home.',
     parts:[['Sample inbox', 'Where samples from the rovers arrive.'], ['Workbench', 'Where samples become water, metal, bricks or glass for base upgrades.']],
     science:[['CheMin (on Curiosity)', 'Shines X-rays through rock powder to find out which minerals it contains.'], ['SAM (on Curiosity)', 'Bakes tiny amounts of rock powder and sniffs the gases, to find organic molecules.'], ['Labs on Earth', 'Scientists study meteorites and Moon rocks in super-clean labs. Mars Sample Return would bring Mars rocks to them.']],
