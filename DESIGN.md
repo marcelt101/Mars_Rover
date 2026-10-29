@@ -176,13 +176,14 @@ Several of these are already cards (clay, carbonate, silica, olivine, salts). Th
 - Text by role: Cadets get picture objectives ("Find 3 green gems"); Explorers get short sentences; Specialists get the full science reason and the instrument names.
 - This is also the base for the 30-day Mission Log idea: a campaign is about one day of play.
 
-**Batch 4 addition: a clearer move planner** (the drive buttons and the dotted preview feel cheap, and it is hard to picture the plan before pressing Send).
-- **Rover-relative compass:** the drive buttons rotate to match the way the rover faces on the map, with a small rover icon in the middle, so "turn left" is always the rover's left. Each button shows what it will do next ("1 square north-east").
-- **Ghost rover on the map:** a see-through copy of the rover sits at the end of the plan, facing the way it will end up, so the final spot and direction are obvious.
-- **Step markers:** the planned path is a solid line with numbered dots for each block, curved arrows where the rover turns, and icons where it will scan, analyze or drill. The step under the mouse (or the one being edited) is highlighted on the map and in the list.
-- **Preview button:** a quick replay of the plan on the map at double speed before sending, with a warning where it would hit a known rock, sand trap or run low on battery.
-- **Battery along the path:** the line fades from green to yellow to red as the battery runs down, so the player sees where power gets tight.
-- Cadets keep the picture buttons, with the ghost rover and big numbered steps only.
+**Batch 4 addition: a clearer plan list** (the list of programmed moves in "Today's plan" feels cheap; it should be easy to understand the plan before pressing Send). Only the plan list changes; the rover and the map stay as they are.
+- Each move becomes a clear card instead of a plain text row: a picture of the move (a straight arrow with the number of squares for Forward, a curved arrow for a turn, the instrument icon for Scan, Analyze or Drill) and a short sentence ("Drive 3 squares", "Turn right").
+- Each card shows the direction the rover faces after that move (N, E, S, W) and about how much battery it uses, with a running total down the list.
+- Repeat and If blocks look like real containers: a colored bracket around the moves inside, with "3 times" or the condition written on the bracket.
+- Steps that would hit a known rock, sand trap or run out of battery are marked on their card before sending.
+- While the sol plays, the card being carried out is highlighted and the finished ones are ticked off.
+- Easier editing: drag cards to reorder, and bigger + and − buttons for squares and repeats.
+- Cadets keep the picture buttons and big picture steps.
 
 **Batch 5 (planned): the 30-day Mission Log, for families and homeschool.** Goal: one hour a day for 30 days. Built on the batch 4 campaigns.
 - Four weeks plus a finale, following real NASA history and one coding idea per week:
