@@ -244,7 +244,9 @@ UI.parents = () => {
         <textarea class="input" id="impCode" rows="3" placeholder="MR2:..." style="font-family:var(--mono);font-size:12px"></textarea>
         <div class="row"><button class="btn" id="impBtn">Restore</button><span class="muted" id="impMsg"></span></div></div>
       ${MR.LogUI ? MR.LogUI.parentHtml() : ''}
+      <div class="row" style="justify-content:space-between;align-items:center"><span class="muted">Something not working?</span><button class="btn" id="parRep">Report a problem</button></div>
     </div>`, true);
+  $('parRep').onclick = () => MR.Report.open();
   if ($('brkSel')) $('brkSel').onchange = e => { MR.Store.settings.breakMins = +e.target.value; MR.Store.save(); };
   $('allMaps').onchange = e => { MR.Store.team.allMaps = e.target.checked; MR.Store.save(); };
   $('copyCode').onclick = () => { const t = $('expCode'); navigator.clipboard && navigator.clipboard.writeText(t.value).then(() => $('copyMsg').textContent = 'Copied.', () => { t.select(); $('copyMsg').textContent = 'Press Ctrl+C to copy.'; }); if (!navigator.clipboard) { t.select(); $('copyMsg').textContent = 'Press Ctrl+C to copy.'; } };
@@ -259,6 +261,7 @@ $('setLink').addEventListener('click', () => UI.settings());
 $('demoBar').hidden = !MR.ED.demo;
 if (MR.ED.buyUrl) $('buyBtn').href = MR.ED.buyUrl; else $('buyBtn').hidden = true;
 if (!MR.ED.oldVersions) document.querySelectorAll('.links .oldv').forEach(a => a.remove());
+if (MR.ED.beta) { const bb = document.createElement('button'); bb.className = 'betab'; bb.id = 'betaBtn'; bb.textContent = 'BETA'; bb.title = 'This is a test version. Tap to report a problem.'; $('invBtn').parentNode.prepend(bb); bb.onclick = () => MR.Report.open(); }
 if (!MR.ED.qr) { const jp = $('joinBtn').closest('.mode').querySelector('p'); if (jp) jp.textContent = "Type the code from the host's screen."; }
 $('tutLink').addEventListener('click', () => { if (MR.Store.current()) MR.Game.startTutorial(); });
 $('tutNo').addEventListener('click', () => { const p = MR.Store.current(); if (p) { p.tutHide = true; MR.Store.save(); } UI.renderHome(); });

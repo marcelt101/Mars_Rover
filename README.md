@@ -236,6 +236,8 @@ lab.build("radio_tower")             # "solar_farm", "radio_tower", "garage", "g
 
 ## Releases
 
+Test versions show a BETA badge, and players can send bug reports from Settings (no names are sent).
+
 One code base, several editions (web, itch.io demo, itch.io full game, later a desktop app). `python3 tools/build.py` makes the itch.io zip files. See [RELEASING.md](RELEASING.md).
 
 ## For developers
