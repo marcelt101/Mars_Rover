@@ -149,5 +149,6 @@ body.ui-cards .mapcard.pic[aria-pressed="true"]{box-shadow:0 0 0 2px var(--signa
 
 /* Title picture on the start screen */
 body.ui-title .hero.pic{flex-direction:column;align-items:center;gap:6px;padding:0;text-align:center}
-body.ui-title .hero.pic .htimg{width:min(1100px,100%,calc((100vh - 330px) * 1.777));aspect-ratio:1672/941;object-fit:cover;height:auto;display:block;border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06)}
+body.ui-title .hero.pic .htimg{width:min(1100px,100%);aspect-ratio:1672/720;max-height:44vh;object-fit:cover;object-position:50% 0%;display:block;border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06)}
+@media (max-width:560px){ body.ui-title .hero.pic .htimg{aspect-ratio:1672/860;max-height:none} }
 body.ui-title .hero.pic p{margin:0}
