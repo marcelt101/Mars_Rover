@@ -26,7 +26,7 @@ function cleanPerks(p){
   return (p.perks || []).filter(k => MR.PERKS[k] && (p.rank|0) >= MR.PERKS[k].rank).slice(0, slots);
 }
 MR.makeRover = (p, cell, map) => {
-  const r = {pid:p.pid, name:String(p.name||'Rover').slice(0,16), color:p.color, role:p.role, job:p.job, rank:p.rank|0,
+  const r = {pid:p.pid, name:String(p.name||'Rover').slice(0,16), color:p.color, avatar:p.avatar ?? null, role:p.role, job:p.job, rank:p.rank|0,
     perks:[], x:cell[0], y:cell[1], dir:MR.MAPS[map].startDir, bat:100, batMax:100, stuck:false, tubes:[], tubeMeta:[], dust:0, wheels:100};
   if (!MR.JOBS[r.job] || !MR.JOBS[r.job].roles.includes(r.role)) r.job = MR.defaultJob(r.role);
   if (MR.MAPS[map].airless && r.job === 'heli') { r.job = 'buggy'; r.noAir = true; }

@@ -45,7 +45,7 @@ MR.rankInfo = p => { const r = MR.rankOf(p.xp), cur = MR.RANKS[r], next = MR.RAN
   return {rank:r, name:cur.name, next: next ? next.name : null, frac: next ? (p.xp - cur.xp)/(next.xp - cur.xp) : 1, toNext: next ? next.xp - p.xp : 0}; };
 MR.ownedPerks = p => p.role === 'cadet' ? [] : Object.keys(MR.PERKS).filter(k => MR.rankOf(p.xp) >= MR.PERKS[k].rank);
 MR.equippedPerks = p => { const own = MR.ownedPerks(p), slots = MR.ROLES[p.role].slots; return (p.perks||[]).filter(k => own.includes(k)).slice(0, slots); };
-MR.playerSummary = p => ({pid:p.id, name:p.name, color:p.color, role:p.role, job:p.job, rank:MR.rankOf(p.xp), perks:MR.equippedPerks(p)});
+MR.playerSummary = p => ({pid:p.id, name:p.name, color:p.color, avatar:p.avatar ?? null, role:p.role, job:p.job, rank:MR.rankOf(p.xp), perks:MR.equippedPerks(p)});
 
 /* Turn the events of one sol into rewards for this player. Returns a list of notices. */
 MR.applyRewards = (p, myPid, events, ctx) => {

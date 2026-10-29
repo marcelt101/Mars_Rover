@@ -21,7 +21,9 @@ MR.sfx = {
   win:() => [523,659,784,1047].forEach((f,i) => setTimeout(() => beep(f,.2), i*120)), join:() => beep(740,.12,'sine',.05),
 };
 
-UI.avatar = (p, cls = '') => `<span class="av ${cls}" style="background:${MR.colorHex(p.color)}">${esc((p.name || '?').slice(0,1).toUpperCase())}</span>`;
+UI.avatar = (p, cls = '') => p.avatar != null && MR.avatarsOn && MR.avatarsOn() && MR.AVATARS[p.avatar]
+  ? `<span class="av pic ${cls}" style="background:${MR.colorHex(p.color)}" title="${esc(MR.AVATARS[p.avatar].name)}">${MR.avatarSvg(p.avatar)}</span>`
+  : `<span class="av ${cls}" style="background:${MR.colorHex(p.color)}">${esc((p.name || '?').slice(0,1).toUpperCase())}</span>`;
 UI.show = name => {
   ['scrHome','scrLobby','scrGame'].forEach(s => $(s).hidden = s !== name);
   scrollTo(0, 0);
@@ -71,26 +73,33 @@ $('modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.tar
 /* ---------- profile editor ---------- */
 UI.profileModal = existing => {
   const p = existing || {name:'', color:MR.COLORS[MR.Store.profiles().length % MR.COLORS.length].id, role:'explorer'};
-  let color = p.color, role = p.role;
+  let color = p.color, role = p.role, avatar = p.avatar ?? null;
+  const avPick = MR.avatarsOn && MR.avatarsOn();
   UI.openModal(`
     <div class="sh"><h2>${existing ? 'Edit profile' : 'New crew member'}</h2><button class="xbtn" data-close aria-label="Close">×</button></div>
     <div class="sb">
       <label class="field"><span>Name</span><input class="input" id="pfName" maxlength="16" value="${esc(p.name)}" placeholder="Your name" autocomplete="off"></label>
       <div class="field"><span>Rover color</span><div class="swatches" id="pfColors">${MR.COLORS.map(c => `<button class="sw" data-c="${c.id}" aria-label="${c.name}" aria-pressed="${c.id === color}" style="background:${c.hex}"></button>`).join('')}</div></div>
+      ${avPick ? `<div class="field"><span>Avatar <small class="muted" id="pfAvName">${avatar != null ? esc(MR.AVATARS[avatar].name) : 'Your first letter'}</small></span><div class="avpick" id="pfAvs" style="--pc:${MR.colorHex(color)}">
+        <button class="avo" data-a="" aria-pressed="${avatar == null}" aria-label="Your first letter"><span class="avl" id="pfLetter">${esc((p.name || '?').slice(0, 1).toUpperCase())}</span></button>
+        ${MR.AVATARS.map(a => `<button class="avo" data-a="${a.id}" aria-pressed="${a.id === avatar}" aria-label="${esc(a.name)}" title="${esc(a.name)}">${MR.avatarSvg(a.id)}</button>`).join('')}</div></div>` : ''}
       <div class="field"><span>Crew role</span><div class="roles" id="pfRoles">${Object.entries(MR.ROLES).map(([k, r]) => `<button class="role" data-r="${k}" aria-pressed="${k === role}"><b>${r.label}</b><small>${r.ages}</small><small>${r.desc}</small></button>`).join('')}</div></div>
       <p class="err" id="pfErr" hidden></p>
       <div class="row"><button class="btn primary" id="pfSave">${existing ? 'Save' : 'Create'}</button>${existing ? `<button class="btn danger" id="pfDel">Delete profile</button>` : ''}</div>
     </div>`, true);
   $('pfName').focus();
-  $('pfColors').onclick = e => { const b = e.target.closest('.sw'); if (!b) return; color = b.dataset.c; $('pfColors').querySelectorAll('.sw').forEach(x => x.setAttribute('aria-pressed', x === b)); };
+  $('pfColors').onclick = e => { const b = e.target.closest('.sw'); if (!b) return; color = b.dataset.c; if ($('pfAvs')) $('pfAvs').style.setProperty('--pc', MR.colorHex(color)); $('pfColors').querySelectorAll('.sw').forEach(x => x.setAttribute('aria-pressed', x === b)); };
+  if ($('pfAvs')) { $('pfAvs').onclick = e => { const b = e.target.closest('.avo'); if (!b) return; avatar = b.dataset.a === '' ? null : +b.dataset.a;
+      $('pfAvs').querySelectorAll('.avo').forEach(x => x.setAttribute('aria-pressed', x === b)); $('pfAvName').textContent = avatar != null ? MR.AVATARS[avatar].name : 'Your first letter'; };
+    $('pfName').addEventListener('input', () => { $('pfLetter').textContent = ($('pfName').value.trim() || '?').slice(0, 1).toUpperCase(); }); }
   $('pfRoles').onclick = e => { const b = e.target.closest('.role'); if (!b) return; role = b.dataset.r; $('pfRoles').querySelectorAll('.role').forEach(x => x.setAttribute('aria-pressed', x === b)); };
   const saveIt = () => {
     const name = $('pfName').value.trim();
     if (!name) { $('pfErr').hidden = false; $('pfErr').textContent = 'Type a name first.'; return; }
-    if (existing) { existing.name = name.slice(0,16); existing.color = color;
+    if (existing) { existing.name = name.slice(0,16); existing.color = color; if (avPick) existing.avatar = avatar;
       if (existing.role !== role) { existing.role = role; existing.job = MR.defaultJob(role); existing.perks = []; }
       MR.Store.save(); }
-    else MR.Store.create({name, color, role});
+    else { const np = MR.Store.create({name, color, role}); if (avPick && np) { np.avatar = avatar; MR.Store.save(); } }
     UI.closeModal(); UI.renderHome(); if (MR.Game && MR.Game.onProfileChanged) MR.Game.onProfileChanged();
   };
   $('pfSave').onclick = saveIt;
