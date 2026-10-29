@@ -73,8 +73,15 @@ MR.ROVER_INFO = {
     fact:'It was planned for 5 test flights. It flew 72 times.', game:'In the game the helicopter flies over everything and spots treasure from the air.'},
   lrv:{real:'Lunar Roving Vehicle (Moon buggy)', when:'NASA\'s Apollo 15, 16 and 17 missions, 1971–1972',
     how:'Two astronauts sat side by side and drove it. It folded up to fit on the side of the Lunar Module, then unfolded on the Moon. Two batteries powered an electric motor in each of its four wheels, up to about 13 km per hour.',
-    parts:[['Wire-mesh wheels', 'Wheels woven from wire, because rubber tires would not survive the Moon\'s heat and cold.'], ['Batteries', 'Two batteries, not rechargeable, enough for each mission\'s drives.'], ['Umbrella antenna', 'A dish that sent TV pictures straight to Earth.'], ['Seats and controls', 'Two seats and a joystick, used by astronauts in spacesuits.']],
-    science:[['TV camera', 'Controlled from Earth, it filmed the astronauts at work and even the launch away from the Moon.'], ['Geology tools', 'Rakes, scoops, tongs, hammers and core tubes for collecting rocks and soil.'], ['Sample bags', 'Numbered bags so scientists knew exactly where each rock came from.']],
+    img:['img/lrv-apollo15.jpg', 'The Moon buggy at Hadley, where the game\'s Moon map is. Photo: NASA, Apollo 15, 1971'],
+    marks:[[17,17,'Umbrella antenna (high-gain)'],[48,24,'Small antenna (low-gain)'],[17,47,'TV camera'],[17,61,'Radio relay box'],[44,50,'Control panel'],[53.5,55,'Hand controller (joystick)'],[64,54,'Two seats'],[84,52,'Tool and sample carrier'],[33,80,'Wire-mesh wheel']],
+    parts:[['Wire-mesh wheels', 'Wheels woven from wire, because rubber tires would not survive the Moon\'s heat and cold. Metal strips on them grip the dust.'],
+      ['Batteries', 'Two batteries, not rechargeable, enough for each mission\'s drives.'],
+      ['Umbrella antenna', 'Opens like an umbrella and sends TV pictures straight to Earth. A small antenna next to it carries the astronauts\' voices.'],
+      ['Radio relay box', 'At the front. It links the astronauts\' suit radios, the TV camera and Earth.'],
+      ['Seats and controls', 'Two folding seats, a control panel with a compass, and a joystick between the seats: push forward to go, pull back to stop, tilt to steer.'],
+      ['Fenders', 'Covers over the wheels that keep sticky Moon dust from spraying everywhere. On Apollo 17 one broke and the astronauts fixed it with maps and tape!']],
+    science:[['TV camera', 'Controlled from Earth, it filmed the astronauts at work and even the launch away from the Moon.'], ['Geology tools', 'Rakes, scoops, tongs, hammers and core tubes for collecting rocks and soil, carried at the back.'], ['Sample bags', 'Numbered bags so scientists knew exactly where each rock came from.']],
     fact:'Three Moon buggies are still parked on the Moon.', game:'On the Moon map, every ground rover drives as a Moon buggy.'},
   curiosity:{real:'Curiosity', when:'NASA, landed in Gale Crater in August 2012 and still exploring',
     how:'Curiosity is a science lab on wheels, about as big and as heavy as a small car (899 kg). NASA engineers describe it like a body: it has eyes, a neck, a brain, ears and a voice, a hand, legs, and even a tail that gives it power. Its job is to find out if Mars ever had water, the right chemicals and energy: three things life needs.',
@@ -93,7 +100,8 @@ UI.roverInfo = (job, moon, back, gale) => {
   const p = MR.Store.current(), cadet = p && p.role === 'cadet', list = rows => rows.map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('');
   UI.openModal(`<div class="sh"><h2>${esc(I.real)}</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div><div class="sb">
     <div class="rinfo"><canvas id="riPic" width="360" height="360"></canvas><div><p class="real">${esc(I.when)}</p><p>${esc(I.how)}</p><p class="rfact">★ ${esc(I.fact)}</p></div></div>
-    ${I.img ? `<figure class="rimg"><img src="${I.img[0]}" alt="${esc(I.real)} with its science instruments labeled" loading="lazy"><figcaption>${esc(I.img[1])}</figcaption></figure>` : ''}
+    ${I.img ? `<figure class="rimg"><div class="rimgw"><img src="${I.img[0]}" alt="${esc(I.real)} with its parts labeled" loading="lazy">${(I.marks || []).map(([x, y], i) => `<span class="rmk" style="left:${x}%;top:${y}%">${i + 1}</span>`).join('')}</div>
+      ${I.marks ? `<ol class="rmkeys">${I.marks.map(m => `<li>${esc(m[2])}</li>`).join('')}</ol>` : ''}<figcaption>${esc(I.img[1])}</figcaption></figure>` : ''}
     <h3 class="t">Science tools</h3><ul class="rparts sci">${list(cadet ? I.science.slice(0, 3) : I.science)}</ul>
     <h3 class="t">Main parts</h3><ul class="rparts">${list(cadet ? I.parts.slice(0, 3) : I.parts)}</ul>
     <p class="muted" style="margin:0;font-size:13px">${esc(I.game)}</p>
