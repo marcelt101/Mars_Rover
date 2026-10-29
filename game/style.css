@@ -699,3 +699,7 @@ body.ui-phone[data-scr="scrGame"] .dmpops{bottom:90px}
 .rmk{position:absolute;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:var(--sci);color:#1a1204;font:700 13px/24px var(--display);text-align:center;box-shadow:0 0 0 2px #1a1204,0 2px 6px rgba(0,0,0,.5)}
 .rmkeys{margin:8px auto 0;max-width:620px;padding-left:22px;columns:2 200px;font-size:13px;line-height:1.5}
 .rmkeys li::marker{color:var(--sci);font-weight:700}
+/* Editions: free demo banner */
+.demobar{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-color:#5a4a2a;background:linear-gradient(90deg,#2a2418,#151c24)}
+.demobar p{margin:4px 0 0;color:var(--soft);max-width:70ch}
+.demobar .btn{text-decoration:none}

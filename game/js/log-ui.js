@@ -4,7 +4,7 @@
 const MR = window.MR, UI = MR.UI, {$, esc} = UI;
 const L = MR.LogUI = {};
 const logOf = p => (p && p.log) || {};
-const open = d => d === 1 || !!logOf(MR.Store.current())[d - 1] || !!logOf(MR.Store.current())[d];
+const open = d => MR.edDayOk(d) && (d === 1 || !!logOf(MR.Store.current())[d - 1] || !!logOf(MR.Store.current())[d]);
 const starsTxt = n => '★'.repeat(n) + `<i>${'★'.repeat(3 - n)}</i>`;
 const modal = (title, body, narrow) => UI.openModal(`<div class="sh"><h2>${esc(title)}</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div><div class="sb">${body}</div>`, narrow);
 const nextDay = p => { const lg = logOf(p); for (const m of MR.MISSIONS) if (!lg[m.day]) return m.day; return null; };
@@ -23,7 +23,7 @@ L.calendar = () => {
   const p = MR.Store.current(); if (!p) return; const lg = logOf(p);
   const weeks = [1, 2, 3, 4, 5].map(w => { const ms = MR.MISSIONS.filter(m => m.week === w), W = MR.LOG_WEEKS[w];
     return `<div class="lweek"><div class="lwh" style="--wc:${W.col}"><b>${esc(W.name)}</b><small>Coding: ${esc(W.idea)}</small></div><div class="ldays">${ms.map(m => { const r = lg[m.day], ok = open(m.day);
-      return `<button class="lday ${r ? 'done' : ''} ${ok ? '' : 'locked'}" data-day="${m.day}" ${ok ? '' : 'disabled'} aria-label="Day ${m.day}: ${esc(m.title)}"><span class="dn">${m.day}</span><b>${esc(m.title)}</b><small>${esc(MR.MAPS[m.map].name)}</small><span class="ds">${r ? starsTxt(r.stars) : ok ? 'Ready' : '🔒'}</span></button>`; }).join('')}</div></div>`; }).join('');
+      return `<button class="lday ${r ? 'done' : ''} ${ok ? '' : 'locked'}" data-day="${m.day}" ${ok ? '' : 'disabled'} aria-label="Day ${m.day}: ${esc(m.title)}"><span class="dn">${m.day}</span><b>${esc(m.title)}</b><small>${esc(MR.MAPS[m.map].name)}</small><span class="ds">${r ? starsTxt(r.stars) : ok ? 'Ready' : MR.edDayOk(m.day) ? '🔒' : 'Full game'}</span></button>`; }).join('')}</div></div>`; }).join('');
   const done = Object.keys(lg).length;
   modal('30-day Mission Log', `<p class="muted" style="margin:0">About one hour a day. Each day is a real mission with a story, a coding idea, a short quiz and a journal page. Missing a day is fine: just continue where you left off.</p>
     <div class="lcal">${weeks}</div>

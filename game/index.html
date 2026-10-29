@@ -39,6 +39,10 @@
       <div class="lpt"><h3 class="t">30-day Mission Log</h3><p id="logText"></p><div class="xpbar"><span id="logBar"></span></div></div>
       <button class="btn primary big" id="logBtn">Open Mission Log <kbd>L</kbd></button>
     </div>
+    <div class="panel demobar" id="demoBar" hidden>
+      <div><h3 class="t">Free demo</h3><p>You can play Jezero Crater and the first week of the Mission Log. The full game adds the Moon, Gusev Crater, Meridiani Planum, Gale Crater and all 30 days.</p></div>
+      <a class="btn primary big" id="buyBtn" target="_blank" rel="noopener">Get the full game</a>
+    </div>
     <div class="modes" id="modes">
       <div class="panel mode">
         <h3 class="t">Play solo</h3>
@@ -62,8 +66,8 @@
       <button id="tutLink">Tutorial</button>
       <button id="setLink">Settings</button>
       <button id="parentsBtn">Parents and saves</button>
-      <a href="../v1/">Play version 1</a>
-      <a href="../classic/">Classic missions</a>
+      <a href="../v1/" class="oldv">Play version 1</a>
+      <a href="../classic/" class="oldv">Classic missions</a>
     </div>
   </section>
 
@@ -237,6 +241,7 @@
 
 <script src="vendor/peerjs.min.js"></script>
 <script src="vendor/qrcode.js"></script>
+<script src="js/edition.js"></script>
 <script src="js/data.js"></script>
 <script src="js/minerals.js"></script>
 <script src="js/campaigns.js"></script>

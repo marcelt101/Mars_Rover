@@ -37,7 +37,7 @@ $('hostBtn').onclick = () => { G.resume = null; G.noSave = false; startHost(); }
 $('logBtn').onclick = () => MR.LogUI.calendar();
 G.keepExploring = () => { G.contAfterWin = true; $('win').hidden = true; G.phase = 'plan'; renderGame(); saveExpedition(); };
 /* Start a Mission Log day: solo goes to the lobby with the day's map; host opens a room for the day. */
-G.startDay = (d, mode) => { const m = MR.missionOf(d), p = me(); if (!m || !p) return;
+G.startDay = (d, mode) => { const m = MR.missionOf(d), p = me(); if (!m || !p || !MR.edDayOk(d)) return;
   G.resume = null; G.noSave = false; G.lostCode = null;
   if (mode === 'host') { startHost(); G.lobby.map = m.map; G.lobby.day = d; broadcast(lobbyMsg()); renderLobby(); return; }
   G.mode = 'solo'; G.myPid = p.id; G.lobby = {players:[{...MR.playerSummary(p), connected:true, host:true}], map:m.map, day:d, unlocked:MR.Store.unlocked()}; enterLobby(); };
@@ -310,8 +310,8 @@ function renderLobby(){
     $('roomCode').textContent = 'MARS-' + (G.code || '····');
     const url = location.origin + location.pathname + '?join=' + G.code + (/[?&]net=local\b/.test(location.search) ? '&net=local' : '');
     if (host && window.qrcode && G.qrFor !== url) { try { const qr = window.qrcode(0, 'M'); qr.addData(url); qr.make(); $('qr').innerHTML = qr.createSvgTag({cellSize:4, margin:2, scalable:true}); G.qrFor = url; } catch (e) { $('qr').hidden = true; } }
-    $('qr').hidden = !host;
-    $('roomHelp').innerHTML = host ? 'On the other devices, open this game, pick a profile, tap <b>Join</b> and type the code. Or scan the QR code with the camera.' : 'You are in! The host picks the map and starts the expedition.';
+    $('qr').hidden = !host || !MR.ED.qr;
+    $('roomHelp').innerHTML = host ? 'On the other devices, open this game, pick a profile, tap <b>Join</b> and type the code.' + (MR.ED.qr ? ' Or scan the QR code with the camera.' : '') : 'You are in! The host picks the map and starts the expedition.';
   }
   renderNet();
   const players = G.lobby.players;
@@ -323,7 +323,7 @@ function renderLobby(){
   const unlocked = G.mode === 'client' ? G.lobby.unlocked : MR.Store.unlocked();
   if (G.mode !== 'client') G.lobby.unlocked = unlocked;
   $('mapPick').innerHTML = MR.MAP_ORDER.map(k => { const m = MR.MAPS[k], open = unlocked.includes(k);
-    return `<button class="mapcard" data-map="${k}" aria-pressed="${k === G.lobby.map}" ${open && G.mode !== 'client' ? '' : 'disabled'}><b>${m.name}</b><small>${m.rover} · ${m.year}</small><p>${open ? esc(m.blurb) : `Locked. Finish a ${MR.MAPS[m.unlock].name} expedition to unlock.`}</p></button>`; }).join('');
+    return `<button class="mapcard" data-map="${k}" aria-pressed="${k === G.lobby.map}" ${open && G.mode !== 'client' ? '' : 'disabled'}><b>${m.name}</b><small>${m.rover} · ${m.year}</small><p>${open ? esc(m.blurb) : !MR.edMapOk(k) ? 'In the full game.' : `Locked. Finish a ${MR.MAPS[m.unlock].name} expedition to unlock.`}</p></button>`; }).join('');
   const dm = G.lobby.day && MR.missionOf(G.lobby.day);
   $('mapNote').textContent = dm ? `Mission Log, day ${dm.day}: ${dm.title} (${MR.MAPS[dm.map].name}).` : G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
   if (G.resume || dm) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);
@@ -1157,7 +1157,7 @@ async function playSol(timeline, newState){
   G.dull = found ? 0 : (G.dull || 0) + 1;
   if (won && !newState.day) {
     const next = MR.MAP_ORDER.filter(k => MR.MAPS[k].unlock === newState.map);
-    if (MR.Store.unlock(next)) next.forEach(k => UI.toast('★', '#58cfbe', `New map unlocked: ${MR.MAPS[k].name}`, 'The whole team can explore it now.', 7000));
+    if (MR.Store.unlock(next)) next.filter(MR.edMapOk).forEach(k => UI.toast('★', '#58cfbe', `New map unlocked: ${MR.MAPS[k].name}`, 'The whole team can explore it now.', 7000));
     if (isHostish()) G.lobby.unlocked = MR.Store.unlocked();
   }
   G.plan.forEach(c => c.state = '');

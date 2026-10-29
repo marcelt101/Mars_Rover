@@ -255,6 +255,11 @@ $('tutBtn').addEventListener('click', () => MR.Game.startTutorial());
 $('guideBtn').addEventListener('click', () => UI.guide('teach'));
 $('guideLink').addEventListener('click', () => UI.guide('teach'));
 $('setLink').addEventListener('click', () => UI.settings());
+/* Edition: the demo banner and buy button, and the links to the old versions only on the web edition. */
+$('demoBar').hidden = !MR.ED.demo;
+if (MR.ED.buyUrl) $('buyBtn').href = MR.ED.buyUrl; else $('buyBtn').hidden = true;
+if (!MR.ED.oldVersions) document.querySelectorAll('.links .oldv').forEach(a => a.remove());
+if (!MR.ED.qr) { const jp = $('joinBtn').closest('.mode').querySelector('p'); if (jp) jp.textContent = "Type the code from the host's screen."; }
 $('tutLink').addEventListener('click', () => { if (MR.Store.current()) MR.Game.startTutorial(); });
 $('tutNo').addEventListener('click', () => { const p = MR.Store.current(); if (p) { p.tutHide = true; MR.Store.save(); } UI.renderHome(); });
 

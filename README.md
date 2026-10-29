@@ -234,6 +234,10 @@ lab.make("metal")                    # "water", "metal", "bricks", "glass"
 lab.build("radio_tower")             # "solar_farm", "radio_tower", "garage", "greenhouse"
 ```
 
+## Releases
+
+One code base, several editions (web, itch.io demo, itch.io full game, later a desktop app). `python3 tools/build.py` makes the itch.io zip files. See [RELEASING.md](RELEASING.md).
+
 ## For developers
 
 Plain HTML, CSS and JavaScript. No build step.

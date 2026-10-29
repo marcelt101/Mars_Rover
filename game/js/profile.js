@@ -27,7 +27,7 @@ MR.Store = {
     this.db.list.push(p); this.db.current = p.id; this.save(); return p;
   },
   remove(id){ this.db.list = this.db.list.filter(p => p.id !== id); if (this.db.current === id) this.db.current = null; this.save(); },
-  unlocked(){ return this.team.allMaps ? MR.MAP_ORDER.slice() : MR.MAP_ORDER.filter(m => this.team.unlocked.includes(m)); },
+  unlocked(){ return (this.team.allMaps ? MR.MAP_ORDER.slice() : MR.MAP_ORDER.filter(m => this.team.unlocked.includes(m))).filter(m => !MR.edMapOk || MR.edMapOk(m)); },
   unlock(maps){ let changed = false; (maps||[]).forEach(m => { if (MR.MAPS[m] && !this.team.unlocked.includes(m)) { this.team.unlocked.push(m); changed = true; } }); if (changed) this.save(); return changed; },
   exportCode(){ const json = JSON.stringify({v:2, profiles:this.db.list, team:this.team}); return 'MR2:' + btoa(unescape(encodeURIComponent(json))); },
   importCode(code){
