@@ -2,7 +2,7 @@
 (function () {
 const MR = window.MR = window.MR || {};
 
-MR.VERSION = 2;
+MR.VERSION = 3;
 MR.MW = 64; MR.MH = 44; MR.BASE = 32;
 MR.MAX_PLAYERS = 6;
 
@@ -66,7 +66,7 @@ MR.CMDS = {
   go_home:   {label:'Go home', icon:'⌂', cat:'move', cost:'2% / square', py:'go_home', macro:'go_home', relay:true},
   catalog: {label:'Catalog samples', icon:'▤', cat:'sci', cost:'free', lab:'catalog', jobs:['lab']},
   make_water:  {label:'Make water', icon:'≈', cat:'build', cost:'from salts', lab:'make', mat:'water', jobs:['lab']},
-  make_metal:  {label:'Make metal', icon:'⚙', cat:'build', cost:'from meteorites', lab:'make', mat:'metal', jobs:['lab']},
+  make_metal:  {label:'Make metal', icon:'⚙', cat:'build', cost:'from meteorites, hematite', lab:'make', mat:'metal', jobs:['lab']},
   make_bricks: {label:'Make bricks', icon:'▦', cat:'build', cost:'from clay, basalt', lab:'make', mat:'bricks', jobs:['lab']},
   make_glass:  {label:'Make glass', icon:'◇', cat:'build', cost:'from silica, basalt', lab:'make', mat:'glass', jobs:['lab']},
   build_solar_farm:  {label:'Build solar farm', icon:'☼', cat:'power', cost:'2 glass, 2 metal', lab:'build', up:'solar_farm', jobs:['lab']},
@@ -103,7 +103,7 @@ MR.pyOf = (type, arg) => { const c = MR.CMDS[type]; if (!c) return '';
   if (c.lab === 'catalog') return 'lab.catalog()'; if (c.lab === 'make') return `lab.make("${c.mat}")`; if (c.lab === 'build') return `lab.build("${c.up}")`;
   return `rover.${c.py}(${c.arg ? (arg || 1) : ''})`; };
 /* Lab: which samples make which material (science-only finds are never processed), and the base upgrades. */
-MR.MATS = {water:{name:'Water', from:{salts:2, clay:1}}, metal:{name:'Metal', from:{meteorite:2, olivine:1}},
+MR.MATS = {water:{name:'Water', from:{salts:2, clay:1, serpentine:1}}, metal:{name:'Metal', from:{meteorite:2, hematite:2, olivine:1}},
   bricks:{name:'Bricks', from:{clay:1, basalt:1, carbonate:1, breccia:1, moon_basalt:1}}, glass:{name:'Glass', from:{silica:2, glass:2, basalt:1}}};
 MR.UPGRADES = {
   solar_farm:  {name:'Solar farm', icon:'☼', cost:{glass:2, metal:2}, desc:'Every rover charges 10% more each night.'},
@@ -194,6 +194,9 @@ MR.PATCHES = [
   {id:'loop_in_loop', name:'Loop in a Loop', icon:'⟲', desc:'Run a for loop inside another for loop', test:s => s.nested >= 1},
   {id:'mission_control', name:'Mission Control', icon:'⌁', desc:'Run a program for 2 or more sols with the relay satellite', test:s => s.missions >= 1},
   {id:'smart_rover', name:'Smart Rover', icon:'◇', desc:'Send a program that uses a sensor', test:s => s.sensors >= 1},
+  {id:'life_hunter', name:'Life Hunter', icon:'❋', desc:'Find 6 of the 12 signs of a living Mars', test:s => s.life12 >= 6},
+  {id:'element_explorer', name:'Element Explorer', icon:'⚛', desc:'Light up 10 elements on the minerals chart', test:s => s.elements >= 10},
+  {id:'family_row', name:'Mineral Family', icon:'▦', desc:'Complete a whole family row on the minerals chart', test:s => s.familyRows >= 1},
   {id:'pathfinder', name:'Pathfinder', icon:'⚐', desc:'Flag 10 sites for the team', test:s => s.sitesFound >= 10},
   {id:'trailblazer', name:'Trailblazer', icon:'⚑', desc:'Teammates drill 5 sites you found', test:s => s.sitesShared >= 5},
   {id:'archivist', name:'Archivist', icon:'▤', desc:'Catalog 10 samples in the Lab', test:s => s.cataloged >= 10},
@@ -276,13 +279,7 @@ MR.MAPS = {
     station:{x:34, y:22}, startDir:3,
     labels:[{t:'JEZERO DELTA', x:15, y:12},{t:'NERETVA VALLIS', x:6, y:6.2},{t:'SÉÍTAH', x:23, y:31},{t:'CRATER RIM', x:6, y:24},{t:'MÁAZ PLAINS', x:44, y:30}],
     regions:['Crater floor','Máaz bedrock','Séítah dunes','Jezero delta','Neretva Vallis','Crater rim','Hills','Cliffs','Plateau'],
-    goals:(n) => [
-      {t:'Drill clay on the delta', kind:'col', res:'clay', of:1},
-      {t:'Drill olivine in Séítah', kind:'col', res:'olivine', of:1},
-      {t:'Find organic molecules', kind:'col', res:'organics', of:1},
-      {t:`Bring ${2+n} samples to the station`, kind:'deliver', of:2+n},
-    ],
-    par:20, parCadet:14,
+    par:36, parCadet:14,
   },
   gusev: {
     name:'Gusev Crater', rover:'Spirit', year:'2004–2010', unlock:'jezero',
@@ -290,13 +287,7 @@ MR.MAPS = {
     station:{x:9, y:21}, startDir:1,
     labels:[{t:'COLUMBIA HILLS', x:33, y:11},{t:'HUSBAND HILL', x:35, y:17.5},{t:'HOME PLATE', x:41, y:26},{t:'TROY', x:36, y:33.2},{t:'BONNEVILLE', x:17, y:9.8},{t:"MA'ADIM VALLIS", x:21, y:40}],
     regions:['Gusev plains','Basalt plains','Sand ripples','Delta sediment',"Ma'adim Vallis",'Crater rim','Columbia Hills','Cliffs','Home Plate'],
-    goals:(n) => [
-      {t:'Drill silica near Home Plate', kind:'col', res:'silica', of:1},
-      {t:'Drill carbonate in the hills', kind:'col', res:'carbonate', of:1},
-      {t:'Drill sulfate salts', kind:'col', res:'salts', of:1},
-      {t:`Bring ${2+n} samples to the station`, kind:'deliver', of:2+n},
-    ],
-    par:26, parCadet:14,
+    par:40, parCadet:14,
   },
 };
 MR.MAPS.moon = {
@@ -305,13 +296,7 @@ MR.MAPS.moon = {
   station:{x:30, y:20}, startDir:1,
   labels:[{t:'HADLEY RILLE', x:19, y:9},{t:'MOUNT HADLEY DELTA', x:35, y:40.5},{t:'SPUR CRATER', x:39, y:33.2},{t:'ST. GEORGE', x:24, y:33.5},{t:'APENNINE MOUNTAINS', x:57, y:22},{t:'FALCON (LUNAR MODULE)', x:31, y:17.5}],
   regions:['Mare plains','Bright highland rock','Soft regolith','Mare plains','Rille floor','Apennine Mountains','Mount Hadley Delta','Cliffs','Ejecta','Hadley Rille'],
-  goals:(n) => [
-    {t:'Drill the Genesis Rock (anorthosite)', kind:'col', res:'anorthosite', of:1},
-    {t:'Drill green glass beads', kind:'col', res:'glass', of:1},
-    {t:'Drill breccia', kind:'col', res:'breccia', of:1},
-    {t:`Bring ${2+n} samples to the Lunar Module`, kind:'deliver', of:2+n},
-  ],
-  par:22, parCadet:14,
+  par:30, parCadet:14,
 };
 MR.MAPS.jezero.regions.push('Crater rim'); MR.MAPS.gusev.regions.push('Crater rim');
 MR.MAP_ORDER = ['jezero','gusev','moon'];

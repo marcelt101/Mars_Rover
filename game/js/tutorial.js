@@ -12,7 +12,7 @@ const solAtLeast = n => () => api().sol() >= n && api().phase() !== 'run';
 const insert = code => { const ta = $('editor'); ta.value = ta.value.replace(/\s*$/, '\n') + code + '\n'; ta.dataset.touched = '1'; ta.dispatchEvent(new Event('input')); };
 
 const TOUR = [
-  {text:'The Objectives list shows what the expedition needs, with a hint for each. Tap Show to see where to look.', target:'#goals', next:true},
+  {text:'The bar at the top shows your current objective. The Objectives list shows the whole campaign, with a hint for each. Tap Show to see where to look, or Why? to learn why scientists want it.', target:'#goals', next:true},
   {text:'The Mission log tells you what your rover did and found.', target:'#log', next:true},
   {text:'Press I (or the Inventory button) to see your cards, stickers, patches and perks.', target:'#invBtn', done:() => Date.now() - UI.invOpenedAt < 4000},
 ];

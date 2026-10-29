@@ -41,7 +41,8 @@ MR.newGame = ({map, seed, players}) => {
   const cells = spawnCells(map);
   const st = {v:MR.VERSION, map, seed, sol:1, won:false, rng:(seed ^ 0x5bd1e995) | 0,
     team:{score:0, delivered:0, treasures:0, col:{}}, rovers:[], world, sites:{}, lab:{inbox:[], catalog:[], mat:{water:0, metal:0, bricks:0, glass:0}, built:{}},
-    goals: others ? MR.MAPS[map].goals(others) : MR.cadetGoals(cadets)};
+    goals: MR.cadetGoals(cadets)};
+  if (others) startCampaign(st, 0, others);
   players.forEach((p, i) => { const r = MR.makeRover(p, cells[i % cells.length], map); if (players.length > 1 && r.job === 'scout') r.tubeAdj = -2; st.rovers.push(r); reveal(world, r.x, r.y, MR.sightOf(r)); });
   st.rovers.forEach(r => { if (r.job === 'lab') { const S2 = MR.MAPS[map].station; r.x = S2.x; r.y = S2.y; } });
   rollWeather(st);
@@ -68,13 +69,40 @@ function rollWeather(st){
     forecast:[st.sol + 1, st.sol + 2].map(x => ({sol:x, storm:!!st.stormPlan[x]}))};
 }
 MR.stateToWire = st => ({...st, world:MR.worldToWire(st.world)});
-MR.stateFromWire = (o, prevWorld) => ({...o, world:MR.worldFromWire(o.world, prevWorld)});
+MR.stateFromWire = (o, prevWorld) => MR.ensureCampaign({...o, world:MR.worldFromWire(o.world, prevWorld)});
 MR.cloneState = st => ({...JSON.parse(JSON.stringify({...st, world:null})), world:MR.cloneWorld(st.world)});
 
+/* Campaigns (see campaigns.js). st.camp = {i, n, base}; st.goals holds the current campaign's objectives
+   (small: the texts are looked up with MR.objectiveInfo). Cadet-only games keep the treasure goal. */
+function startCampaign(st, i, n){
+  const C = MR.CAMPAIGNS[st.map][i];
+  st.camp = {i, n, started:st.sol, base:{delivered:st.team.delivered, sites:Object.keys(st.sites || {}).length}};
+  st.goals = C.obj(n).map((g, k) => ({k, t:g.t, kind:g.kind, res:g.res, of:g.of, bonus:!!g.bonus}));
+}
+MR.campaignOf = st => st.camp && MR.CAMPAIGNS[st.map] ? MR.CAMPAIGNS[st.map][st.camp.i] : null;
+MR.objectiveInfo = (st, g) => { const C = MR.campaignOf(st); return C ? C.obj(st.camp.n)[g.k] : g; };
+/* Older saves had plain goals; give them campaigns (progress already made still counts). */
+MR.ensureCampaign = st => {
+  if (st.camp || !MR.CAMPAIGNS[st.map] || st.goals.some(g => g.kind === 'treasure')) return st;
+  startCampaign(st, 0, Math.max(1, st.rovers.filter(r => r.role !== 'cadet').length)); return st;
+};
 MR.goalProgress = st => st.goals.map(g => {
-  const n = g.kind === 'col' ? (st.team.col[g.res] || 0) : g.kind === 'deliver' ? st.team.delivered : st.team.treasures;
+  const b = (st.camp && st.camp.base) || {delivered:0, sites:0};
+  const n = g.kind === 'col' ? (st.team.col[g.res] || 0) : g.kind === 'ident' ? Math.max((st.team.ident || {})[g.res] || 0, st.team.col[g.res] || 0)
+    : g.kind === 'deliver' ? st.team.delivered - b.delivered : g.kind === 'sites' ? Object.keys(st.sites || {}).length - b.sites : st.team.treasures;
   return {...g, n, done: n >= g.of};
 });
+/* After every tick: when the required objectives are done, the campaign ends; the last one wins the map. */
+function campaignStep(st, evs){
+  const req = MR.goalProgress(st).filter(g => !g.bonus);
+  if (!req.every(g => g.done)) return;
+  if (!st.camp) { st.won = true; evs.push({t:'win', msg:{k:'good', text:'Expedition complete! Every objective is done.'}}); return; }
+  const list = MR.CAMPAIGNS[st.map], C = list[st.camp.i], last = st.camp.i >= list.length - 1;
+  evs.push({t:'campaign', i:st.camp.i, id:C.id, last, msg:{k:'good', text:`Campaign complete: ${C.name}!`}});
+  if (last) { st.won = true; evs.push({t:'win', msg:{k:'good', text:'Expedition complete! Every campaign is done.'}}); return; }
+  startCampaign(st, st.camp.i + 1, st.camp.n);
+  evs.push({t:'campnext', i:st.camp.i, goals:st.goals, camp:st.camp, msg:{k:'info', text:`New campaign: ${list[st.camp.i].name}.`}});
+}
 
 function reveal(W, cx, cy, rad){
   const out = [];
@@ -201,6 +229,7 @@ function act(st, r, a, E){
       if (W.res[here] && !W.drilled[here]) add(here);
       if (r.job === 'science') for (let y=r.y-2;y<=r.y+2;y++) for (let x=r.x-2;x<=r.x+2;x++) { if (MR.inb(x,y) && W.sig[y*MW+x]) add(y*MW+x); }
       if (has(r,'supercam')) for (let k=1;k<=3;k++) { const x = r.x+DIRS[r.dir][0]*k, y = r.y+DIRS[r.dir][1]*k; if (MR.inb(x,y) && W.sig[y*MW+x]) add(y*MW+x); }
+      st.team.ident = st.team.ident || {}; cells.forEach(c => st.team.ident[c.res] = (st.team.ident[c.res] || 0) + 1);
       const names = cells.filter(c => c.res !== 'basalt').map(c => MR.CARDS[c.res].name);
       E({t:'analyze', cells, bat:r.bat, msg: cells.length
         ? {k: names.length ? 'good' : 'warn', text: names.length ? `${nm}'s spectrometer: ${names.join(', ')}!` : `${nm}'s spectrometer: just basalt. Probably not worth a sample tube.`}
@@ -416,7 +445,7 @@ function expandRaw(actions){
 /* Is a program small and sane enough to accept from the network? */
 MR.validProgram = p => { try { return !!p && Array.isArray(p.body) && JSON.stringify(p).length < 12000 && (p.sols|0) >= 1 && (p.sols|0) <= 3; } catch (e) { return false; } };
 MR.simulateSol = (prev, plans) => {
-  const st = MR.cloneState(prev), timeline = [], q = {}, starts = [];
+  const st = MR.ensureCampaign(MR.cloneState(prev)), timeline = [], q = {}, starts = [];
   st.rovers.forEach(r => {
     const p = plans[r.pid], plan = Array.isArray(p) ? {actions:p} : (p || {});
     if (plan.program && MR.validProgram(plan.program) && r.role !== 'cadet') {
@@ -459,7 +488,7 @@ MR.simulateSol = (prev, plans) => {
         else { const left = q[r.pid].length; q[r.pid] = []; if (left) evs.push({t:'skip', pid:r.pid, idx:a.idx, n:left}); }
       }
     }
-    if (!st.won && MR.goalProgress(st).every(g => g.done)) { st.won = true; evs.push({t:'win', msg:{k:'good', text:'Expedition complete! Every objective is done.'}}); }
+    if (!st.won) campaignStep(st, evs);
     if (evs.length) timeline.push(evs);
     if (!any) break;
   }
@@ -526,10 +555,14 @@ MR.pathToPlan = (r, path, maxBlocks) => {
   return out.slice(0, maxBlocks);
 };
 /* Rough area to search for a mineral: the middle of where it can be found (not the exact spot). */
-MR.searchArea = (st, res) => {
-  const W = st.world; let sx = 0, sy = 0, n = 0;
-  for (let i=0;i<W.res.length;i++) if (W.res[i] === res && !W.drilled[i] && !W.kid[i]) { sx += i % MW; sy += (i/MW) | 0; n++; }
-  return n ? {x:sx/n, y:sy/n, n} : null;
+/* Search area for a mineral: around the undrilled piece closest to the rover (or the station), shifted by a
+   few squares so it is a place to scan, not the exact spot. */
+MR.searchArea = (st, res, from) => {
+  const W = st.world, f = from || MR.MAPS[st.map].station; let best = -1, bd = 1e9, n = 0;
+  for (let i=0;i<W.res.length;i++) if (W.res[i] === res && !W.drilled[i] && !W.kid[i]) { n++; const d = Math.hypot(i % MW - f.x, ((i/MW) | 0) - f.y); if (d < bd) { bd = d; best = i; } }
+  if (best < 0) return null;
+  const a = (best * 2.39996) % (Math.PI * 2), k = 1.5 + (best % 3) * .5;
+  return {x:Math.max(0, Math.min(MW - 1, best % MW + Math.cos(a)*k)), y:Math.max(0, Math.min(MH - 1, ((best/MW) | 0) + Math.sin(a)*k)), n};
 };
 /* Where a plan would take the rover, for the dotted preview. Stops at known obstacles. */
 MR.ghostPath = (st, r, actions) => {

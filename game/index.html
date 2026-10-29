@@ -137,6 +137,8 @@
         <div class="maptools">
           <label class="toggle"><input type="checkbox" id="fast"> Fast mode</label>
           <label class="toggle"><input type="checkbox" id="sound"> Sound</label>
+          <label class="toggle"><input type="checkbox" id="music"> Music</label>
+          <input class="vol" type="range" id="musicVol" min="0" max="100" step="5" aria-label="Music volume">
           <button class="btn" id="leaveGameBtn">Leave game</button>
           <span class="muted" id="gameNet"></span>
         </div>
@@ -144,6 +146,7 @@
       </div>
 
       <div class="col side">
+        <div class="missionbar" id="missionBar"></div>
         <div class="panel" id="cadetPanel" hidden>
           <div class="ph"><h3 class="t">Your plan</h3><span class="count" id="cadetCount"></span></div>
           <div class="seq" id="seq"></div>
@@ -193,7 +196,7 @@
         </div>
 
         <div class="panel">
-          <div class="ph"><h3 class="t">Objectives</h3><span class="count" id="solCount"></span></div>
+          <div class="ph"><h3 class="t" id="objTitle">Objectives</h3><span class="count" id="solCount"></span></div>
           <ul class="goals" id="goals"></ul>
           <div class="tubes" id="tubes"></div>
         </div>
@@ -226,10 +229,13 @@
 <script src="vendor/peerjs.min.js"></script>
 <script src="vendor/qrcode.js"></script>
 <script src="js/data.js"></script>
+<script src="js/minerals.js"></script>
+<script src="js/campaigns.js"></script>
 <script src="js/world.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/net.js"></script>
 <script src="js/profile.js"></script>
+<script src="js/music.js"></script>
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/game.js"></script>

@@ -4,7 +4,7 @@ global.window = global; global.location = {search:''};
 const mem = {}; global.localStorage = {getItem:k => mem[k] ?? null, setItem:(k,v) => { mem[k] = v; }};
 global.btoa = s => Buffer.from(s, 'binary').toString('base64'); global.atob = s => Buffer.from(s, 'base64').toString('binary');
 const fs = require('fs');
-for (const f of ['data','world','sim','profile']) eval(fs.readFileSync(require('path').join(__dirname, '../game/js', f + '.js'),'utf8'));
+for (const f of ['data','minerals','campaigns','world','sim','profile']) eval(fs.readFileSync(require('path').join(__dirname, '../game/js', f + '.js'),'utf8'));
 const MR = window.MR, {MW, MH, DIRS} = MR;
 MR.Store.save = () => {};
 
@@ -61,10 +61,18 @@ function novicePlan(st, r){
   const W = st.world, here = r.y*MW+r.x, acts = [];
   if (r.stuck) return [{type:'back', arg:1}];
   if (W.res[here] && W.sig[here] && !W.drilled[here]) { if (!W.known[here]) acts.push({type:'analyze'}); acts.push({type:'drill'}); }
-  if (r.tubes.length >= 3 || r.bat < 30) { const p = bfs(st, r, (x,y) => MR.onStation(st.map, x, y)); if (p) return acts.concat(pathToActions(r, p, 10)); }
+  const nearGoal = GUIDED && r.tubes.length < MR.tubesOf(r) && r.bat >= 30 && MR.goalProgress(st).some(q => !q.done && !q.bonus && q.res && (() => { for (let i = 0; i < W.res.length; i++) if (W.res[i] === q.res && W.sig[i] && !W.drilled[i] && Math.hypot(i % MW - r.x, ((i/MW)|0) - r.y) <= 8) return true; return false; })());
+  if ((r.tubes.length >= 3 && !nearGoal) || r.bat < 30) { const p = bfs(st, r, (x,y) => MR.onStation(st.map, x, y)); if (p) return acts.concat(pathToActions(r, p, 10)); }
+  if (GUIDED) { // follows the objective nudge: an identified needed mineral, or a "?" inside its search area
+    const need = MR.goalProgress(st).filter(q => !q.done && !q.bonus && q.res && (q.kind === 'col' || q.kind === 'ident'));
+    let tgt = null, td = 99;
+    need.forEach(q => { const ar = MR.searchArea(st, q.res, r); for (let i = 0; i < W.res.length; i++) { if (!W.sig[i] || W.drilled[i] || W.kid[i] || !W.res[i] || MR.CARDS[W.res[i]].artifact) continue;
+      const ok = W.known[i] ? W.res[i] === q.res : ar && Math.hypot(i % MW - ar.x, ((i/MW)|0) - ar.y) <= 4; const d = Math.hypot(i % MW - r.x, ((i/MW)|0) - r.y);
+      if (ok && d < td && d <= 18) { td = d; tgt = i; } } });
+    if (tgt != null && rnd() < .85) { const p = bfs(st, r, (x, y) => y*MW + x === tgt); if (p) { const a2 = acts.concat(pathToActions(r, p, 10)); if (p.length <= 10) a2.push({type:'analyze'}, {type:'drill'}); return a2; } } }
   const sig = bfs(st, r, (x,y) => { const i = y*MW+x; return W.sig[i] && !W.drilled[i] && W.res[i] && !MR.CARDS[W.res[i]].artifact; });
   if (sig && rnd() < .6) return acts.concat(pathToActions(r, sig.slice(0, 8), 8));
-  if (GUIDED) { const g = MR.goalProgress(st).find(q => !q.done && q.kind === 'col'), a = g && MR.searchArea(st, g.res);
+  if (GUIDED) { const g = MR.goalProgress(st).find(q => !q.done && (q.kind === 'col' || q.kind === 'ident')), a = g && MR.searchArea(st, g.res, r);
     if (a && Math.hypot(a.x - r.x, a.y - r.y) > 3 && rnd() < .8) { const p = bfs(st, r, (x, y) => Math.hypot(x - a.x, y - a.y) < 3); if (p) return acts.concat(pathToActions(r, p.slice(0, 9), 8), [{type:'scan'}]); } }
   acts.push({type:'scan'});
   acts.push({type: rnd() < .5 ? 'left' : 'right'}, {type:'forward', arg:2 + Math.floor(rnd()*5)});
@@ -79,7 +87,7 @@ function goodPlan(st, r){
     if (!W.known[here]) return [{type:'analyze'}, {type:'drill'}];
     if (W.res[here] !== 'basalt') acts.push({type:'drill'});
   }
-  const need = new Set(MR.goalProgress(st).filter(g => !g.done && g.kind === 'col').map(g => g.res));
+  const need = new Set(MR.goalProgress(st).filter(g => !g.done && (g.kind === 'col' || g.kind === 'ident')).map(g => g.res));
   if (r.tubes.length >= MR.tubesOf(r) - 1 || r.bat < 35 || (r.tubes.length && !need.size)) { const p = bfs(st, r, (x,y) => MR.onStation(st.map, x, y)); if (p) return acts.concat(pathToActions(r, p, max - acts.length)); }
   const want = (x,y) => { const i = y*MW+x; if (!W.sig[i] || W.drilled[i] || !W.res[i] || MR.CARDS[W.res[i]].artifact) return false; if (W.known[i]) return W.res[i] !== 'basalt' && (need.has(W.res[i]) || need.size === 0 || MR.CARDS[W.res[i]].rar !== 'C'); return true; };
   const sig = bfs(st, r, want);
@@ -97,7 +105,7 @@ function playGame(kind, profile, map, seed, clock, log){
   const job = kind === 'cadet' ? 'buggy' : 'scout';
   let st = MR.newGame({map, seed, players:[{pid:'bot', name:'Bot', color:'teal', role, job, rank:MR.rankOf(profile.xp), perks:MR.equippedPerks(profile)}]});
   const out = {firstReward:null, win:null, sols:0, boring:0, stuck:0, lowpower:0, bumps:0, halts:0, rewardsPerSol:[]};
-  for (let sol = 0; sol < 40; sol++) {
+  for (let sol = 0; sol < 60; sol++) {
     const r = st.rovers[0];
     GUIDED = kind === 'guided';
     const plan = (kind === 'cadet' ? cadetPlan : (kind === 'novice' || kind === 'guided') ? novicePlan : goodPlan)(st, r).map((a, i) => ({...a, arg:a.arg || 1, idx:i}));

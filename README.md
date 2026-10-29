@@ -57,6 +57,7 @@ New players can take the optional **tutorial** from the start screen. It has dif
 - **Flags and Finds:** every signal a rover finds gets a flag in the finder's color and a site name (like NASA's "Rochette" or "Cheyava Falls"). The **Finds** list shows the best ones first. Claim one with *I'll drill this*, or tap *Go*. The finder gets credit when a teammate drills it, and can rename the site.
 - **Battery estimate** under the plan, with a warning if there won't be enough to get home.
 - **Undo** (or Ctrl+Z).
+- **Plan cards:** each step shows a picture, a plain sentence, which way the rover will face and how much battery is left. Steps that would hit a known rock or sand trap, or run out of battery, are marked before you send. Drag a card by its ⋮⋮ handle to move it.
 - **Sol report** after every sol, with **plan stars** (worked, efficient, smart) and a tip for writing better plans and code.
 
 ## Team chain: find → drill → lab
@@ -71,6 +72,22 @@ The Scout finds and flags a site, a teammate drills it, and the Lab catalogs the
 | Greenhouse | 3 water, 2 bricks | Everyone earns 10% more XP |
 
 Without a Lab player, samples are cataloged automatically.
+
+## Campaigns and objectives
+
+Each map is split into the campaigns NASA's teams really ran:
+
+| Map | Campaigns |
+|---|---|
+| Jezero | Crater Floor, Delta Front, Margin and Neretva Vallis (Perseverance, 2021–2024) |
+| Gusev | Gusev Plains, Columbia Hills, Home Plate (Spirit, 2004–2009) |
+| Moon | Hadley Rille, Apennine Front, Back to Falcon (Apollo 15, 1971) |
+
+A **briefing** opens at the start of each campaign: the real story, then each objective with what to do, why scientists want it and when it is done. The **mission bar** at the top of the side panel always shows the objective to work on now. Tap **Why?** next to an objective to read the science, and **Show** to see where to look. When a needed mineral has been spotted, a helper offers to plan the route there. Finishing a campaign shows a debrief and the next briefing; finishing the last one completes the map.
+
+## Minerals chart
+
+Press **I** and open **Minerals chart**. It is laid out like the periodic table, with one row per mineral family (silicates, carbonates, sulfates, chlorides, oxides, phosphates, organics, metals, rocks). Every mineral has an **information tablet**: what it is made of, where a rover really found it, the instrument that detects it, and why scientists care. ❋ marks the 12 signs of a living Mars. Under the chart, an **element strip** lights up as you find minerals containing each element. Four of the minerals come with future maps.
 
 ## Satellite relay kit
 
@@ -92,7 +109,8 @@ Unlocks at the second rank (Rover Driver). Programs can then keep running for mo
 - **Inventory:** press **I** (or **E**) any time, like Minecraft and Minetest.
 - **Mineral cards** with real facts, rarities and rare shiny versions. Team finds go to everyone.
 - **Mars history:** find Perseverance's backshell, the Ingenuity helicopter, and the Spirit rover where it got stuck.
-- **54 stickers**, **47 mission patches** (including coding ones like *Hello, Mars*, *Perfect Plan*, *Loop in a Loop*, *Smart Rover* and *Mission Control*), **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
+- **54 stickers**, **50 mission patches** (including coding ones like *Hello, Mars*, *Perfect Plan*, *Loop in a Loop*, *Smart Rover*, *Mission Control*, *Life Hunter* and *Element Explorer*), **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
+- **Music:** calm space music made live in the browser, with a Music switch and volume slider under the map. It changes for driving, dust storms and the Moon.
 - **Signal delay:** each sol's commands take 5–10 seconds to reach Mars with the stock antenna. Better radio makes it 30% faster, the High-gain antenna twice as fast. Cadets get both automatically as they rank up.
 - Finishing Jezero unlocks Gusev, and finishing Gusev unlocks the Moon.
 - **Expeditions are saved** after every sol on the device that runs the game (solo, or the host). Tap **Continue** on the start screen to pick up where you left off, even after closing the browser. In a team game the host gets a new room code, and everyone who joins again with the same profile gets their own rover back.
@@ -172,6 +190,9 @@ lab.build("radio_tower")             # "solar_farm", "radio_tower", "garage", "g
 Plain HTML, CSS and JavaScript. No build step.
 
 - `game/js/data.js`: roles, rovers, commands, cards, patches, perks, ranks, maps
+- `game/js/minerals.js`: the minerals chart: families, elements and the information tablets
+- `game/js/campaigns.js`: campaigns and their science objectives
+- `game/js/music.js`: the generated background music
 - `game/js/world.js`: map generation and the terrain picture
 - `game/js/sim.js`: the rules. The host runs every rover's plan at the same time and records a timeline. Also the Python parser and the program runner for the relay kit (programs live on the rover, so they carry across sols)
 - `game/js/net.js`: host-as-server networking (PeerJS / WebRTC)
@@ -186,6 +207,7 @@ Testing options in the URL:
 - `?net=local` connects several windows of one browser without PeerJS.
 - `?slot=a` gives a window its own saves.
 - `?uplink=0.1` shortens the signal delay for testing.
+- `?brief=0` skips the campaign briefings (for automated tests).
 - `?peerhost=192.168.1.20&peerport=9000` uses your own PeerJS server instead of the public one.
 
 The full plan is in [DESIGN.md](DESIGN.md).

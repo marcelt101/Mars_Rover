@@ -134,6 +134,10 @@ Robot playtest after batch 1: a beginner following the hints finishes 93% of exp
 
 Batch 3 details: the Lab job (team games) catalogs samples, makes water/metal/bricks/glass and builds the radio tower, solar farm, garage and greenhouse. The relay kit unlocks at rank 2: Explorer smart blocks (Repeat, If…, Until full or low battery, Go to signal, Go home, Run for 2 sols) nest 2 levels deep; Specialist Python adds `while`, `if`/`elif`/`else`, `def`, sensors, `go_to_signal()`, `go_home()` and `rover.mission(N)`. Programs run on the rover with a budget of 60 actions per sol; AutoNav re-routes macros around new rocks, stops before collisions, and pauses at low battery. Weather storms are scheduled 2 sols ahead, never before sol 6, about 1 sol in 12.
 
+**Batch 4 (done):** minerals chart with information tablets and an element strip; 8 new real minerals (4 on the current maps: serpentine, perchlorate, the Cheyava Falls "leopard spots", hematite; 4 waiting for future maps: gypsum, jarosite, halite, manganese oxide); campaigns with briefings, debriefs and a mission bar; picture-card plan list with facing, battery and warnings, drag to reorder; calm generated music. Playtest after batch 4: an expedition is now about 35 minutes (36–40 sols) for a player following the hints, who finishes 95% of Jezero and 85% of Gusev expeditions.
+
+Batch 4 notes as planned:
+
 **Batch 4 (planned): Minerals chart.** A periodic-table-style chart of minerals, as a new Chart tab in the inventory (and from the Mars Catalog). It is a view of the same card collection, not a second one.
 - Columns are mineral families instead of element groups: silicates, carbonates, sulfates and salts, oxides, metals (meteorites), organics, Moon rocks. Each square: short symbol (Ol, Cb, Sf), color, name. Unfound squares are dark with a "?" and a hint where to look.
 - An element strip underneath (about 12 beginner elements: O, Si, Fe, Mg, Ca, C, S, Cl, Na, Al, Ni, H) lights up as minerals containing them are found. Tap a mineral to see what it is made of; tap an element to see which of your minerals contain it.

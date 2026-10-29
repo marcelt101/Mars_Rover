@@ -108,6 +108,7 @@ MR.applyRewards = (p, myPid, events, ctx) => {
   if (ctx.greenhouse && p.xp > xp0) p.xp += Math.round((p.xp - xp0) * .1);
   s.stickerKinds = Object.keys(p.stickers).length;
   s.cardKinds = MR.CARD_ORDER.filter(id => p.cards[id] && (p.cards[id].n || p.cards[id].shiny)).length;
+  if (MR.chartStats) { const cs = MR.chartStats(p); s.life12 = cs.life; s.elements = cs.elems.size; s.familyRows = cs.families.length; }
   MR.PATCHES.forEach(pt => { if (!p.patches[pt.id] && pt.test(s)) { p.patches[pt.id] = Date.now(); addXp(25); out.push({k:'patch', id:pt.id}); } });
   const rank1 = MR.rankOf(p.xp);
   if (rank1 > rank0) {

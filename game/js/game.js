@@ -19,6 +19,9 @@ const team = () => G.mode !== 'solo';
 $('fast').checked = MR.Store.settings.fast; $('sound').checked = MR.Store.settings.sound;
 $('fast').onchange = e => { MR.Store.settings.fast = e.target.checked; MR.Store.save(); };
 $('sound').onchange = e => { MR.Store.settings.sound = e.target.checked; MR.Store.save(); };
+$('music').checked = MR.Store.settings.music !== false; $('musicVol').value = MR.Store.settings.musicVol ?? 35; $('musicVol').disabled = !$('music').checked;
+$('music').onchange = e => { MR.Store.settings.music = e.target.checked; $('musicVol').disabled = !e.target.checked; MR.Store.save(); MR.music.start(); MR.music.refresh(); };
+$('musicVol').oninput = e => { MR.Store.settings.musicVol = +e.target.value; MR.Store.save(); MR.music.refresh(); };
 R.init($('map'), $('mini'), $('mapbox'));
 const q = new URLSearchParams(location.search);
 if (q.get('join')) $('joinCode').value = 'MARS-' + MR.cleanCode(q.get('join'));
@@ -316,9 +319,10 @@ function enterGame(st){
   if (myRole() === 'specialist' && !$('editor').dataset.touched) $('editor').value = `from mars import rover\n\n# Scan around, then head out.\nrover.scan()\nfor i in range(2):\n    rover.forward(3)\nrover.analyze()\n`;
   R.resize(); R.cam.follow = true; setTimeout(() => R.focus(G.myPid, true), 30);
   renderGame(); updateGhost(); saveExpedition();
+  if (st.camp && st.camp.i === 0 && st.sol === 1 && !G.noSave && myRole() !== 'cadet' && q.get('brief') !== '0') setTimeout(() => { if (!UI.modalOpen()) briefingModal(); }, 500);
 }
 function setGameState(st){
-  G.state = st;
+  G.state = st; MR.music.setWorld(st.map); MR.music.setStorm(st.wx && st.wx.storm);
   const r = myRover();
   R.setView(st, G.myPid, r ? r.role : 'explorer');
   if (G.phase === 'plan' || G.phase === 'won') renderGame();
@@ -393,8 +397,12 @@ function renderHud(){
 }
 function renderSide(){
   const st = G.state, r = myRover(); if (!r) return;
-  $('goals').innerHTML = MR.goalProgress(st).map(g => `<li class="${g.done ? 'done' : ''}"><span class="box">${g.done ? '✓' : ''}</span><span class="gt"><span class="t">${esc(g.t)}</span>${g.done ? '' : goalHint(g, r)}</span><span class="cnt">${Math.min(g.n, g.of)}/${g.of}</span></li>`).join('');
-  $('solCount').textContent = `Sol ${st.sol} · 3 stars by sol ${MR.parOf(st)}`;
+  const C = MR.campaignOf(st), cadet = r.role === 'cadet';
+  $('objTitle').textContent = C ? C.name : 'Objectives';
+  $('goals').innerHTML = MR.goalProgress(st).map(g => { const o = MR.objectiveInfo(st, g);
+    return `<li class="${g.done ? 'done' : ''} ${g.bonus ? 'bonus' : ''}"><span class="box">${g.done ? '✓' : ''}</span><span class="gt"><span class="t">${esc(cadet && o.kid ? o.kid : g.t)}</span>${!g.done && !cadet && o.what ? `<small class="what">${esc(o.what)}</small>` : ''}${g.done ? '' : goalHint(g, r)}${C && !cadet ? `<button class="whyb" data-why="${g.k}">Why?</button>` : ''}</span><span class="cnt">${Math.min(g.n, g.of)}/${g.of}</span></li>`; }).join('');
+  $('solCount').textContent = `${C ? `Campaign ${st.camp.i + 1} of ${MR.CAMPAIGNS[st.map].length} · ` : ''}Sol ${st.sol} · 3 stars by sol ${MR.parOf(st)}`;
+  renderMission();
   if (r.role === 'cadet') $('tubes').innerHTML = `<span class="lbl">Team treasures: ${st.team.treasures}</span>`;
   else $('tubes').innerHTML = [...Array(MR.tubesOf(r))].map((_, i) => { const id = r.tubes[i]; return `<span class="tube" title="${id ? esc(MR.CARDS[id].name) : 'Empty tube'}">${id ? `<i style="background:${MR.CARDS[id].color}"></i>` : ''}</span>`; }).join('')
     + `<span class="lbl">${r.tubes.length ? `${r.tubes.length} on board` : 'Sample tubes'} · team delivered ${st.team.delivered}</span>`;
@@ -403,18 +411,51 @@ const COMPASS = ['east','south-east','south','south-west','west','north-west','n
 const dirWord = (r, x, y) => COMPASS[(Math.round(Math.atan2(y - r.y, x - r.x) / (Math.PI/4)) + 8) % 8];
 function goalHint(g, r){
   const st = G.state;
-  if (g.kind === 'col') {
-    const a = MR.searchArea(st, g.res); if (!a) return '';
+  if (g.kind === 'col' || g.kind === 'ident') {
+    const a = MR.searchArea(st, g.res, r); if (!a) return '';
     const dist = Math.hypot(a.x - r.x, a.y - r.y), reg = MR.regionAt(st, Math.round(a.x), Math.round(a.y));
     const where = dist < 5 ? 'Scan around here' : `Try ${reg.startsWith('the ') ? reg : 'the ' + reg}, ${Math.round(dist)} squares ${dirWord(r, a.x, a.y)}`;
     return `<span class="hint">${esc(where)}<button class="showb" data-show="${g.res}">Show</button></span>`;
   }
   if (g.kind === 'deliver') return `<span class="hint">Drive onto the station with full tubes</span>`;
+  if (g.kind === 'sites') return `<span class="hint">Scan to find signals. Each one gets a flag.</span>`;
   if (g.kind === 'treasure') return `<span class="hint">Look for the sparkly gems</span>`;
   return '';
 }
+/* Mission bar: the campaign and the objective to work on now, always at the top of the side panel. */
+function renderMission(){
+  const st = G.state, r = myRover(), box = $('missionBar'); if (!st || !r) { box.innerHTML = ''; return; }
+  const C = MR.campaignOf(st), cadet = r.role === 'cadet', gp = MR.goalProgress(st), cur = gp.find(g => !g.done && !g.bonus) || gp.find(g => !g.done);
+  if (!cur) { box.innerHTML = ''; return; }
+  const o = MR.objectiveInfo(st, cur), card = cur.res && MR.CARDS[cur.res];
+  const pic = card ? `<span class="mgem" style="background:${card.color}"></span>` : `<span class="mgem ico">${cur.kind === 'deliver' ? '⌂' : cur.kind === 'sites' ? '?' : '★'}</span>`;
+  box.innerHTML = `<div class="mb">${pic}<span class="mt">${C ? `<small>Campaign ${st.camp.i + 1} of ${MR.CAMPAIGNS[st.map].length} · ${esc(C.name)}</small>` : '<small>Mission</small>'}<b>${esc(cadet && o.kid ? o.kid : cur.t)}</b>${!cadet && o.what ? `<span class="mw">${esc(o.what)}</span>` : ''}</span><span class="mp">${Math.min(cur.n, cur.of)}/${cur.of}</span>${C && !cadet ? '<button class="btn" id="briefBtn">Briefing</button>' : ''}</div>`;
+  if ($('briefBtn')) $('briefBtn').onclick = () => briefingModal();
+}
+/* Briefing: the campaign story, the real mission it follows, and each objective with what, why and when it is done.
+   After a campaign ends it opens with the debrief of the one just finished. */
+function briefingModal(prev){
+  const st = G.state, C = MR.campaignOf(st), r = myRover(); if (!C || !r || r.role === 'cadet') return;
+  const spec = r.role === 'specialist', list = MR.CAMPAIGNS[st.map];
+  const crit = g => g.kind === 'col' ? `Done when the team drills ${g.of} ${MR.CARDS[g.res].name.toLowerCase()}.` : g.kind === 'ident' ? `Done when Analyze (or a drill sample) identifies ${MR.CARDS[g.res].name.toLowerCase()}.`
+    : g.kind === 'sites' ? `Done when ${g.of} new signals are flagged.` : g.kind === 'deliver' ? `Done when ${g.of} samples are delivered.` : '';
+  const objs = MR.goalProgress(st).map(g => { const o = MR.objectiveInfo(st, g);
+    return `<li class="${g.done ? 'done' : ''}"><b>${g.done ? '✓ ' : ''}${esc(g.t)}${g.bonus ? ' <i class="bonus">bonus</i>' : ''}</b><span>${esc(o.what || '')}</span><span class="why"><b>Why scientists want it:</b> ${esc(spec ? o.whyFull || o.why : o.why || '')}</span><small>${esc(crit(g))}</small>${g.res && MR.MINERALS[g.res] ? `<button class="mini-b wide" data-tablet="${g.res}">Mineral tablet</button>` : ''}</li>`; }).join('');
+  modal(prev ? `Campaign complete: ${prev.name}` : C.name,
+    (prev ? `<div class="debrief"><p>${esc(prev.debrief)}</p><small>Based on ${esc(prev.real)}.</small></div><h3 class="t">Next: ${esc(C.name)}</h3>` : '')
+    + `<p class="real">Campaign ${st.camp.i + 1} of ${list.length} · based on ${esc(C.real)}</p><p>${esc(C.brief)}</p><ol class="brieflist">${objs}</ol>`
+    + `<div class="row" style="justify-content:flex-end"><button class="btn primary" data-close>Let's go</button></div>`);
+  document.querySelectorAll('[data-tablet]').forEach(b => b.onclick = () => UI.mineralTablet(b.dataset.tablet));
+}
+function objectiveModal(k){
+  const st = G.state, g = MR.goalProgress(st).find(x => x.k === k), r = myRover(); if (!g || !r) return;
+  const o = MR.objectiveInfo(st, g), spec = r.role === 'specialist';
+  modal(g.t, `<p>${esc(o.what || '')}</p><p class="why"><b>Why scientists want it:</b> ${esc(spec ? o.whyFull || o.why : o.why || '')}</p>${g.res && MR.MINERALS[g.res] ? `<button class="btn" data-tablet="${g.res}">Open the ${esc(MR.CARDS[g.res].name)} tablet</button>` : ''}`);
+  document.querySelectorAll('[data-tablet]').forEach(b => b.onclick = () => UI.mineralTablet(b.dataset.tablet));
+}
+$('goals').addEventListener('click', e => { const w = e.target.closest('[data-why]'); if (w) { objectiveModal(+w.dataset.why); return; } });
 $('goals').addEventListener('click', e => { const b = e.target.closest('[data-show]'); if (!b) return;
-  G.hintRes = b.dataset.show; computeHints(); const a = MR.searchArea(G.state, G.hintRes);
+  G.hintRes = b.dataset.show; computeHints(); const a = MR.searchArea(G.state, G.hintRes, myRover());
   if (a) { const [vw, vh] = R.viewTiles(); R.cam.follow = false; R.cam.x = a.x + .5 - vw/2; R.cam.y = a.y + .5 - vh/2; R.clamp(); } });
 function computeHints(){
   const r = myRover(); if (!r || !G.state) { R.hints = []; return; }
@@ -427,9 +468,23 @@ function computeHints(){
     if (r.tubes.length) H.push({x:S.x + .5, y:S.y + .5, label:'Station', color:'#e6ecf1'});
     const open = MR.goalProgress(st).filter(g => !g.done && g.kind === 'col');
     const g = open.find(q2 => q2.res === G.hintRes) || open[0];
-    if (g) { const a = MR.searchArea(st, g.res); if (a) H.push({x:a.x, y:a.y, label:MR.CARDS[g.res].name, color:MR.CARDS[g.res].color, area:true, near:Math.hypot(a.x - r.x, a.y - r.y) < 5}); }
+    if (g) { const a = MR.searchArea(st, g.res, myRover()); if (a) H.push({x:a.x, y:a.y, label:MR.CARDS[g.res].name, color:MR.CARDS[g.res].color, area:true, near:Math.hypot(a.x - r.x, a.y - r.y) < 5}); }
   }
   R.hints = H;
+}
+/* Where to go for the current objectives: a signal already identified as a needed mineral, or else an
+   unidentified signal inside a needed mineral's search area (it never reveals what a "?" is). */
+function objectiveTarget(st, r){
+  const W = st.world, need = MR.goalProgress(st).filter(g => !g.done && g.res && (g.kind === 'col' || g.kind === 'ident')).sort((a, b) => a.bonus - b.bonus);
+  let best = null;
+  const consider = (i, res, known, bonus) => { const x = i % MW, y = (i / MW) | 0, d = Math.hypot(x - r.x, y - r.y);
+    if (d > 18) return; const c = {x, y, d, res, known, objective:!bonus};
+    if (!best || (best.objective !== c.objective ? c.objective : best.known !== known ? known : d < best.d)) best = c; };
+  need.forEach(g => { const area = MR.searchArea(st, g.res, r);
+    for (let i = 0; i < W.res.length; i++) { if (!W.sig[i] || W.drilled[i] || W.kid[i] || !W.res[i] || MR.CARDS[W.res[i]].artifact) continue;
+      if (W.known[i]) { if (W.res[i] === g.res) consider(i, g.res, true, g.bonus); }
+      else if (area && Math.hypot(i % MW - area.x, ((i / MW) | 0) - area.y) <= 4) consider(i, g.res, false, g.bonus); } });
+  return best;
 }
 function renderNudges(){
   const r = myRover(), box = $('nudges');
@@ -449,6 +504,9 @@ function renderNudges(){
       else if (W.res[i] !== 'basalt') out.push([`You are on ${MR.CARDS[W.res[i]].name}!`, 'Add Drill', 'drill']);
       else out.push(['Just basalt here. Probably not worth a tube.', null, null]);
     }
+    // the current objective's mineral has already been spotted: offer a route there
+    const tg = objectiveTarget(st, r);
+    if (tg && tg.d > 0) out.push([tg.known ? `${MR.CARDS[tg.res].name} found ${Math.round(tg.d)} squares ${dirWord(r, tg.x, tg.y)}${tg.objective ? ', just what your objective needs' : ''}!` : `A mystery signal ${Math.round(tg.d)} squares ${dirWord(r, tg.x, tg.y)}, in the search area for ${MR.CARDS[tg.res].name.toLowerCase()}.`, tg.known ? 'Plan the route there' : 'Go and check it', 'target']);
     if (r.tubes.length >= MR.tubesOf(r)) out.push(['Your sample tubes are full.', 'Plan route home', 'home']);
     else if (r.bat < 30) out.push([`Battery is low (${r.bat}%).`, 'Plan route home', 'home'], ['Or charge with the solar panels.', 'Add Charge', 'charge']);
     else if (r.tubes.length && MR.goalProgress(st).filter(g => g.kind === 'col').every(g => g.done)) out.push(['All the finds are done. Bring your samples home!', 'Plan route home', 'home']);
@@ -484,6 +542,11 @@ $('nudges').addEventListener('click', e => {
     case 'charge': applyPlan([{type:'charge'}]); break;
     case 'catalog': applyPlan([{type:'catalog'}]); break;
     default: if (b.dataset.nudge.startsWith('build_')) applyPlan([{type:b.dataset.nudge}]); break;
+    case 'target': { const tg = objectiveTarget(st, r); if (!tg) break; const i = tg.y*MW + tg.x;
+      const p = MR.findPath(st, r, (x, y) => x === tg.x && y === tg.y);
+      if (!p) { UI.toast('!', '#f0bf5a', 'No route found yet', 'Explore a bit more so the rover can see a way there.'); break; }
+      const tail = (st.world.known[i] ? [] : [{type:'analyze'}]).concat([{type:'drill'}]);
+      applyPlan(MR.pathToPlan(r, p, Math.max(1, Math.min(maxPlan(), 12) - tail.length)).concat(p.length <= 20 ? tail : []), true); break; }
     case 'home': { const p = MR.findPath(st, r, (x, y) => MR.onStation(st.map, x, y));
       if (p) applyPlan(MR.pathToPlan(r, p, Math.min(maxPlan(), 12)), true); else UI.toast('!', '#f0bf5a', 'No route found yet', 'Explore a bit more so the rover can see a way back.'); break; }
   }
@@ -651,6 +714,62 @@ while rover.sense_ahead() == "clear":
         check()</pre>`);
 }
 const PIC = {forward:'↑', left:'↶', right:'↷', drill:'⛏'};
+const FACE = ['north ↑', 'east →', 'south ↓', 'west ←'];
+/* A plain sentence for each block, so a plan reads like instructions. */
+function cmdText(c){
+  const n = c.arg || 1, sq = n === 1 ? 'square' : 'squares';
+  switch (c.type) {
+    case 'forward': return `Drive ${n} ${sq} forward`;
+    case 'back': return `Back up ${n} ${sq}`;
+    case 'left': return 'Turn left';
+    case 'right': return 'Turn right';
+    case 'scan': return 'Scan for signals';
+    case 'analyze': return 'Analyze the rock here';
+    case 'drill': return 'Drill a sample';
+    case 'dig': return 'Dig in front';
+    case 'charge': return 'Charge the battery';
+    case 'go_signal': return 'Drive to the nearest signal';
+    case 'go_home': return 'Drive home to the station';
+    case 'repeat': return `Repeat ${n} times`;
+  }
+  return MR.BLOCKS[c.type] ? MR.BLOCKS[c.type].label : (MR.CMDS[c.type] || {}).label || c.type;
+}
+/* The picture on a card: an arrow with the number of squares, a curved arrow for turns, or the tool icon. */
+function cmdPic(c, d){
+  if (c.type === 'forward' || c.type === 'back') return `<span class="mv">${c.type === 'forward' ? '↑' : '↓'}</span><b class="cnt">${c.arg || 1}</b>`;
+  if (c.type === 'repeat') return `<span class="mv">⟲</span><b class="cnt">${c.arg}×</b>`;
+  return d.icon;
+}
+/* Walk through the plan before it is sent: which way the rover will face and how much battery is left after
+   each block, and warnings for known rocks, cliffs, sand traps or an empty battery. Smart blocks (If, Until,
+   Go to signal) depend on what the rover finds, so everything after them is "decided on Mars". */
+function planPreview(r){
+  const st = G.state, W = st.world, out = {}, power = MR.usesPower(r), wide = (r.perks || []).includes('wide_wheels');
+  let x = r.x, y = r.y, d = r.dir, bat = r.bat, unknown = false, halted = false;
+  const cost = i => { const t = MR.TER[W.ter[i]]; let c = t.cost || 2; if (wide && (t.sandy || t.hilly)) c = Math.max(2, c - 2); return c; };
+  const run = c => { let warn = null, use = 0;
+    if (c.type === 'forward' || c.type === 'back') { const sg = c.type === 'forward' ? 1 : -1;
+      for (let k = 0; k < (c.arg || 1); k++) { const nx = x + MR.DIRS[d][0]*sg, ny = y + MR.DIRS[d][1]*sg;
+        if (!MR.inb(nx, ny)) { warn = 'The edge of the map is in the way'; halted = true; break; }
+        const i = ny*MW + nx;
+        if (r.job !== 'heli' && W.seen[i] && (MR.TER[W.ter[i]].block || W.obs[i])) { warn = MR.TER[W.ter[i]].block ? 'A cliff or the crater rim is in the way' : 'A rock is in the way'; halted = true; break; }
+        use += r.job === 'heli' ? 2 : cost(i); x = nx; y = ny;
+        if (W.trapSeen[i] && r.job !== 'heli' && r.job !== 'buggy' && r.job !== 'excavator') { warn = 'Drives into a known sand trap'; halted = true; break; } } }
+    else if (c.type === 'left' || c.type === 'right') { d = (d + (c.type === 'right' ? 1 : 3)) % 4; use = 1; }
+    else use = {scan:5, analyze:2, drill:8, dig:6, charge:-15}[c.type] || 0;
+    if (power) { bat = Math.min(r.batMax, bat - use); if (bat < 0 && !warn) { warn = 'The battery runs out here'; halted = true; } }
+    if (MR.onStation(st.map, x, y) && power) bat = r.batMax;
+    return warn; };
+  const walk = (list, prefix, record) => list.forEach((c, i) => { const key = prefix + i;
+    if (unknown) { if (record) out[key] = {unknown:true}; if (c.body) walk(c.body, key + '.', record); return; }
+    if (halted) { if (record) out[key] = {halted:true}; if (c.body) walk(c.body, key + '.', record); return; }
+    const b = MR.BLOCKS[c.type];
+    if (b && c.type === 'repeat') { for (let k = 0; k < c.arg && !halted; k++) walk(c.body, key + '.', record && k === 0); if (record) out[key] = {dir:d, bat:Math.max(0, Math.round(bat))}; return; }
+    if (b || (MR.CMDS[c.type] && MR.CMDS[c.type].macro)) { unknown = true; if (record) out[key] = {unknown:true}; if (c.body) walk(c.body, key + '.', record); return; }
+    const warn = run(c); if (record) out[key] = {dir:d, bat:Math.max(0, Math.round(bat)), warn}; });
+  walk(G.plan, '', true);
+  return out;
+}
 function renderPlan(){
   const r = myRover(); if (!r) return;
   if (r.role === 'cadet') {
@@ -663,17 +782,24 @@ function renderPlan(){
   if (r.role === 'specialist') { $('count').textContent = `max ${MR.ROLES.specialist.maxCmd} moves`; return; }
   $('count').textContent = `${planCount()} / ${maxPlan()}`;
   const dis = G.ready || G.phase !== 'plan' ? 'disabled' : '';
-  const row = (c, key, n, first, depth) => { const b = MR.BLOCKS[c.type], d = b || MR.CMDS[c.type], open = b && G.cursor === key, pad = depth ? ` style="margin-left:${depth * 26}px"` : '';
-    const argBtns = (d.arg) ? `<span class="arg"><button class="mini-b" data-a="dec" aria-label="${b ? 'Fewer times' : 'Fewer squares'}" ${dis}>−</button><b>${c.arg}${b ? '×' : ''}</b><button class="mini-b" data-a="inc" aria-label="${b ? 'More times' : 'More squares'}" ${dis}>+</button></span>` : '';
-    return `<li class="cmd ${b ? 'blk' : 'cat-' + d.cat} ${open ? 'open' : ''} ${c.state||''}" data-i="${key}"${pad}><span class="num">${depth ? '' : n}</span><span class="ic" aria-hidden="true">${d.icon}</span>`
-      + (b ? `<button class="lb blb" data-a="open" ${dis} title="${open ? 'Close this block' : 'Put new blocks inside'}">${d.label}${open ? ' ▾' : ' ▸'}</button>` : `<span class="lb">${d.label}</span>`)
-      + `${argBtns}<button class="mini-b" data-a="up" aria-label="Move up" ${dis || (first ? 'disabled' : '')}>⌃</button><button class="mini-b" data-a="del" aria-label="Remove" ${dis}>×</button></li>`; };
+  const pv = planPreview(r);
+  const row = (c, key, n, depth) => { const b = MR.BLOCKS[c.type], d = b || MR.CMDS[c.type], open = b && G.cursor === key, info = pv[key] || {};
+    const pad = depth ? ` style="--depth:${depth}"` : '';
+    const argBtns = d.arg ? `<span class="arg"><button class="mini-b big" data-a="dec" aria-label="${b ? 'Fewer times' : 'Fewer squares'}" ${dis}>−</button><b>${c.arg}</b><button class="mini-b big" data-a="inc" aria-label="${b ? 'More times' : 'More squares'}" ${dis}>+</button></span>` : '';
+    const sub = info.unknown ? 'Decided on Mars' : info.halted ? 'May not run (stops before this)' : `faces ${FACE[info.dir]}${MR.usesPower(r) ? ` · ${info.bat}% left` : ''}`;
+    const num = c.state === 'done' ? '✓' : depth ? '' : n;
+    return `<li class="cmd pstep ${b ? 'blk' : 'cat-' + d.cat} ${depth ? 'inb' : ''} ${open ? 'open' : ''} ${info.warn ? 'warn' : ''} ${info.halted ? 'halted' : ''} ${c.state||''}" data-i="${key}"${pad}>`
+      + `<span class="drag" title="Drag to move" aria-hidden="true">⋮⋮</span><span class="num">${num}</span><span class="pic ic">${cmdPic(c, d)}</span>`
+      + `<span class="ct">${b ? `<button class="lb blb" data-a="open" ${dis} title="${open ? 'Close this block' : 'Put new blocks inside'}">${esc(cmdText(c))}${open ? ' ▾' : ' ▸'}</button>` : `<span class="lb">${esc(cmdText(c))}</span>`}`
+      + `<small class="${info.warn ? 'wtxt' : ''}">${esc(info.warn ? '⚠ ' + info.warn : sub)}</small></span>`
+      + `${argBtns}<button class="mini-b big" data-a="del" aria-label="Remove" ${dis}>×</button></li>`; };
   const rows = [];
-  const walk = (list, prefix, depth) => list.forEach((c, i) => { const key = prefix + i; rows.push(row(c, key, i + 1, i === 0, depth));
+  const walk = (list, prefix, depth) => list.forEach((c, i) => { const key = prefix + i; rows.push(row(c, key, i + 1, depth));
     if (!c.body) return; walk(c.body, key + '.', depth + 1);
-    const pad = ` style="margin-left:${(depth + 1) * 26}px"`;
-    if (G.cursor === key) rows.push(`<li class="drop"${pad}>${c.body.length ? 'New blocks go inside here.' : 'Now add blocks to go inside.'} <button class="mini-b wide" data-a="close" data-i="${key}" ${dis}>Done</button></li>`);
-    else if (!c.body.length) rows.push(`<li class="drop"${pad}>Empty. Click ${esc(MR.BLOCKS[c.type].label)} to add blocks inside.</li>`); });
+    const pad = ` style="--depth:${depth + 1}"`;
+    if (G.cursor === key) rows.push(`<li class="drop inb"${pad}>${c.body.length ? 'New blocks go inside here.' : 'Now add blocks to go inside.'} <button class="mini-b wide" data-a="close" data-i="${key}" ${dis}>Done</button></li>`);
+    else if (!c.body.length) rows.push(`<li class="drop inb"${pad}>Empty. Click ${esc(MR.BLOCKS[c.type].label)} to add blocks inside.</li>`);
+    rows.push(`<li class="bend" style="--depth:${depth + 1}"><span>end of ${esc(cmdText(c).toLowerCase())}</span></li>`); });
   walk(G.plan, '', 0);
   if (G.relaySols > 1 && relayOK()) rows.push(`<li class="drop">⌁ The relay satellite runs this plan again next sol.</li>`);
   $('prog').innerHTML = G.plan.length ? rows.join('') : `<li class="empty">Tap a command above (or use W A S D, Q, R, Space) to add it to today's plan.</li>`;
@@ -807,6 +933,21 @@ $('prog').onclick = e => {
   if (a === 'up' && i > 0) { [list[i-1], list[i]] = [list[i], list[i-1]]; if (G.cursor != null) G.cursor = null; }
   renderPlan(); renderLock(); updateGhost();
 };
+/* Drag a card by its ⋮⋮ handle to move it (within the same list: the plan, or inside one smart block). */
+let dragKey = null;
+$('prog').addEventListener('pointerdown', e => { const h = e.target.closest('.drag'), li = h && h.closest('.cmd'); if (!li || G.ready || G.phase !== 'plan') return;
+  e.preventDefault(); dragKey = li.dataset.i; li.classList.add('dragging'); $('prog').setPointerCapture(e.pointerId); });
+const parentOf = k => k.includes('.') ? k.slice(0, k.lastIndexOf('.')) : '';
+$('prog').addEventListener('pointermove', e => { if (dragKey == null) return;
+  document.querySelectorAll('#prog .dropover').forEach(x => x.classList.remove('dropover'));
+  const el = document.elementFromPoint(e.clientX, e.clientY), li = el && el.closest('#prog .cmd');
+  if (li && li.dataset.i !== dragKey && parentOf(li.dataset.i) === parentOf(dragKey)) li.classList.add('dropover'); });
+$('prog').addEventListener('pointerup', e => { if (dragKey == null) return;
+  const over = document.querySelector('#prog .dropover'), from = dragKey; dragKey = null;
+  document.querySelectorAll('#prog .dragging').forEach(x => x.classList.remove('dragging'));
+  if (!over) return; const a = locate(from), b = locate(over.dataset.i); if (!a || !b || a.list !== b.list) return;
+  pushUndo(); const [c] = a.list.splice(a.i, 1); a.list.splice(b.i, 0, c); G.cursor = null; G.plan.forEach(p => p.state = ''); MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); });
+$('prog').addEventListener('pointercancel', () => { dragKey = null; renderPlan(); });
 $('editor').addEventListener('keydown', e => {
   if (e.key === 'Tab') { e.preventDefault(); const ta = e.target, s = ta.selectionStart; ta.value = ta.value.slice(0, s) + '    ' + ta.value.slice(ta.selectionEnd); ta.setSelectionRange(s+4, s+4); }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendPlan(); }
@@ -871,6 +1012,7 @@ async function playEvent(ev){
     case 'drill': { const [x, y] = cell(ev.i); a.busy = 'drill'; R.addFx({type:'dust', x, y, dur:1300, parts:MR.dustParts()}); await wait(ev.treasure ? 1000 : 1300); a.busy = null;
       W.drilled[ev.i] = 1; W.known[ev.i] = 1; W.sig[ev.i] = 1; if (ev.tubes) r.tubes = ev.tubes; if (ev.bat != null) r.bat = ev.bat;
       if (ev.treasure || ev.shiny) R.addFx({type:'confetti', x, y, dur:1400, parts:MR.confetti()});
+      if (mine && ev.res !== 'basalt') MR.music.find();
       if (ev.treasure) st.team.treasures++;
       if (mine) MR.sfx.good(); break; }
     case 'nothing': if (ev.dust) R.addFx({type:'dust', x:r.x, y:r.y, dur:600, parts:MR.dustParts()}); if (ev.bat != null) r.bat = ev.bat; await wait(300); break;
@@ -880,12 +1022,14 @@ async function playEvent(ev){
     case 'dock': r.bat = ev.bat; r.tubes = []; if (ev.wheels != null) r.wheels = ev.wheels; if (ev.dust != null) r.dust = ev.dust; if (mine && ev.n) MR.sfx.good(); break;
     case 'artifact': { const [x, y] = cell(ev.i); W.drilled[ev.i] = 1; W.known[ev.i] = 1; R.addFx({type:'confetti', x, y, dur:1600, parts:MR.confetti()}); MR.sfx.good(); await wait(500); break; }
     case 'skip': if (mine) markPlan(ev.idx, true); if (mine) log('warn', `${ev.n} remaining step${ev.n > 1 ? 's were' : ' was'} skipped for safety.`); break;
-    case 'night': ev.charges.forEach(c => { const q2 = st.rovers.find(x => x.pid === c.pid); if (q2) { q2.bat = c.bat; if (c.dust != null) q2.dust = c.dust; } }); st.sol = ev.sol; if (ev.wx) st.wx = ev.wx; R.view.wx = st.wx; await wait(250); break;
+    case 'night': ev.charges.forEach(c => { const q2 = st.rovers.find(x => x.pid === c.pid); if (q2) { q2.bat = c.bat; if (c.dust != null) q2.dust = c.dust; } }); st.sol = ev.sol; if (ev.wx) { st.wx = ev.wx; MR.music.setStorm(ev.wx.storm); } R.view.wx = st.wx; await wait(250); break;
     case 'gust': case 'wx': break;
     case 'progstart': seen(ev.seen); if (r) r.prog = r.prog || {sols:ev.sols, solsLeft:ev.sols};
       if (ev.sols > 1) { R.addFx({type:'ring', x:r.x, y:r.y, dur:1800, r:7.5}); if (mine) MR.sfx.scan(); await wait(900); } break;
     case 'progstop': if (mine) MR.sfx.bump(); await wait(300); break;
     case 'progcont': case 'progend': case 'proginfo': break;
+    case 'campaign': G.campDone = {i:ev.i, last:ev.last, map:st.map}; MR.sfx.good(); R.addFx({type:'confetti', x:r ? r.x + .5 : MR.MAPS[st.map].station.x, y:r ? r.y + .5 : MR.MAPS[st.map].station.y, dur:1600, parts:MR.confetti()}); await wait(500); break;
+    case 'campnext': st.goals = ev.goals; st.camp = ev.camp; renderSide(); break;
     case 'catalog': if (st.lab) { st.lab.inbox = []; st.lab.catalog.push(...ev.entries); } MR.sfx.click(); await wait(500); break;
     case 'make': if (st.lab) st.lab.mat = ev.mats; await wait(600); break;
     case 'build': if (st.lab) { st.lab.mat = ev.mats; st.lab.built[ev.up] = true; } R.addFx({type:'confetti', x:MR.MAPS[st.map].station.x + .5, y:MR.MAPS[st.map].station.y + .5, dur:1600, parts:MR.confetti()}); MR.sfx.good(); await wait(800); break;
@@ -912,9 +1056,10 @@ async function playSol(timeline, newState){
   renderTeam(); renderPlan();
   await uplink();
   if (gen !== G.gen) return;
+  MR.music.setMode('drive');
   R.cam.follow = true;
   for (const tick of timeline) { await Promise.all(tick.map(playEvent)); if (gen !== G.gen) return; renderSide(); renderCrewBar(); }
-  R.running = false; $('runLine').hidden = true;
+  R.running = false; $('runLine').hidden = true; MR.music.setMode('plan');
   setGameState(newState); saveExpedition();
   const won = timeline.some(t => t.some(e => e.t === 'win'));
   const p = me();
@@ -939,6 +1084,8 @@ async function playSol(timeline, newState){
   G.phase = newState.won && !G.contAfterWin ? 'won' : 'plan';
   renderGame(); updateGhost();
   if (won) showWin(newState);
+  else if (G.campDone && !G.campDone.last && q.get('brief') === '0') G.campDone = null;
+  else if (G.campDone && !G.campDone.last) { const prev = MR.CAMPAIGNS[newState.map][G.campDone.i]; G.campDone = null; if (myRole() !== 'cadet') setTimeout(() => { if (!UI.modalOpen()) briefingModal(prev); }, 400); }
   const pend = G.pending; G.pending = []; pend.forEach(f => f());
   if (isHostish()) { broadcast({type:'ready', pids:G.readyPids}); renderTeam(); maybeRun(); }
 }
@@ -980,7 +1127,8 @@ function renderSolCard(mine, st, code){
 function showWin(st){
   const par = MR.parOf(st), s = st.sol <= par ? 3 : st.sol <= Math.ceil(par*1.5) ? 2 : 1;
   $('winStars').innerHTML = '★'.repeat(s) + `<i>${'★'.repeat(3-s)}</i>`;
-  $('winText').textContent = `${MR.MAPS[st.map].name} explored on sol ${st.sol} with ${st.team.score} science points${st.team.treasures ? ` and ${st.team.treasures} treasures` : ''}. Press I to see what you collected.`;
+  const lastC = st.camp && MR.CAMPAIGNS[st.map][st.camp.i]; G.campDone = null;
+  $('winText').textContent = (lastC && myRole() !== 'cadet' ? lastC.debrief + ' ' : '') + `${MR.MAPS[st.map].name} explored on sol ${st.sol} with ${st.team.score} science points${st.team.treasures ? ` and ${st.team.treasures} treasures` : ''}. Press I to see what you collected.`;
   $('againBtn').hidden = G.mode === 'client';
   $('againBtn').textContent = 'New expedition';
   $('win').hidden = false;
@@ -1079,7 +1227,7 @@ G.toggleBig = () => { document.body.classList.toggle('bigmap'); requestAnimation
 $('bigBtn').onclick = () => G.toggleBig();
 
 /* After clicking a control on the game screen, give focus back so Enter sends the plan instead of re-clicking. */
-document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#palette button, #tabs button, #relayBar button, .mapbtns button, .cadet button, #prog button, #seq button, #nudges button, #finds button, #tapMenu button, #crewBar button');
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#palette button, #tabs button, #relayBar button, #goals button, #missionBar button, .mapbtns button, .cadet button, #prog button, #seq button, #nudges button, #finds button, #tapMenu button, #crewBar button');
   if (b && e.detail > 0) b.blur(); });
 /* ---------- keyboard (game) ---------- */
 let tabIdx = 0;

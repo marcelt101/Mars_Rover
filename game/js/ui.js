@@ -104,7 +104,7 @@ UI.inventory = tab => {
   const p = MR.Store.current(); if (!p) return;
   if (tab) invTab = tab;
   UI.invOpenedAt = Date.now();
-  const tabs = [['cards','Cards'],['stickers','Stickers'],['patches','Patches'],['rover','Rover'],['stats','Stats']];
+  const tabs = [['cards','Cards'],['chart','Minerals chart'],['stickers','Stickers'],['patches','Patches'],['rover','Rover'],['stats','Stats']];
   const ri = MR.rankInfo(p);
   const owned = MR.CARD_ORDER.filter(id => p.cards[id] && p.cards[id].n);
   const shinies = MR.CARD_ORDER.filter(id => p.cards[id] && p.cards[id].shiny).length;
@@ -117,6 +117,8 @@ UI.inventory = tab => {
       <div class="cards">${MR.CARD_ORDER.map(id => { const c = MR.CARDS[id], have = p.cards[id] && p.cards[id].n, sh = p.cards[id] && p.cards[id].shiny, rar = MR.RARITY[c.rar];
         if (!have) return `<div class="card locked"><div class="gm"></div><b>???</b><span class="rar" style="color:${rar.col}">${rar.name}</span><small class="muted">Found at ${c.maps.map(m => MR.MAPS[m].name).join(' or ')}</small></div>`;
         return `<button class="card ${sh ? 'shiny' : ''} ${sel === id ? 'sel' : ''}" data-card="${id}">${sh ? '<span class="shn" title="Shiny">✦</span>' : ''}<span class="n">×${p.cards[id].n + (p.cards[id].shiny||0)}</span><div class="gm" style="background:${c.color}"></div><b>${esc(p.role === 'cadet' && c.kid ? c.kid : c.name)}</b><span class="rar" style="color:${rar.col}">${rar.name}</span></button>`; }).join('')}</div>`;
+  } else if (invTab === 'chart') {
+    body = chartHtml(p);
   } else if (invTab === 'stickers') {
     const st = p.stickers || {}, got = MR.STICKERS.filter(x => st[x.id]).length;
     body = `<p class="muted" style="margin:0">${got} of ${MR.STICKERS.length} stickers. ${p.role === 'cadet' ? 'Every treasure gives a sticker!' : 'You get a sticker for every delivery and every find from Mars history.'}</p>
@@ -140,7 +142,7 @@ UI.inventory = tab => {
       body += `<div class="ph"><h3 class="t">Perks</h3><span class="count">${eq.length} of ${slots} slots used · changes apply to your next expedition</span></div>
         <div class="perks" id="perkList">${Object.entries(MR.PERKS).map(([k, pk]) => { const has = own.includes(k), on = eq.includes(k);
           return `<button class="perk ${has ? '' : 'locked'}" data-perk="${k}" aria-pressed="${on}" ${has ? '' : 'disabled'}><span class="pi">${pk.icon}</span><span><b>${esc(pk.name)} <small style="display:inline;color:var(--sci)">${pk.tier}</small></b><small>${esc(pk.desc)}</small><small>${has ? (on ? 'Equipped. Tap to remove.' : 'Tap to equip.') : `Unlocks at ${MR.RANKS[pk.rank].name}.`}</small></span></button>`; }).join('')}</div>
-        <p class="muted" style="margin:0;font-size:13px">${p.role === 'specialist' ? 'Specialists get 2 perk slots. Your real power is your code: loops now, sensors and if-statements in a future update.' : 'Explorers get 3 perk slots.'}</p>`;
+        <p class="muted" style="margin:0;font-size:13px">${p.role === 'specialist' ? 'Specialists get 2 perk slots. Your real power is your code.' : 'Explorers get 3 perk slots.'}</p>`;
     }
   } else {
     const s = p.stats;
@@ -151,6 +153,8 @@ UI.inventory = tab => {
     <div class="sb"><div class="tabs" id="invTabs">${tabs.map(([k, l]) => `<button class="tab" data-tab="${k}" aria-selected="${k === invTab}">${l}</button>`).join('')}</div>${body}</div>`);
   $('invTabs').onclick = e => { const b = e.target.closest('.tab'); if (b) UI.inventory(b.dataset.tab); };
   $('sheet').querySelectorAll('[data-card]').forEach(b => b.onclick = () => { invSel = b.dataset.card; UI.inventory(); });
+  $('sheet').querySelectorAll('[data-min]').forEach(b => b.onclick = () => UI.mineralTablet(b.dataset.min, () => UI.inventory('chart')));
+  $('sheet').querySelectorAll('[data-el]').forEach(b => b.onclick = () => elementModal(b.dataset.el, p));
   if ($('invEdit')) $('invEdit').onclick = () => UI.profileModal(p);
   if ($('perkList')) $('perkList').onclick = e => { const b = e.target.closest('.perk'); if (!b || b.disabled) return;
     const k = b.dataset.perk, eq = MR.equippedPerks(p);
@@ -160,6 +164,49 @@ UI.inventory = tab => {
     MR.Store.save(); UI.inventory(); };
 };
 UI.invOpenedAt = 0;
+/* Minerals chart: one row per family like the periodic table, then an element strip that lights up
+   as minerals containing each element are found. Cadets see colors and names only. */
+function chartHtml(p){
+  const cs = MR.chartStats(p), cadet = p.role === 'cadet';
+  const sq = id => { const m = MR.MINERALS[id], c = MR.CARDS[id], have = MR.mineralFound(p, id);
+    return `<button class="msq ${have ? 'got' : ''} ${m.life ? 'life' : ''} ${c.future ? 'future' : ''}" data-min="${id}" style="--mc:${c.color}" aria-label="${esc(have ? c.name : 'Unknown mineral')}">
+      ${m.life ? '<span class="lf" title="Sign of a living Mars">❋</span>' : ''}<span class="sy">${have || !cadet ? m.sym : '?'}</span><span class="nm">${have ? esc(cadet && c.kid ? c.kid : c.name.replace(/ \(.*\)$/, '')) : c.future ? 'Future map' : '???'}</span></button>`; };
+  const rows = MR.FAMILIES.map(f => { const ids = Object.keys(MR.MINERALS).filter(id => MR.MINERALS[id].family === f.id);
+    return `<div class="frow ${cs.families.includes(f.id) ? 'full' : ''}"><div class="fl" style="--fc:${f.col}"><b>${esc(f.name)}</b>${cadet ? '' : `<small>${esc(f.desc)}</small>`}</div><div class="fsq">${ids.map(sq).join('')}</div></div>`; }).join('');
+  const els = MR.ELEMENT_ORDER.map(e => { const E = MR.ELEMENTS[e], on = cs.elems.has(e);
+    return `<button class="el ${on ? 'on' : ''}" data-el="${e}" style="--ec:${E.col}" aria-label="${E.name}${on ? '' : ' (not found yet)'}"><small>${E.n}</small><b>${e}</b><span>${E.name}</span></button>`; }).join('');
+  return `<p class="muted" style="margin:0">${cs.found.length} of ${Object.keys(MR.MINERALS).length} minerals · ${cs.life} of ${MR.LIFE12.length} signs of a living Mars <span class="lf">❋</span> · ${cs.elems.size} of ${MR.ELEMENT_ORDER.length} elements. Tap a square to open its information tablet.</p>
+    <div class="chart">${rows}</div>${cadet ? '' : `<h3 class="t">Elements inside your minerals</h3><div class="elements">${els}</div>`}`;
+}
+function elementModal(e, p){
+  const E = MR.ELEMENTS[e], ids = Object.keys(MR.MINERALS).filter(id => MR.MINERALS[id].elems.includes(e));
+  UI.openModal(`<div class="sh"><h2>${E.name} (${e})</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div><div class="sb">
+    <p>Element number ${E.n}. ${esc(E.note)}</p><p class="muted" style="margin:0">Minerals that contain ${E.name.toLowerCase()}:</p>
+    <div class="fsq">${ids.map(id => { const have = MR.mineralFound(p, id), c = MR.CARDS[id];
+      return `<button class="msq ${have ? 'got' : ''}" data-min="${id}" style="--mc:${c.color}"><span class="sy">${MR.MINERALS[id].sym}</span><span class="nm">${have ? esc(c.name.replace(/ \(.*\)$/, '')) : '???'}</span></button>`; }).join('')}</div>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="elBack">Back to the chart</button></div></div>`);
+  $('sheet').querySelectorAll('[data-min]').forEach(b => b.onclick = () => UI.mineralTablet(b.dataset.min, () => elementModal(e, p)));
+  $('elBack').onclick = () => UI.inventory('chart');
+}
+/* Information tablet: picture, family, what it is made of, where it was really found, the instrument that
+   detects it and why scientists care. The text depends on the player's role. */
+UI.mineralTablet = (id, back) => {
+  const p = MR.Store.current(), m = MR.MINERALS[id], c = MR.CARDS[id]; if (!m || !c) return;
+  const role = p ? p.role : 'explorer', have = MR.mineralFound(p, id), fam = MR.FAMILIES.find(f => f.id === m.family);
+  const where = c.future ? `Not on these maps yet. It comes with ${c.future}.` : have ? `You found it${p.cards[id].where ? ` at ${p.cards[id].where}` : ''}${p.cards[id].n > 1 ? ` (${p.cards[id].n} times)` : ''}${p.cards[id].shiny ? ', including a shiny one' : ''}.` : `Not found yet. Look on ${c.maps.map(k => MR.MAPS[k].name).join(' or ')}.`;
+  const why = role === 'cadet' ? m.why.kid : role === 'specialist' ? m.why.full : m.why.short;
+  const chips = m.elems.map(e => `<span class="echip" style="--ec:${MR.ELEMENTS[e].col}"><b>${e}</b> ${MR.ELEMENTS[e].name}</span>`).join('');
+  UI.openModal(`<div class="sh"><h2>${esc(role === 'cadet' && c.kid ? c.kid : c.name)}</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div><div class="sb">
+    <div class="tablet"><div class="tpic ${have ? '' : 'dim'}" style="--mc:${c.color}"><span>${m.sym}</span>${m.life ? '<i title="Sign of a living Mars">❋</i>' : ''}</div>
+      <div class="tinfo"><small class="fam" style="color:${fam.col}">${esc(fam.name)}${m.life ? ' · one of the 12 signs of a living Mars' : ''}</small>
+        ${role === 'cadet' ? '' : `<div class="trow"><b>Made of</b><span>${role === 'specialist' ? `<code>${esc(m.formula)}</code><br>` : ''}${chips}</span></div>`}
+        <div class="trow"><b>Found by</b><span>${esc(m.found)}</span></div>
+        ${role === 'cadet' ? '' : `<div class="trow"><b>Detected with</b><span>${esc(m.inst)}</span></div>`}
+        <div class="trow"><b>${role === 'cadet' ? 'What is it?' : 'Why scientists care'}</b><span>${esc(why)}</span></div>
+        <p class="tstat ${have ? 'ok' : ''}">${esc(where)}</p></div></div>
+    ${back ? '<div class="row" style="justify-content:flex-end"><button class="btn" id="tabBack">Back</button></div>' : ''}</div>`);
+  if (back) $('tabBack').onclick = back;
+};
 UI.toggleInventory = () => { if (UI.modalOpen()) UI.closeModal(); else UI.inventory(); };
 $('invBtn').addEventListener('click', () => UI.inventory());
 $('meBtn').addEventListener('click', () => UI.inventory('rover'));
@@ -207,7 +254,7 @@ UI.notify = (notices, cadet) => {
     if (n.k === 'card' || n.k === 'shiny') {
       const c = MR.CARDS[n.id];
       if (cadet) UI.chest(n.id, n.k === 'shiny');
-      else UI.toast('◆', c.color, n.k === 'shiny' ? `Shiny card: ${c.name}!` : `New card: ${c.name}`, `${MR.RARITY[c.rar].name}. Press I to see your collection.`);
+      else UI.toast('◆', c.color, n.k === 'shiny' ? `Shiny card: ${c.name}!` : `New card: ${c.name}`, `${MR.RARITY[c.rar].name}. ${MR.MINERALS && MR.MINERALS[n.id] ? 'Added to your minerals chart. Press I to read its tablet.' : 'Press I to see your collection.'}`);
     } else if (n.k === 'sticker') { const x = MR.STICKERS.find(q => q.id === n.id); if (n.isNew || x.tier !== 'C') UI.toast(x.e, MR.STICKER_TIER[x.tier].col, n.isNew ? `New sticker: ${x.name}!` : `${MR.STICKER_TIER[x.tier].name}: ${x.name}`, 'Press I and open Stickers.'); }
     else if (n.k === 'credit') UI.toast('⚑', '#58cfbe', 'Discovery credit!', `A teammate drilled ${n.site || 'a site'} you found. +15 XP`);
     else if (n.k === 'patch') { const pt = MR.PATCHES.find(x => x.id === n.id); UI.toast(pt.icon, '#f0bf5a', `Patch earned: ${pt.name}`, pt.desc); }

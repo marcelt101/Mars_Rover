@@ -83,6 +83,31 @@ function terMoon(w, seed){
   }
   w.rilleX = y => 17 + 4.2*Math.sin(y/5.5) + y*.12;
 }
+/* Batch 4 minerals use their own random numbers and go in last, so every older map (and every saved
+   expedition, which is rebuilt from its seed) keeps exactly the same layout. Each mineral goes near the place
+   where it was really found; if that area is full, the search widens so it can always be found. */
+function placeMinerals(w, map, seed){
+  const r = mulberry32((seed ^ 0x6d696e) >>> 0), S = MR.MAPS[map].station;
+  // only squares a rover can actually drive to from the station (no cliffs, rim or rocks in the way)
+  const reach = new Uint8Array(N), q = [S.y*MW + S.x]; reach[q[0]] = 1;
+  while (q.length) { const c = q.pop(), x = c % MW, y = (c / MW) | 0;
+    for (const [dx, dy] of MR.DIRS) { const nx = x + dx, ny = y + dy, n = ny*MW + nx;
+      if (MR.inb(nx, ny) && !reach[n] && !MR.TER[w.ter[n]].block && !w.obs[n]) { reach[n] = 1; q.push(n); } } }
+  const ok = i => reach[i] && !w.obs[i] && !w.res[i] && !w.trap[i] && !MR.TER[w.ter[i]].block;
+  const near = (id, n, cx, cy, rad, pred) => { let k = 0;
+    for (let grow = 0; grow < 6 && k < n; grow++) for (let g = 0; g < 900 && k < n; g++) {
+      const a = r()*Math.PI*2, d = Math.sqrt(r())*(rad + grow*3), x = Math.round(cx + Math.cos(a)*d), y = Math.round(cy + Math.sin(a)*d);
+      if (!MR.inb(x, y)) continue; const i = y*MW + x;
+      if (!ok(i) || MR.nearStation(map, x, y, 3) || (grow < 3 && pred && !pred(w.ter[i]))) continue;
+      w.res[i] = id; k++; } };
+  if (map === 'jezero') {
+    near('leopard', 2, 9, 12, 4, t => t === T.CHAN);                      // Cheyava Falls, where Neretva Vallis meets the delta
+    near('serpentine', 3, 9, 27, 7, t => t === T.BED || t === T.FLOOR);   // toward the rim, next to Nili Fossae
+    near('perchlorate', 3, 42, 28, 9, t => t === T.FLOOR || t === T.BED); // crater floor (Máaz)
+  } else if (map === 'gusev') {
+    near('hematite', 3, 34, 14, 6, t => t === T.HILL);                    // Columbia Hills
+  }
+}
 MR.genWorld = function (map, seed, cadetGems) {
   const w = blankWorld(map, seed, cadetGems), r = mulberry32(seed), M = MR.MAPS[map];
   if (map === 'gusev') terGusev(w, seed); else if (map === 'moon') terMoon(w, seed); else terJezero(w, seed);
@@ -146,6 +171,7 @@ MR.genWorld = function (map, seed, cadetGems) {
     const troy = map === 'gusev' && Math.hypot(x-36, y-32) < 3.5;
     if (r() < (troy ? .35 : .1)) w.trap[i] = 1;
   }
+  placeMinerals(w, map, seed);
   w.rocks = rockShapes(w, seed);
   return w;
 };
