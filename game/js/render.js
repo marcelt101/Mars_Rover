@@ -498,12 +498,12 @@ function drawHeli(c, r, a, t, s, lod){
   c.fillStyle = '#24456a'; rr(c, -.09*s, -.06*s, .18*s, .12*s, .015*s); c.fill();
   if (lod >= 1) { c.strokeStyle = 'rgba(140,190,240,.5)'; c.lineWidth = s*.01; c.beginPath(); c.moveTo(0, -.06*s); c.lineTo(0, .06*s); c.moveTo(-.09*s, 0); c.lineTo(.09*s, 0); c.stroke(); }
 }
-R.drawPreview = (cv, r) => {
+R.drawPreview = (cv, r, moonPic) => {
   const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
   const g = c.createRadialGradient(cv.width/2, cv.height/2, 10, cv.width/2, cv.height/2, cv.width*.7); g.addColorStop(0, '#b5603d'); g.addColorStop(1, '#5a2a1a');
   c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
   const s = cv.width*.62; c.save(); c.translate(cv.width/2, cv.height/2);
-  const moon = R.view && MR.MAPS[R.view.map].airless;
+  const moon = moonPic != null ? moonPic : R.view && MR.MAPS[R.view.map].airless;
   if (r.job === 'heli') drawHeli(c, r, {}, performance.now(), s, 2); else if (r.job === 'buggy') drawBuggy(c, r, {}, 0, s, 2); else if (r.job === 'lab') drawLab(c, r, s, 2); else if (moon) drawLRV(c, r, {}, 0, s, 2); else { c.save(); c.translate(s*.05, s*.06); roverShadow(c, r, s); c.restore(); drawGroundRover(c, r, {}, 0, s, 2); mastShadow(c, r, s, .16*s, .2*s); }
   if ((r.dust || 0) > 10) { c.fillStyle = `rgba(200,140,90,${Math.min(.5, r.dust/200)})`; c.beginPath(); c.arc(0, 0, s*.45, 0, Math.PI*2); c.fill(); }
   c.restore();

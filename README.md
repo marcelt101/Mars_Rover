@@ -46,9 +46,11 @@ The devices find each other through the free PeerJS service, then talk directly.
 
 Scouts and Haulers look like Spirit and Opportunity (big winged solar array, Pancam mast, round dish antenna). Science and Excavator rovers look like Perseverance. The Cadet's Buggy looks like Sojourner, the first rover on Mars. On the Moon the ground rovers are Apollo Lunar Roving Vehicles, the station is the Lunar Module, and the helicopter stays home (there is no air to fly in).
 
+**About this rover:** tap the **i** on any rover in the lobby (or open Inventory → Rover → About the rovers, or the Health window) to learn, at kid level, which real rover it is based on, how it works, its main parts and its science tools (Mastcam-Z, SuperCam, PIXL, SHERLOC, APXS, the RAT and more). Perseverance has NASA's labeled instrument picture. On Gale Crater, the Science and Excavator rovers open Curiosity, with the body-part guide from NASA's "Mars Engineering: Curiosity" sheet (eyes, neck, ears and voice, hand, legs, tail). Where the game adds something the real rover doesn't have, the text says so.
+
 ## Getting started
 
-New players can take the optional **tutorial** from the start screen. It has different steps for Cadet, Explorer and Specialist, points at the real buttons, and reads the steps aloud for Cadets. While playing, each objective shows a hint with a **Show** button, arrows at the map edge point to where to look, and helpers like **Plan route home** build the plan for you.
+New players can take the optional **tutorial** from the start screen. It has different steps for Cadet, Explorer and Specialist, points at the real buttons, and reads the steps aloud for Cadets. It also walks through the mission bar, plan cards, Health, Mission Control, Inventory, photos and the Mission Log. The tutorial bubble can be dragged anywhere with a finger or the mouse (handy on phones); double-tap it to snap it back. While playing, each objective shows a hint with a **Show** button, arrows at the map edge point to where to look, and helpers like **Plan route home** build the plan for you.
 
 ## Planning helpers
 

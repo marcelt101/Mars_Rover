@@ -150,6 +150,9 @@ UI.inventory = tab => {
           return `<button class="perk ${has ? '' : 'locked'}" data-perk="${k}" aria-pressed="${on}" ${has ? '' : 'disabled'}><span class="pi">${pk.icon}</span><span><b>${esc(pk.name)} <small style="display:inline;color:var(--sci)">${pk.tier}</small></b><small>${esc(pk.desc)}</small><small>${has ? (on ? 'Equipped. Tap to remove.' : 'Tap to equip.') : `Unlocks at ${MR.RANKS[pk.rank].name}.`}</small></span></button>`; }).join('')}</div>
         <p class="muted" style="margin:0;font-size:13px">${p.role === 'specialist' ? 'Specialists get 2 perk slots. Your real power is your code.' : 'Explorers get 3 perk slots.'}</p>`;
     }
+    const jobs = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(p.role));
+    body += `<h3 class="t">About the rovers</h3><p class="muted" style="margin:0;font-size:13px">Every rover in the game is based on a real one. Tap to see how it works and its science tools.</p>
+      <div class="row" id="rovAbout">${jobs.map(([k, j]) => `<button class="btn" data-info="${k}">${esc(j.label)}</button>`).join('')}${p.role === 'cadet' ? '' : '<button class="btn" data-info="curiosity">Curiosity</button><button class="btn" data-info="lrv">Moon buggy</button>'}</div>`;
   } else {
     const s = p.stats;
     const rows = [['Squares driven', s.squares],['Squares flown', s.flown],['Samples drilled', s.samples],['Samples delivered', s.delivered],['Treasures found', s.treasures],['Scans', s.scans],['Signals identified', s.identified],['Sand traps escaped', s.freed],['Bumps', s.bumps],['Rocks and traps cleared', s.cleared],['Shiny finds', s.shinies],['History found', s.artifacts],['Jezero expeditions', s.exp.jezero||0],['Gusev expeditions', s.exp.gusev||0],['Team wins', s.teamWins]];
@@ -163,6 +166,7 @@ UI.inventory = tab => {
   if (invTab === 'notebook' || invTab === 'photos') MR.LogUI.wireInventory(p, () => UI.inventory());
   $('sheet').querySelectorAll('[data-el]').forEach(b => b.onclick = () => elementModal(b.dataset.el, p));
   if ($('invEdit')) $('invEdit').onclick = () => UI.profileModal(p);
+  if ($('rovAbout')) $('rovAbout').onclick = e => { const b = e.target.closest('[data-info]'); if (b) UI.roverInfo(b.dataset.info, false, () => UI.inventory('rover')); };
   if ($('perkList')) $('perkList').onclick = e => { const b = e.target.closest('.perk'); if (!b || b.disabled) return;
     const k = b.dataset.perk, eq = MR.equippedPerks(p);
     if (eq.includes(k)) p.perks = eq.filter(x => x !== k);

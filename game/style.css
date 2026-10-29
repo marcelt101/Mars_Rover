@@ -609,3 +609,27 @@ svg.chart .gt{fill:#8fa0b0;font-size:11px;font-family:var(--mono)}
 .chip.alwarn{border-color:#7a5d22;background:#2a2419}
 .chip.albad{border-color:#6b3a33;background:#2a1d1b}
 .toasts.low{top:auto;bottom:max(16px,env(safe-area-inset-bottom,0px))}
+/* Batch 6: About this rover */
+.jobw{position:relative;display:flex}
+.jobw .job{flex:1;padding-right:34px}
+.jinfo{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--signal);font:italic 700 14px Georgia,serif;cursor:pointer;padding:0}
+.jinfo:hover{border-color:var(--signal)}
+.rinfo{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.rinfo canvas{width:150px;height:150px;border-radius:12px;flex:none}
+.rinfo>div{flex:1;min-width:220px}
+.rinfo p{margin:0 0 8px;line-height:1.45}
+.rinfo .real{color:var(--muted);font-size:13px}
+.rfact{color:var(--signal)}
+.rparts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.rparts li{background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.35}
+.rparts li b{display:block;font-size:14px;margin-bottom:2px}
+.rparts.sci li{border-left:3px solid var(--sci)}
+.rimg{margin:0}
+.rimg img{width:100%;border-radius:10px;display:block;background:#f3ece8}
+.rimg figcaption{color:var(--muted);font-size:12px;margin-top:4px}
+.coach{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.coach.dragging{cursor:grabbing;opacity:.92;box-shadow:0 16px 40px rgba(0,0,0,.65)}
+.coach .cs{display:flex;align-items:center;gap:8px}
+.coach .cs small{margin-left:auto;white-space:nowrap;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px}
+.coach .grip{font-size:16px;line-height:1;color:var(--muted)}
+.coach button{cursor:pointer}

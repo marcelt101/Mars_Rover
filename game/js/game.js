@@ -287,7 +287,7 @@ function renderLobby(){
   $('crewList').innerHTML = players.map(x => `<li>${UI.avatar(x)}<span class="who"><b>${esc(x.name)}${x.pid === G.myPid ? ' (you)' : ''}</b><small>${MR.ROLES[x.role].label} · ${MR.JOBS[x.job] ? MR.JOBS[x.job].label : ''} · ${MR.RANKS[x.rank|0].name}</small></span>${x.host ? '<span class="tag">Host</span>' : ''}<span class="dot ${x.connected ? '' : 'off'}" title="${x.connected ? 'Connected' : 'Offline'}"></span></li>`).join('');
   const mine = players.find(x => x.pid === G.myPid) || (p && MR.playerSummary(p));
   const airless = MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless;
-  if (mine) $('jobPick').innerHTML = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(mine.role) && !(k === 'lab' && G.mode === 'solo')).map(([k, j]) => `<button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(airless && k === 'heli' ? 'There is no air on the Moon, so helicopters can not fly there. On this map you drive the Buggy.' : j.desc)}</small></button>`).join('');
+  if (mine) $('jobPick').innerHTML = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(mine.role) && !(k === 'lab' && G.mode === 'solo')).map(([k, j]) => `<div class="jobw"><button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(airless && k === 'heli' ? 'There is no air on the Moon, so helicopters can not fly there. On this map you drive the Buggy.' : j.desc)}</small></button><button class="jinfo" data-info="${k}" aria-label="About the ${j.label} rover" title="About this rover">i</button></div>`).join('');
   const unlocked = G.mode === 'client' ? G.lobby.unlocked : MR.Store.unlocked();
   if (G.mode !== 'client') G.lobby.unlocked = unlocked;
   $('mapPick').innerHTML = MR.MAP_ORDER.map(k => { const m = MR.MAPS[k], open = unlocked.includes(k);
@@ -303,7 +303,8 @@ function renderNet(){
   const t = G.mode === 'host' ? `Hosting · ${G.lobby.players.filter(x => x.connected).length} connected` : G.mode === 'client' ? (G.lastPing != null ? `Connected · ${G.lastPing} ms` : 'Connecting…') : 'Solo';
   $('netStatus').textContent = G.mode === 'host' && !G.net ? '' : t; $('gameNet').textContent = t;
 }
-$('jobPick').onclick = e => { const b = e.target.closest('.job'); if (!b) return; const p = me(); p.job = b.dataset.job; MR.Store.save();
+$('jobPick').onclick = e => { const inf = e.target.closest('.jinfo'); if (inf) { UI.roverInfo(inf.dataset.info, MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless, null, G.lobby.map === 'gale'); MR.sfx.click(); return; }
+  const b = e.target.closest('.job'); if (!b) return; const p = me(); p.job = b.dataset.job; MR.Store.save();
   if (G.mode === 'client') G.net.send({type:'job', job:p.job}); else hostHandle(G.myPid, {type:'job', job:p.job}); MR.sfx.click();
   if (G.mode === 'client') { const lp = G.lobby.players.find(x => x.pid === G.myPid); if (lp) lp.job = p.job; renderLobby(); } };
 $('mapPick').onclick = e => { const b = e.target.closest('.mapcard'); if (!b || b.disabled || G.mode === 'client') return; G.lobby.map = b.dataset.map; broadcast(lobbyMsg()); renderLobby(); MR.sfx.click(); };
@@ -391,7 +392,8 @@ function healthModal(){
     <div class="sb"><div class="health"><canvas id="healthPic" width="440" height="440"></canvas><div><div class="gauges">${parts.map(([n, v, h, f, lab, fill], i) =>
       `<button class="gtile ${i === worst ? 'on' : ''}" data-g="${i}" aria-label="${esc(n)}: ${esc(v)}">${gauge(fill ?? h, lvl(h), lab)}<b>${esc(n)}</b><small>${esc(v)}</small></button>`).join('')}</div>
       <p class="gfact" id="gFact"><b>${esc(parts[worst][0])}:</b> ${esc(parts[worst][3])}</p></div></div>
-    <p class="muted" style="margin:0;font-size:13px">Tap a gauge to learn about it. Docking at the station charges the battery, cleans the panels and repairs the wheels for free.</p></div>`);
+    <div class="row" style="justify-content:space-between;align-items:center"><p class="muted" style="margin:0;font-size:13px;flex:1">Tap a gauge to learn about it. Docking at the station charges the battery, cleans the panels and repairs the wheels for free.</p><button class="btn" id="healthAbout">About this rover</button></div></div>`);
+  $('healthAbout').onclick = () => UI.roverInfo(r.job, MR.MAPS[st.map].airless, () => healthModal(), st.map === 'gale');
   document.querySelectorAll('.gtile').forEach(b => b.onclick = () => { const p2 = parts[+b.dataset.g];
     document.querySelectorAll('.gtile').forEach(x => x.classList.toggle('on', x === b)); $('gFact').innerHTML = `<b>${esc(p2[0])}:</b> ${esc(p2[3])}`; });
   R.drawPreview($('healthPic'), r);

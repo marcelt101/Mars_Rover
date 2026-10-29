@@ -12,12 +12,16 @@ const solAtLeast = n => () => api().sol() >= n && api().phase() !== 'run';
 const insert = code => { const ta = $('editor'); ta.value = ta.value.replace(/\s*$/, '\n') + code + '\n'; ta.dataset.touched = '1'; ta.dispatchEvent(new Event('input')); };
 
 const TOUR = [
-  {text:'The bar at the top shows your current objective. The Objectives list shows the whole campaign, with a hint for each. Tap Show to see where to look, or Why? to learn why scientists want it.', target:'#goals', next:true},
+  {text:'The mission bar shows what to do right now. Tap Briefing to read the story of this campaign and why scientists care.', target:'#missionBar', next:true},
+  {text:'The Objectives list shows the whole campaign, with a hint for each. Tap Show to see where to look, or Why? to learn why scientists want it.', target:'#goals', next:true},
   {text:'The Mission log tells you what your rover did and found.', target:'#log', next:true},
-  {text:'Press I (or the Inventory button) to see your cards, stickers, patches and perks.', target:'#invBtn', done:() => Date.now() - UI.invOpenedAt < 4000},
+  {text:'Tap Health (or press H) to check your rover: battery, dust, wheels and tubes.', target:'#healthBtn', next:true},
+  {text:'Mission Control (O) is like the real control room: charts for every sol, alarms you can set, and a replay button to watch a sol again.', target:'#opsBtn', next:true},
+  {text:'Press I (or the Inventory button) for your cards, minerals chart, notebook, photos, stickers and patches.', target:'#invBtn', done:() => Date.now() - UI.invOpenedAt < 4000},
 ];
 const STEPS = {
   cadet:[
+    {text:'This bar shows your mission. Let\'s find a sparkly gem!', target:'#missionBar', next:true},
     {text:'Tap the ↑ arrow 3 times.', target:'.cbtn.up', done:() => api().plan().filter(c => c.type === 'forward').length >= 3},
     {text:'Now tap the dig button ⛏.', target:'.cbtn.dig', done:() => planHas('drill')},
     {text:'Press GO!', target:'#goBtn', done:running},
@@ -28,6 +32,7 @@ const STEPS = {
   explorer:[
     {text:'This is your rover, next to the base station. You plan once per sol (a Mars day), then send the plan to Mars.', target:'#mapbox', next:true},
     {text:'Add Scan (or press Q). It looks for mystery signals nearby.', target:'.pal[data-c=scan]', done:() => planHas('scan')},
+    {text:'Each command is a card in your plan. Tap a card to change it, or drag it to change the order.', target:'#prog', next:true},
     {text:'Press Send to Mars (or Enter). The signal takes a few seconds to arrive.', target:'#sendBtn', done:running},
     {text:'Watch the scan…', target:'#mapbox', done:solAtLeast(2)},
     {text:'The scan found a ? signal 3 squares west. Add Forward (W) and make it 3 squares: tap + or press W again.', target:'.pal[data-c=forward]', done:() => planHas('forward', 3), clear:true},
@@ -37,7 +42,8 @@ const STEPS = {
     {text:'A sample is sealed in a tube! Bring it home: add Back (S) and make it 4 squares, then Send.', target:'.pal[data-c=back]', done:() => running(), clear:true},
     {text:'Driving home…', target:'#mapbox', done:solAtLeast(4)},
     ...TOUR,
-    {text:'You are ready, explorer! Tip: when you are far away, the helper under the plan can build the route home for you.', target:'#mapbox', next:true, final:true},
+    {text:'Add Photo (P) to a plan to take a picture. Photos go to your album and your notebook.', target:'.pal[data-c=photo]', next:true},
+    {text:'You are ready, explorer! Tip: when you are far away, the helper under the plan can build the route home for you. On the start screen, the Mission Log has a new mission for every day.', target:'#mapbox', next:true, final:true},
   ],
   specialist:[
     {text:'This is your rover, next to the base station. You write one program per sol (a Mars day) and send it to Mars.', target:'#mapbox', next:true},
@@ -51,7 +57,7 @@ const STEPS = {
     {text:'Send it.', target:'#sendBtn', done:running},
     {text:'Driving home…', target:'#mapbox', done:solAtLeast(4)},
     ...TOUR,
-    {text:'Nice coding! Loops make long plans short. Watch the "Running line" display to see which line the rover is on.', target:'#mapbox', next:true, final:true},
+    {text:'Nice coding! Loops make long plans short, and rover.photo() takes a picture. Watch the "Running line" display to see which line the rover is on. On the start screen, the Mission Log has a new mission for every day.', target:'#mapbox', next:true, final:true},
   ],
 };
 
@@ -66,7 +72,7 @@ function show(){
   ring = el && s.target !== '#mapbox' ? el : null;
   if (ring) { ring.classList.add('coachring'); ring.scrollIntoView({block:'nearest', behavior:'smooth'}); }
   const c = $('coach');
-  c.innerHTML = `<span class="cs">Tutorial · step ${T.i + 1} of ${T.steps.length}</span>
+  c.innerHTML = `<span class="cs"><span class="grip" aria-hidden="true">⠿</span>Tutorial · step ${T.i + 1}/${T.steps.length} <small>${T.moved ? 'double-tap to snap back' : 'drag to move'}</small></span>
     <p class="ct ${T.role === 'cadet' ? 'big' : ''}">${esc(s.text).replace(/\n/g, '<br>').replace(/ {4}/g, '&nbsp;&nbsp;&nbsp;&nbsp;')}</p>
     <div class="row">${T.role === 'cadet' ? '<button class="btn" data-c="say" aria-label="Read it again">🔊</button>' : ''}
       ${s.code ? '<button class="btn" data-c="code">Write it for me</button>' : ''}
@@ -78,7 +84,8 @@ function show(){
 function place(el){
   const c = $('coach'), cw = c.offsetWidth, ch = c.offsetHeight, pad = 12;
   let x = innerWidth - cw - pad, y = innerHeight - ch - pad;
-  if (el) {
+  if (T && T.moved) { x = T.moved.x; y = T.moved.y; }
+  else if (el) {
     const r = el.getBoundingClientRect();
     const side = el.closest('.side');
     if (el.id === 'mapbox') { x = r.left + (r.width - cw)/2; y = r.top + 70; }
@@ -115,6 +122,27 @@ $('coach').addEventListener('click', e => {
   else if (b.dataset.c === 'say') say(s.text);
   else if (b.dataset.c === 'code' && s.code) insert(s.code);
 });
+/* The bubble can be dragged anywhere (finger or mouse), so it never hides what the player needs to tap.
+   Once moved it stays put, step after step; a double-tap puts it back next to the control it points at. */
+let drag = null;
+$('coach').addEventListener('pointerdown', e => {
+  if (!T || e.target.closest('button') || e.button > 0) return;
+  const r = $('coach').getBoundingClientRect();
+  drag = {id:e.pointerId, dx:e.clientX - r.left, dy:e.clientY - r.top, sx:e.clientX, sy:e.clientY, on:false};
+  $('coach').setPointerCapture(e.pointerId);
+});
+$('coach').addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (!drag.on && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+  if (!drag.on) { drag.on = true; $('coach').classList.add('dragging'); }
+  T.moved = {x:e.clientX - drag.dx, y:e.clientY - drag.dy}; place(null); e.preventDefault();
+});
+let lastTap = 0;
+const endDrag = e => { if (!drag || e.pointerId !== drag.id) return; const was = drag.on; drag = null; $('coach').classList.remove('dragging');
+  if (!T) return;
+  if (was) { lastTap = 0; const sm = $('coach').querySelector('.cs small'); if (sm) sm.textContent = 'double-tap to snap back'; }
+  else if (e.type === 'pointerup') { const now = Date.now(); if (now - lastTap < 400 && T.moved) { T.moved = null; lastTap = 0; show(); } else lastTap = now; } };
+$('coach').addEventListener('pointerup', endDrag); $('coach').addEventListener('pointercancel', endDrag);
 addEventListener('resize', () => { if (T) place(document.querySelector(T.steps[T.i].target)); });
 
 MR.Tutorial = {
