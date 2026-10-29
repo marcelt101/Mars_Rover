@@ -1,13 +1,13 @@
-/* Player avatars: 24 young scientists, drawn as small SVG faces on the player's color. p.avatar is the index;
+/* Player avatars: 32 young scientists (one for every player in a full room), drawn as small SVG faces on the player's color. p.avatar is the index;
    without one the profile shows its first letter, as before. */
 (function () {
 const MR = window.MR;
 /* Features waiting for approval: ?preview=avatars turns them on, ?preview=off turns them off (remembered). */
 try { const q = new URLSearchParams(location.search).get('preview'); if (q != null) localStorage.setItem('mr2.preview', q === 'off' ? '' : q);
   MR.PREVIEW = (localStorage.getItem('mr2.preview') || '').split(',').filter(Boolean); } catch (e) { MR.PREVIEW = []; }
-MR.avatarsOn = () => MR.PREVIEW.includes('avatars');
+MR.avatarsOn = () => true;   /* approved in batch 6 */
 const SKIN = {pale:'#f6dccb', light:'#efc8a8', tan:'#d9a37a', medium:'#b97b52', dark:'#8a5534', deep:'#5e3920',
-  alien:'#8ed46b', robot:'#b9c2cc', violet:'#b48ce8'};
+  alien:'#8ed46b', robot:'#b9c2cc', violet:'#b48ce8', blue:'#7fb2e6'};
 const HAIR = {black:'#1e1a1a', brown:'#5b3a24', blonde:'#e8c25a', red:'#c8502c', orange:'#ef8a2e', white:'#f2f2f2', gray:'#b8bcc2',
   green:'#4fd08a', blue:'#4b9cf0', purple:'#9a5ee0', pink:'#f26fb0', teal:'#3cc9b8'};
 /* name, skin, hair style, hair color, eyes, mouth, extras */
@@ -36,6 +36,14 @@ MR.AVATARS = [
   ['Zed','alien','none','green','big','grin',['antennae']],
   ['Bolt','robot','none','gray','led','flat',['bolt']],
   ['Blip','violet','tuft','orange','cyclops','smile',['horns']],
+  ['Amara','deep','buns','pink','dots','smile',['gogup','coat']],
+  ['Dr. Volt','medium','wild','purple','goggles','teeth',['coat']],
+  ['Tomas','tan','curly','black','glasses','smile',['coat']],
+  ['Kofi','dark','afro','black','dots','grin',['gogup']],
+  ['Ollie','light','spiky','orange','dots','smile',['freckles']],
+  ['Sam','pale','short','blonde','dots','smile',['headset']],
+  ['Arjun','medium','mohawk','blue','dots','grin',['coat']],
+  ['Nebula','blue','tuft','white','big','grin',['antennae']],
 ].map(([name, skin, hair, hc, eyes, mouth, extra], i) => ({id:i, name, skin, hair, hc, eyes, mouth, extra}));
 
 const darker = (hex, f) => '#' + hex.slice(1).match(/../g).map(h => Math.max(0, Math.round(parseInt(h, 16) * f)).toString(16).padStart(2, '0')).join('');

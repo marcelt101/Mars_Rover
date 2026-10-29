@@ -35,7 +35,7 @@ const SUBJECTS = [
     where:'Scan to observe, Why? on every objective, Analyze to test, photos and the science notebook to record, and the daily quiz and journal in the Mission Log.'},
   {id:'team', icon:'☍', col:'#c3ced8', name:'Teamwork and communication',
     learn:'Sharing jobs, planning together and helping each other, like a real mission team.',
-    where:'Team games on up to 6 devices, rover jobs (Scout finds, Science identifies, Hauler carries, Lab builds), team chat and shared objectives.'},
+    where:'Team games for up to 32 players (a whole class), rover jobs (Scout finds, Science identifies, Hauler carries, Lab builds), team chat and shared objectives.'},
 ];
 let tab = 'teach';
 UI.guide = t => {
@@ -52,7 +52,7 @@ UI.guide = t => {
       <h3 class="t">Real places</h3><ul class="gmaps">${MR.MAP_ORDER.map(k => { const m = MR.MAPS[k]; return `<li><b>${esc(m.name)}</b> <small>${esc(m.rover)} · ${esc(m.year)}</small><span>${esc(m.blurb)}</span></li>`; }).join('')}</ul>
       <h3 class="t">Rovers</h3><p style="margin:0">Each player drives one rover with its own job: Scout, Science, Hauler, Excavator or Lab, and for Cadets the Buggy or the Helicopter. Each is based on a real rover; tap the <b>i</b> on a rover to learn how the real one works.</p>
       <h3 class="t">Goals</h3><p style="margin:0">Each map has 3 campaigns that follow the real mission, with clear objectives: find signals, identify minerals, drill samples and bring them home. The <b>30-day Mission Log</b> gives one mission a day for a month, about an hour each.</p>
-      <h3 class="t">Solo or team</h3><p style="margin:0">Play alone, or one device hosts and up to 5 more join with a room code or QR code, in the same room or far away.</p>`;
+      <h3 class="t">Solo or team</h3><p style="margin:0">Play alone, or one device hosts and up to 31 more join with a room code or QR code, in the same room or far away. A whole class can play in one room, or in small teams of 4 to 6, each team in its own room.</p>`;
   } else if (tab === 'day') {
     body = `<p class="glede">A Mission Log day takes about an hour.</p>
       <ol class="gsteps">
@@ -69,6 +69,7 @@ UI.guide = t => {
         <li><b>Use the Mission Log.</b> Its 30 days build on each other: real history, one coding idea per week, a quiz and a journal every day, and a printable certificate at the end.</li>
         <li><b>Follow progress.</b> Parents and saves on the start screen shows days done, stars, quiz scores and minutes played for each child.</li>
         <li><b>Breaks.</b> A break reminder can be set in Parents and saves (after 30 to 90 minutes).</li>
+        <li><b>Whole class or small teams.</b> One room holds up to 32 players. Small teams of 4 to 6, each with its own room code, usually move faster and give everyone more to do. The host can remove a player with the ✕ in the crew list or by tapping their rover.</li>
         <li><b>Mix ages.</b> Older children can host and help younger ones. The Cadet level needs no reading, and the steps can be read aloud.</li>
         <li><b>Safe and private.</b> No accounts and no ads. Progress is saved on this device. Team games only connect devices that use the same room code.</li>
       </ul>`;

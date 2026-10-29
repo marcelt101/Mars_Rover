@@ -1,6 +1,6 @@
 # Mars Rover Ops
 
-A co-op browser game where you plan rover commands, send them to Mars, and watch the rovers carry them out. Up to 6 players, each on their own device. Set in real places: Jezero Crater (Perseverance), Gusev Crater (Spirit), Meridiani Planum (Opportunity) and Gale Crater (Curiosity) on Mars, and Hadley Rille on the Moon (Apollo 15).
+A co-op browser game where you plan rover commands, send them to Mars, and watch the rovers carry them out. Up to 32 players (a whole class), each on their own device. Set in real places: Jezero Crater (Perseverance), Gusev Crater (Spirit), Meridiani Planum (Opportunity) and Gale Crater (Curiosity) on Mars, and Hadley Rille on the Moon (Apollo 15).
 
 **Play now: https://marcelt101.github.io/Mars_Rover/**
 
@@ -54,7 +54,9 @@ Scouts and Haulers look like Spirit and Opportunity (big winged solar array, Pan
 
 **Private messages:** in a team game, send a player a short message (up to 200 characters) from the lobby crew list, the crew bar, or by tapping or right-clicking their rover. Quick picture messages need no typing, so Cadets can use them too. The host can turn private messages and team chat on or off in Settings, for everyone.
 
-**Avatars (preview):** add `?preview=avatars` to pick one of 24 young-scientist avatars in the profile editor. `?preview=off` hides them again.
+**Avatars:** pick one of 32 young-scientist avatars (or your first letter) in the profile editor.
+
+**Classes:** a room holds up to 32 players. Starting squares spread out in rings around the base station for big groups. The host can remove a player (✕ in the lobby crew list, or tap their rover or crew chip in a game); removed players can't rejoin that room, and their rover stays parked.
 
 **Game look:** the start screen is a title screen, panels look like a mission console, settings sit in the gear menu during a game, Send to Mars is a big launch button, phones get a Plan / Mission / Log tab bar with the map on top, the lobby shows rover pictures and map art, and screens slide in. Add `?ui=off` to the address to see the old look (remembered on the device), `?ui=all` to go back.
 

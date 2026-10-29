@@ -4,7 +4,7 @@ const MR = window.MR = window.MR || {};
 
 MR.VERSION = 4;
 MR.MW = 64; MR.MH = 44; MR.BASE = 32;
-MR.MAX_PLAYERS = 6;
+MR.MAX_PLAYERS = 32;   /* a whole class plus the teacher */
 
 MR.T = {FLOOR:0, BED:1, DUNE:2, DELTA:3, CHAN:4, RIM:5, HILL:6, CLIFF:7, PLATE:8, RILLE:9};
 MR.TER = [
@@ -30,6 +30,12 @@ MR.COLORS = [
   {id:'yellow', hex:'#f2d15c', name:'Yellow'},
   {id:'blue', hex:'#6aa8ff', name:'Blue'},
   {id:'pink', hex:'#ff7fb0', name:'Pink'},
+  {id:'red', hex:'#ff6b5e', name:'Red'},
+  {id:'lime', hex:'#a6e05a', name:'Lime'},
+  {id:'sky', hex:'#5fd7f0', name:'Sky'},
+  {id:'magenta', hex:'#e070e8', name:'Magenta'},
+  {id:'sand', hex:'#d9b27c', name:'Sand'},
+  {id:'silver', hex:'#c9d2dc', name:'Silver'},
 ];
 MR.colorHex = id => (MR.COLORS.find(c => c.id === id) || MR.COLORS[0]).hex;
 

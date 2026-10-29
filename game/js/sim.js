@@ -16,9 +16,18 @@ MR.usesPower = r => isPower(r);
 MR.tubesOf = r => Math.max(0, MR.ROLES[r.role].tubes + (r.job === 'hauler' ? 4 : 0) + (r.tubeAdj || 0));
 MR.regionAt = (st, x, y) => MR.nearStation(st.map, x, y, 2) ? 'Base station' : MR.MAPS[st.map].regions[st.world.ter[y*MW+x]];
 
-function spawnCells(map){
-  const S = MR.MAPS[map].station;
-  return [[S.x-1,S.y],[S.x+2,S.y],[S.x-1,S.y+1],[S.x+2,S.y+1],[S.x,S.y-1],[S.x+1,S.y+2],[S.x+1,S.y-1],[S.x,S.y+2]];
+/* Starting squares around the station: the first 8 as always, then rings farther out for big classes. */
+function spawnCells(map, world){
+  const S = MR.MAPS[map].station, cells = [[S.x-1,S.y],[S.x+2,S.y],[S.x-1,S.y+1],[S.x+2,S.y+1],[S.x,S.y-1],[S.x+1,S.y+2],[S.x+1,S.y-1],[S.x,S.y+2]];
+  if (!world) return cells;
+  const seen = new Set(cells.map(c => c + ''));
+  for (let d = 1; d <= 4 && cells.length < MR.MAX_PLAYERS; d++)
+    for (let y = S.y - d; y <= S.y + 1 + d; y++) for (let x = S.x - d; x <= S.x + 1 + d; x++) {
+      if (Math.max(S.x - x, x - S.x - 1, S.y - y, y - S.y - 1) !== d || seen.has(x + ',' + y) || !MR.inb(x, y)) continue;
+      const i = y*MW + x; if (world.obs[i] || MR.TER[world.ter[i]].block) continue;
+      seen.add(x + ',' + y); cells.push([x, y]);
+    }
+  return cells;
 }
 function cleanPerks(p){
   if (p.role === 'cadet') return [];
@@ -38,7 +47,7 @@ MR.makeRover = (p, cell, map) => {
 MR.newGame = ({map, seed, players, day}) => {
   const cadets = players.filter(p => p.role === 'cadet').length, others = players.length - cadets;
   const world = MR.genWorld(map, seed, cadets > 0);
-  const cells = spawnCells(map);
+  const cells = spawnCells(map, world);
   const st = {v:MR.VERSION, map, seed, sol:1, won:false, rng:(seed ^ 0x5bd1e995) | 0,
     team:{score:0, delivered:0, treasures:0, col:{}}, rovers:[], world, sites:{}, lab:{inbox:[], catalog:[], mat:{water:0, metal:0, bricks:0, glass:0}, built:{}},
     goals: MR.cadetGoals(cadets)};
@@ -51,7 +60,7 @@ MR.newGame = ({map, seed, players, day}) => {
   return st;
 };
 MR.addRover = (st, p) => {
-  const cells = spawnCells(st.map), used = new Set(st.rovers.map(r => r.x+','+r.y));
+  const cells = spawnCells(st.map, st.world), used = new Set(st.rovers.map(r => r.x+','+r.y));
   const c = cells.find(c => !used.has(c[0]+','+c[1])) || cells[0];
   const r = MR.makeRover(p, c, st.map); if (r.job === 'scout') r.tubeAdj = -2; st.rovers.push(r); reveal(st.world, r.x, r.y, MR.sightOf(r)); return r;
 };

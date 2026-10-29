@@ -102,7 +102,7 @@ function leave(){
 /* ---------- hosting ---------- */
 function startHost(){
   const p = me(); if (!p) return;
-  G.mode = 'host'; G.myPid = p.id; G.code = MR.makeRoomCode(); G.hostErrShown = false; G.lostCode = null;
+  G.mode = 'host'; G.myPid = p.id; G.kicked = new Set(); G.code = MR.makeRoomCode(); G.hostErrShown = false; G.lostCode = null;
   G.lobby = {players:[{...MR.playerSummary(p), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()};
   $('netStatus').textContent = 'Opening room…';
   G.net = MR.Net.host(G.code, {
@@ -149,7 +149,8 @@ function hostMessage(cid, m){
     if (G.phase === 'run') { G.pending.push(() => hostMessage(cid, m)); return; }
     stopReplay();
     const known = G.lobby.players.find(x => x.pid === pl.pid);
-    if (!known && G.lobby.players.length >= MR.MAX_PLAYERS) { G.net.send(cid, {type:'error', text:'This game already has 6 players.'}); return; }
+    if (G.kicked && G.kicked.has(pl.pid)) { G.net.send(cid, {type:'kicked'}); setTimeout(() => G.net.drop(cid), 300); return; }
+    if (!known && G.lobby.players.length >= MR.MAX_PLAYERS) { G.net.send(cid, {type:'error', text:`This game already has ${MR.MAX_PLAYERS} players.`}); return; }
     G.cid2pid[cid] = pl.pid;
     if (known) Object.assign(known, {...pl, color:uniqueColor(pl), connected:true, host:known.host});
     else G.lobby.players.push({...pl, color:uniqueColor(pl), connected:true, host:false});
@@ -201,6 +202,18 @@ function playerGone(pid){
   const lp = G.lobby.players.find(x => x.pid === pid); if (!lp) return;
   if (G.phase === 'lobby') { G.lobby.players = G.lobby.players.filter(x => x.pid !== pid); broadcast(lobbyMsg()); renderLobby(); return; }
   lp.connected = false; broadcast(lobbyMsg()); log('warn', `${lp.name} lost connection. Their rover will wait.`); renderTeam(); maybeRun();
+}
+/* The host removes a player: they are told, disconnected and can not rejoin this room. In a running game their
+   rover stays parked where it is, like an offline player's. */
+function kickPlayer(pid){
+  if (G.mode !== 'host' || pid === G.myPid) return;
+  const lp = G.lobby.players.find(x => x.pid === pid); if (!lp) return;
+  G.kicked.add(pid);
+  Object.entries(G.cid2pid).forEach(([cid, p]) => { if (p === pid) { G.net.send(cid, {type:'kicked'}); delete G.cid2pid[cid]; setTimeout(() => G.net.drop(cid), 300); } });
+  delete G.plans[pid]; G.readyPids = G.readyPids.filter(x => x !== pid);
+  if (G.phase === 'lobby') { G.lobby.players = G.lobby.players.filter(x => x.pid !== pid); broadcast(lobbyMsg()); renderLobby(); }
+  else { lp.connected = false; lp.kicked = true; broadcast(lobbyMsg()); broadcast({type:'ready', pids:G.readyPids, sums:G.planSum}); log('warn', `${lp.name} was removed from the game by the host.`); renderTeam(); maybeRun(); }
+  UI.toast('✕', '#ff7b6c', `${lp.name} was removed`, 'They can not join this room again.', 3500);
 }
 function maybeRun(force){
   if (!isHostish() || (G.phase !== 'plan' && !G.replaying)) return;
@@ -268,6 +281,7 @@ function clientMessage(m){
     case 'sites': if (G.state) { G.state.sites = m.sites || {}; R.view && (R.view.sites = G.state.sites); renderFinds(); } break;
     case 'markers': { const before = Object.keys(G.markers).length; G.markers = m.markers || {}; const added = Object.values(G.markers).find(x => !G.lastMarkerKeys || !G.lastMarkerKeys.includes(x.x + ',' + x.y)); onMarkers(Object.keys(G.markers).length > before ? added : null, added && added.pid); break; }
     case 'chat': showChat(m); break;
+    case 'kicked': G.lostCode = null; leave(); UI.toast('✕', '#ff7b6c', 'You left the game', 'The host removed you from this game.', 8000); break;
     case 'dm': MR.Msg.receive(m); break;
     case 'dmSent': MR.Msg.sent(m); break;
     case 'dmFail': UI.toast('✉', '#f0bf5a', 'Message not sent', m.text, 4000); break;
@@ -302,7 +316,7 @@ function renderLobby(){
   renderNet();
   const players = G.lobby.players;
   $('crewCount').textContent = `${players.length} / ${MR.MAX_PLAYERS}`;
-  $('crewList').innerHTML = players.map(x => `<li>${UI.avatar(x)}<span class="who"><b>${esc(x.name)}${x.pid === G.myPid ? ' (you)' : ''}</b><small>${MR.ROLES[x.role].label} · ${MR.JOBS[x.job] ? MR.JOBS[x.job].label : ''} · ${MR.RANKS[x.rank|0].name}</small></span>${MR.Msg.can(x.pid) ? `<button class="btn dmb" data-dm="${esc(x.pid)}" aria-label="Send a message to ${esc(x.name)}">✉</button>` : ''}${x.host ? '<span class="tag">Host</span>' : ''}<span class="dot ${x.connected ? '' : 'off'}" title="${x.connected ? 'Connected' : 'Offline'}"></span></li>`).join('');
+  $('crewList').innerHTML = players.map(x => `<li>${UI.avatar(x)}<span class="who"><b>${esc(x.name)}${x.pid === G.myPid ? ' (you)' : ''}</b><small>${MR.ROLES[x.role].label} · ${MR.JOBS[x.job] ? MR.JOBS[x.job].label : ''} · ${MR.RANKS[x.rank|0].name}</small></span>${MR.Msg.can(x.pid) ? `<button class="btn dmb" data-dm="${esc(x.pid)}" aria-label="Send a message to ${esc(x.name)}">✉</button>` : ''}${host && !x.host ? `<button class="btn dmb kick" data-kick="${esc(x.pid)}" aria-label="Remove ${esc(x.name)} from the game" title="Remove from the game">✕</button>` : ''}${x.host ? '<span class="tag">Host</span>' : ''}<span class="dot ${x.connected ? '' : 'off'}" title="${x.connected ? 'Connected' : 'Offline'}"></span></li>`).join('');
   const mine = players.find(x => x.pid === G.myPid) || (p && MR.playerSummary(p));
   const airless = MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless;
   if (mine) $('jobPick').innerHTML = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(mine.role) && !(k === 'lab' && G.mode === 'solo')).map(([k, j]) => `<div class="jobw"><button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(airless && k === 'heli' ? 'There is no air on the Moon, so helicopters can not fly there. On this map you drive the Buggy.' : j.desc)}</small></button><button class="jinfo" data-info="${k}" aria-label="About the ${j.label} rover" title="About this rover">i</button></div>`).join('');
@@ -321,7 +335,8 @@ function renderNet(){
   const t = G.mode === 'host' ? `Hosting · ${G.lobby.players.filter(x => x.connected).length} connected` : G.mode === 'client' ? (G.lastPing != null ? `Connected · ${G.lastPing} ms` : 'Connecting…') : 'Solo';
   $('netStatus').textContent = G.mode === 'host' && !G.net ? '' : t; $('gameNet').textContent = t;
 }
-$('crewList').onclick = e => { const b = e.target.closest('[data-dm]'); if (b) MR.Msg.compose(b.dataset.dm); };
+$('crewList').onclick = e => { const b = e.target.closest('[data-dm]'); if (b) MR.Msg.compose(b.dataset.dm);
+  const k = e.target.closest('[data-kick]'); if (k) { if (k.dataset.armed) kickPlayer(k.dataset.kick); else { k.dataset.armed = '1'; k.textContent = 'Remove?'; k.classList.add('danger'); setTimeout(() => { if (k.isConnected) { delete k.dataset.armed; k.textContent = '✕'; k.classList.remove('danger'); } }, 3000); } } };
 $('jobPick').onclick = e => { const inf = e.target.closest('.jinfo'); if (inf) { UI.roverInfo(inf.dataset.info, MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless, null, G.lobby.map === 'gale'); MR.sfx.click(); return; }
   const b = e.target.closest('.job'); if (!b) return; const p = me(); p.job = b.dataset.job; MR.Store.save();
   if (G.mode === 'client') G.net.send({type:'job', job:p.job}); else hostHandle(G.myPid, {type:'job', job:p.job}); MR.sfx.click();
@@ -646,11 +661,11 @@ function renderCrewBar(){
   if (!G.state) return;
   $('crewBar').innerHTML = G.state.rovers.map(r => {
     const lp = G.lobby.players.find(x => x.pid === r.pid), on = !lp || lp.connected, rd = G.readyPids.includes(r.pid);
-    const status = !on ? 'offline' : G.phase === 'run' ? 'driving' : rd ? '✓ ready' : 'planning';
+    const status = lp && lp.kicked ? 'removed' : !on ? 'offline' : G.phase === 'run' ? 'driving' : rd ? '✓ ready' : 'planning';
     return `<button class="cchip ${r.pid === G.myPid ? 'me' : ''}" data-pid="${r.pid}">${UI.avatar(r)}<span><b>${esc(r.name)}</b><small>${MR.JOBS[r.job].label}${r.role !== 'cadet' ? ` · ${r.bat}%` : ''}</small></span>${team() ? `<span class="rd ${rd ? 'ok' : ''}">${status}</span>` : ''}</button>`; }).join('');
 }
 $('crewBar').onclick = e => { const b = e.target.closest('.cchip'); if (!b) return; R.focus(b.dataset.pid, b.dataset.pid === G.myPid); showTip(b.dataset.pid);
-  if (MR.Msg.can(b.dataset.pid)) { const rc = b.getBoundingClientRect(); roverMenu(b.dataset.pid, rc.left, rc.bottom - 8); } };
+  if (MR.Msg.can(b.dataset.pid) || canKick(b.dataset.pid)) { const rc = b.getBoundingClientRect(); roverMenu(b.dataset.pid, rc.left, rc.bottom - 8); } };
 function renderTeam(){
   renderCrewBar(); $('chatRow').hidden = !team() || !msgRules().chat;
   if (!G.state) return;
@@ -1245,12 +1260,15 @@ function showTip(pid, x, y){
   $('tip').style.left = Math.max(90, Math.min(innerWidth - 90, pos.x)) + 'px'; $('tip').style.top = Math.max(70, pos.y) + 'px'; $('tip').hidden = false;
   clearTimeout(tipTimer); tipTimer = setTimeout(() => $('tip').hidden = true, 3500);
 }
-R.onTapRover = (pid, x, y) => { $('tapMenu').hidden = true; if (pid) { showTip(pid, x, y); if (MR.Msg.can(pid)) roverMenu(pid, x, y); } else $('tip').hidden = true; };
+R.onTapRover = (pid, x, y) => { $('tapMenu').hidden = true; if (pid) { showTip(pid, x, y); if (MR.Msg.can(pid) || canKick(pid)) roverMenu(pid, x, y); } else $('tip').hidden = true; };
 /* Right-click (or tap) on another player's rover: send them a message. */
-R.onRoverMenu = (pid, x, y) => { if (MR.Msg.can(pid)) { showTip(pid, x, y); roverMenu(pid, x, y); } };
+R.onRoverMenu = (pid, x, y) => { if (MR.Msg.can(pid) || canKick(pid)) { showTip(pid, x, y); roverMenu(pid, x, y); } };
+const canKick = pid => G.mode === 'host' && pid !== G.myPid && G.lobby.players.some(x => x.pid === pid && !x.kicked);
 function roverMenu(pid, x, y){
   const lp = G.lobby.players.find(q => q.pid === pid), menu = $('tapMenu'); if (!lp) return;
-  menu.innerHTML = `<button data-dm="${esc(pid)}">✉ Send a message to ${esc(lp.name)}</button>`;
+  menu.innerHTML = (MR.Msg.can(pid) ? `<button data-dm="${esc(pid)}">✉ Send a message to ${esc(lp.name)}</button>` : '')
+    + (G.mode === 'host' && pid !== G.myPid && !lp.kicked ? `<button data-kick="${esc(pid)}">✕ Remove ${esc(lp.name)} from the game</button>` : '');
+  if (!menu.innerHTML) return;
   menu.hidden = false; menu.style.left = Math.min(innerWidth - menu.offsetWidth - 10, x + 8) + 'px'; menu.style.top = Math.min(innerHeight - menu.offsetHeight - 10, y + 16) + 'px';
 }
 /* Tap the map: build plan steps for you, or drop a team marker. */
@@ -1273,6 +1291,8 @@ R.onTapMap = (x, y, cx, cy) => {
   menu.hidden = false; menu.style.left = Math.min(innerWidth - menu.offsetWidth - 10, cx + 8) + 'px'; menu.style.top = Math.min(innerHeight - menu.offsetHeight - 10, cy + 8) + 'px';
 };
 $('tapMenu').addEventListener('click', e => {
+  const kb = e.target.closest('[data-kick]');
+  if (kb) { if (kb.dataset.armed) { $('tapMenu').hidden = true; kickPlayer(kb.dataset.kick); } else { kb.dataset.armed = '1'; kb.textContent = 'Tap again to remove for good'; kb.classList.add('danger'); } return; }
   const dm = e.target.closest('[data-dm]'); if (dm) { $('tapMenu').hidden = true; $('tip').hidden = true; MR.Msg.compose(dm.dataset.dm); return; }
   const b = e.target.closest('[data-tap]'); if (!b) return; const m = $('tapMenu'), x = +m.dataset.x, y = +m.dataset.y, a = b.dataset.tap; m.hidden = true;
   if (a.startsWith('mark:')) { toHost({type:'marker', x, y, kind:a.slice(5) || null}); return; }
