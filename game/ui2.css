@@ -146,3 +146,8 @@ body.ui-cards .mapcard.pic:disabled .mart.real{filter:grayscale(.75) brightness(
 body.ui-cards .mapcard.pic:disabled>*:not(.mart){opacity:.75}
 body.ui-cards .mapcard.pic[aria-pressed="true"]{box-shadow:0 0 0 2px var(--signal),0 0 22px rgba(88,207,190,.35)}
 @media (max-width:560px){ body.ui-cards .mapcard.pic{min-height:200px} }
+
+/* Title picture on the start screen */
+body.ui-title .hero.pic{flex-direction:column;align-items:center;gap:6px;padding:0;text-align:center}
+body.ui-title .hero.pic .htimg{width:min(760px,100%);height:auto;display:block;-webkit-mask-image:radial-gradient(ellipse 72% 70% at 50% 46%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 72% 70% at 50% 46%,#000 62%,transparent 100%)}
+body.ui-title .hero.pic p{margin:0}
