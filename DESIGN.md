@@ -176,6 +176,20 @@ Several of these are already cards (clay, carbonate, silica, olivine, salts). Th
 - Text by role: Cadets get picture objectives ("Find 3 green gems"); Explorers get short sentences; Specialists get the full science reason and the instrument names.
 - This is also the base for the 30-day Mission Log idea: a campaign is about one day of play.
 
+**Batch 5 (planned): the 30-day Mission Log, for families and homeschool.** Goal: one hour a day for 30 days. Built on the batch 4 campaigns.
+- Four weeks plus a finale, following real NASA history and one coding idea per week:
+  - Week 1, Jezero: driving, scanning, minerals, what water leaves behind. Sequences.
+  - Week 2, Gusev (Spirit): power, dust, weather, hot springs. Loops.
+  - Week 3, Moon (Apollo 15): building a base, the Lab, materials. Conditions (if, while).
+  - Week 4, Meridiani and Gale (new maps): signs of a living Mars and the 12 minerals. Multi-sol programs and functions.
+  - Day 30, Jezero: Mars Sample Return, using everything.
+- Each day is about an hour: a 5-minute briefing with a real story ("Today in 2004, Spirit…"), a 40-minute mission (main objective, bonus, challenge), and a 10-minute debrief (3 quiz questions, a new mineral tablet, a journal entry).
+- Variety from day to day: rescue a stuck rover, race a dust storm, map a crater, photo survey, build the base, a power-limited day, coding puzzles with fixed rules, team relays. Each mission scales by role, from Cadet pictures to Python.
+- A calendar with stars per day; missing a day never breaks anything. A weekly patch and a printable certificate at the end.
+- A simple parent page: each child's days, stars and what they learned that day. Optional "time for a break" reminder after an hour. Offline, no accounts.
+- Missions are short data entries (map, objectives, rules, briefing, quiz), so parents can change them or write their own later.
+- Not now: a classroom teacher dashboard for 20–30 students (maybe later).
+
 ## Next revision (v3): real NASA maps
 
 Replace the generated terrain with real data so the game shows the actual ground:
