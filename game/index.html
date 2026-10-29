@@ -34,6 +34,10 @@
       <div><h3 class="t">Continue your expedition</h3><p id="resumeText"></p></div>
       <div class="resumebtns"><button class="btn primary big" id="resumeBtn">Continue</button><button class="btn" id="discardBtn">Start over</button></div>
     </div>
+    <div class="panel logpanel" id="logPanel" hidden>
+      <div class="lpt"><h3 class="t">30-day Mission Log</h3><p id="logText"></p><div class="xpbar"><span id="logBar"></span></div></div>
+      <button class="btn primary big" id="logBtn">Open Mission Log <kbd>L</kbd></button>
+    </div>
     <div class="modes" id="modes">
       <div class="panel mode">
         <h3 class="t">Play solo</h3>
@@ -120,6 +124,7 @@
             <button class="mbtn" id="centerBtn" aria-label="Follow my rover">◎</button>
             <button class="mbtn" id="bigBtn" aria-label="Big map (M)" title="Big map (M)">⛶</button>
             <button class="mbtn" id="healthBtn" aria-label="Rover health (H)" title="Rover health (H)">✚</button>
+            <button class="mbtn" id="opsBtn" aria-label="Mission Control (O)" title="Mission Control (O)">☷</button>
           </div>
           <canvas class="mini" id="mini" aria-label="Overview map. Click to look there."></canvas>
           <div class="win" id="win" hidden>
@@ -231,6 +236,7 @@
 <script src="js/data.js"></script>
 <script src="js/minerals.js"></script>
 <script src="js/campaigns.js"></script>
+<script src="js/missionlog.js"></script>
 <script src="js/world.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/net.js"></script>
@@ -238,6 +244,8 @@
 <script src="js/music.js"></script>
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/log-ui.js"></script>
+<script src="js/ops.js"></script>
 <script src="js/game.js"></script>
 <script src="js/tutorial.js"></script>
 </body>

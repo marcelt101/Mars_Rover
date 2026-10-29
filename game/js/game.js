@@ -8,6 +8,7 @@ const G = MR.Game = {
   lobby:{players:[], map:'jezero', unlocked:['jezero']},
   state:null, plan:[], ready:false, readyPids:[], plans:{}, drafts:{}, cid2pid:{},
   planInfo:null, contAfterWin:false, showCode:false, pending:[], lastPing:null, wake:null, lastSeen:{}, lastPong:0, chain:Promise.resolve(), markers:{},
+  planSum:{}, replays:[], replaying:false, sessionMins:0,
 };
 const me = () => MR.Store.current();
 const myRover = () => G.state && G.state.rovers.find(r => r.pid === G.myPid);
@@ -31,8 +32,15 @@ if (!MR.netAvailable()) { $('joinErr').hidden = false; $('joinErr').textContent 
 G.onProfileChanged = () => { if (G.phase === 'lobby') { refreshMyLobbyEntry(); } UI.renderMe(); };
 
 $('homeBtn').onclick = () => { if (G.phase === 'lobby') leave(); };
-$('soloBtn').onclick = () => { if (!me()) return; G.resume = null; G.noSave = false; G.lostCode = null; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()}; enterLobby(); };
+$('soloBtn').onclick = () => { if (!me()) return; G.resume = null; G.noSave = false; G.lostCode = null; G.planSum = {}; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()}; enterLobby(); };
 $('hostBtn').onclick = () => { G.resume = null; G.noSave = false; startHost(); };
+$('logBtn').onclick = () => MR.LogUI.calendar();
+G.keepExploring = () => { G.contAfterWin = true; $('win').hidden = true; G.phase = 'plan'; renderGame(); saveExpedition(); };
+/* Start a Mission Log day: solo goes to the lobby with the day's map; host opens a room for the day. */
+G.startDay = (d, mode) => { const m = MR.missionOf(d), p = me(); if (!m || !p) return;
+  G.resume = null; G.noSave = false; G.lostCode = null;
+  if (mode === 'host') { startHost(); G.lobby.map = m.map; G.lobby.day = d; broadcast(lobbyMsg()); renderLobby(); return; }
+  G.mode = 'solo'; G.myPid = p.id; G.lobby = {players:[{...MR.playerSummary(p), connected:true, host:true}], map:m.map, day:d, unlocked:MR.Store.unlocked()}; enterLobby(); };
 /* Continue a saved expedition. Solo goes straight back in; a team game opens a new room, and players who join
    with the same profile get their own rover back. */
 $('resumeBtn').onclick = () => {
@@ -73,7 +81,8 @@ G.startTutorial = () => {
   enterGame(st);
   MR.Tutorial.start(p.role);
 };
-G.api = {myRover:() => myRover(), planActions:() => planActions(), applyPlan:(a, rep) => applyPlan(a, rep), phase:() => G.phase, sol:() => G.state ? G.state.sol : 0, plan:() => G.plan};
+G.api = {myRover:() => myRover(), planActions:() => planActions(), applyPlan:(a, rep) => applyPlan(a, rep), phase:() => G.phase, sol:() => G.state ? G.state.sol : 0, plan:() => G.plan,
+  team:() => team(), me:() => me(), replay:k => replaySol(k), canReplay:() => G.phase === 'plan' && !G.ready && G.replays.length > 0};
 $('joinBtn').onclick = () => joinGame($('joinCode').value);
 $('joinCode').onkeydown = e => { if (e.key === 'Enter') joinGame($('joinCode').value); };
 
@@ -132,6 +141,7 @@ function hostMessage(cid, m){
     if (m.v !== MR.VERSION) { G.net.send(cid, {type:'error', text:'This device has a different version of the game. Reload the page on both devices.'}); return; }
     const pl = {...m.player, name:String(m.player.name||'Rover').slice(0,16)};
     if (G.phase === 'run') { G.pending.push(() => hostMessage(cid, m)); return; }
+    stopReplay();
     const known = G.lobby.players.find(x => x.pid === pl.pid);
     if (!known && G.lobby.players.length >= MR.MAX_PLAYERS) { G.net.send(cid, {type:'error', text:'This game already has 6 players.'}); return; }
     G.cid2pid[cid] = pl.pid;
@@ -156,10 +166,11 @@ function hostHandle(pid, m){
     case 'job': if (lp && MR.JOBS[m.job] && MR.JOBS[m.job].roles.includes(lp.role)) { lp.job = m.job; broadcast(lobbyMsg()); renderLobby(); } break;
     case 'plan':
       if (G.phase !== 'plan' && G.phase !== 'run') return;
-      G.plans[pid] = {actions:Array.isArray(m.actions) ? m.actions.slice(0, 60) : [], program:MR.validProgram(m.program) ? m.program : null, cancel:!!m.cancel};
+      G.plans[pid] = {actions:Array.isArray(m.actions) ? m.actions.slice(0, 60) : [], program:MR.validProgram(m.program) ? m.program : null, cancel:!!m.cancel, loop:!!m.loop};
+      G.planSum[pid] = G.plans[pid].program ? ['program'] : G.plans[pid].actions.slice(0, 40).map(a => String(a.type).slice(0, 12));
       if (!G.readyPids.includes(pid)) G.readyPids.push(pid);
-      broadcast({type:'ready', pids:G.readyPids}); renderTeam(); maybeRun(); break;
-    case 'unready': G.readyPids = G.readyPids.filter(x => x !== pid); delete G.plans[pid]; broadcast({type:'ready', pids:G.readyPids}); renderTeam(); break;
+      broadcast({type:'ready', pids:G.readyPids, sums:G.planSum}); renderTeam(); maybeRun(); break;
+    case 'unready': G.readyPids = G.readyPids.filter(x => x !== pid); delete G.plans[pid]; delete G.planSum[pid]; broadcast({type:'ready', pids:G.readyPids, sums:G.planSum}); renderTeam(); break;
     case 'claim': case 'rename': { const site = G.state && G.state.sites && G.state.sites[m.i]; if (!site || !lp) return;
       if (m.type === 'claim') site.claim = m.on ? pid : (site.claim === pid ? null : site.claim);
       else if (site.by === pid) site.name = String(m.name || '').replace(/[<>]/g, '').trim().slice(0, 22) || site.name;
@@ -177,10 +188,11 @@ function playerGone(pid){
   lp.connected = false; broadcast(lobbyMsg()); log('warn', `${lp.name} lost connection. Their rover will wait.`); renderTeam(); maybeRun();
 }
 function maybeRun(force){
-  if (!isHostish() || G.phase !== 'plan') return;
+  if (!isHostish() || (G.phase !== 'plan' && !G.replaying)) return;
   const need = G.state.rovers.filter(r => { const lp = G.lobby.players.find(x => x.pid === r.pid); return lp && lp.connected; }).map(r => r.pid);
   if (!force && (!need.length || !need.every(pid => G.readyPids.includes(pid)))) return;
-  const plans = G.plans; G.plans = {}; G.readyPids = []; G.drafts = {}; R.drafts = {};
+  stopReplay();
+  const plans = G.plans; G.plans = {}; G.readyPids = []; G.drafts = {}; R.drafts = {}; G.planSum = {};
   const {timeline, state} = MR.simulateSol(G.state, plans);
   broadcast({type:'sol', timeline, state:MR.stateToWire(state)});
   playSol(timeline, state);
@@ -234,9 +246,9 @@ function clientMessage(m){
     case 'lobby': G.lostCode = null; G.lostTries = 0; G.lobby = m.lobby; MR.Store.unlock(m.lobby.unlocked); if (G.phase === 'home' || G.phase === 'lobby') enterLobby(); else { renderTeam(); renderCrewBar(); } break;
     case 'toLobby': G.lobby = m.lobby; MR.Store.unlock(m.lobby.unlocked); enterLobby(); break;
     case 'start': G.lobby = m.lobby || G.lobby; G.lostCode = null; G.lostTries = 0; enterGame(MR.stateFromWire(m.state)); break;
-    case 'state': G.chain = G.chain.then(() => setGameState(MR.stateFromWire(m.state, G.state && G.state.world))).catch(e => console.error(e)); break;
-    case 'sol': G.chain = G.chain.then(() => playSol(m.timeline, MR.stateFromWire(m.state))).catch(e => console.error(e)); break;
-    case 'ready': G.readyPids = m.pids || []; renderTeam(); break;
+    case 'state': stopReplay(); G.chain = G.chain.then(() => setGameState(MR.stateFromWire(m.state, G.state && G.state.world))).catch(e => console.error(e)); break;
+    case 'sol': stopReplay(); G.chain = G.chain.then(() => playSol(m.timeline, MR.stateFromWire(m.state))).catch(e => console.error(e)); break;
+    case 'ready': G.readyPids = m.pids || []; G.planSum = m.sums || {}; renderTeam(); break;
     case 'drafts': G.drafts = m.drafts || {}; R.drafts = G.drafts; break;
     case 'sites': if (G.state) { G.state.sites = m.sites || {}; R.view && (R.view.sites = G.state.sites); renderFinds(); } break;
     case 'markers': { const before = Object.keys(G.markers).length; G.markers = m.markers || {}; const added = Object.values(G.markers).find(x => !G.lastMarkerKeys || !G.lastMarkerKeys.includes(x.x + ',' + x.y)); onMarkers(Object.keys(G.markers).length > before ? added : null, added && added.pid); break; }
@@ -280,8 +292,9 @@ function renderLobby(){
   if (G.mode !== 'client') G.lobby.unlocked = unlocked;
   $('mapPick').innerHTML = MR.MAP_ORDER.map(k => { const m = MR.MAPS[k], open = unlocked.includes(k);
     return `<button class="mapcard" data-map="${k}" aria-pressed="${k === G.lobby.map}" ${open && G.mode !== 'client' ? '' : 'disabled'}><b>${m.name}</b><small>${m.rover} · ${m.year}</small><p>${open ? esc(m.blurb) : `Locked. Finish a ${MR.MAPS[m.unlock].name} expedition to unlock.`}</p></button>`; }).join('');
-  $('mapNote').textContent = G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
-  if (G.resume) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);
+  const dm = G.lobby.day && MR.missionOf(G.lobby.day);
+  $('mapNote').textContent = dm ? `Mission Log, day ${dm.day}: ${dm.title} (${MR.MAPS[dm.map].name}).` : G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
+  if (G.resume || dm) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);
   $('startBtn').hidden = G.mode === 'client';
   $('startBtn').textContent = G.resume ? 'Continue expedition' : 'Start expedition';
   $('lobbyWait').textContent = G.mode === 'client' ? 'Waiting for the host to start…' : (host && players.length < 2 ? 'Waiting for players to join (you can also start alone).' : '');
@@ -299,7 +312,7 @@ $('startBtn').onclick = () => {
   const players = G.lobby.players.filter(x => x.connected), ex = G.resume;
   let st;
   if (ex) { st = MR.stateFromWire(ex.state); players.forEach(p => { if (!st.rovers.some(r => r.pid === p.pid)) MR.addRover(st, p); }); }
-  else st = MR.newGame({map:G.lobby.map, seed:Math.floor(Math.random()*1e9), players});
+  else st = MR.newGame({map:G.lobby.map, seed:Math.floor(Math.random()*1e9), players, day:G.lobby.day || undefined});
   G.resume = null;
   G.plans = {}; G.readyPids = []; G.drafts = {};
   broadcast({type:'start', state:MR.stateToWire(st), lobby:G.lobby, code:G.code});
@@ -394,6 +407,7 @@ function renderHud(){
   $('hScoreK').textContent = r.role === 'cadet' ? 'Treasures' : 'Team science';
   $('hScore').textContent = r.role === 'cadet' ? G.state.team.treasures : G.state.team.score;
   $('hRegion').textContent = MR.regionAt(G.state, r.x, r.y) + (r.stuck ? ' · STUCK' : '');
+  if (MR.Ops && power) { const lv = MR.Ops.levels(r); ['cBat','cTubes'].forEach((id, k) => { const l = lv[k ? 'tubes' : 'bat']; $(id).classList.toggle('alwarn', !!l && l.lvl === 'warn'); $(id).classList.toggle('albad', !!l && l.lvl === 'bad'); }); }
 }
 function renderSide(){
   const st = G.state, r = myRover(); if (!r) return;
@@ -401,7 +415,7 @@ function renderSide(){
   $('objTitle').textContent = C ? C.name : 'Objectives';
   $('goals').innerHTML = MR.goalProgress(st).map(g => { const o = MR.objectiveInfo(st, g);
     return `<li class="${g.done ? 'done' : ''} ${g.bonus ? 'bonus' : ''}"><span class="box">${g.done ? '✓' : ''}</span><span class="gt"><span class="t">${esc(cadet && o.kid ? o.kid : g.t)}</span>${!g.done && !cadet && o.what ? `<small class="what">${esc(o.what)}</small>` : ''}${g.done ? '' : goalHint(g, r)}${C && !cadet ? `<button class="whyb" data-why="${g.k}">Why?</button>` : ''}</span><span class="cnt">${Math.min(g.n, g.of)}/${g.of}</span></li>`; }).join('');
-  $('solCount').textContent = `${C ? `Campaign ${st.camp.i + 1} of ${MR.CAMPAIGNS[st.map].length} · ` : ''}Sol ${st.sol} · 3 stars by sol ${MR.parOf(st)}`;
+  $('solCount').textContent = `${C ? `${campLabel(st)} · ` : ''}Sol ${st.sol} · 3 stars by sol ${MR.parOf(st)}`;
   renderMission();
   if (r.role === 'cadet') $('tubes').innerHTML = `<span class="lbl">Team treasures: ${st.team.treasures}</span>`;
   else $('tubes').innerHTML = [...Array(MR.tubesOf(r))].map((_, i) => { const id = r.tubes[i]; return `<span class="tube" title="${id ? esc(MR.CARDS[id].name) : 'Empty tube'}">${id ? `<i style="background:${MR.CARDS[id].color}"></i>` : ''}</span>`; }).join('')
@@ -419,17 +433,21 @@ function goalHint(g, r){
   }
   if (g.kind === 'deliver') return `<span class="hint">Drive onto the station with full tubes</span>`;
   if (g.kind === 'sites') return `<span class="hint">Scan to find signals. Each one gets a flag.</span>`;
+  const H2 = {reach:`Drive to ${g.region}`, photos:'Add Photo (P) to your plan', smart:'Use an If block, or a sensor in Python', relay:'Turn on Run for 2 sols (or rover.mission(2))', loop:'Use a Repeat block, or a for loop in Python', free:'Add Back 1 to your plan', squares:'Every square driven counts', scans:'Add Scan (Q) to your plan'}[g.kind];
+  if (H2) return `<span class="hint">${esc(H2)}</span>`;
   if (g.kind === 'treasure') return `<span class="hint">Look for the sparkly gems</span>`;
   return '';
 }
 /* Mission bar: the campaign and the objective to work on now, always at the top of the side panel. */
+/* "Campaign 2 of 3", or "Mission Log day 5" for a day mission. */
+const campLabel = st => st.camp && st.camp.day ? `Mission Log day ${st.camp.day}` : `Campaign ${st.camp.i + 1} of ${MR.campaignCount(st)}`;
 function renderMission(){
   const st = G.state, r = myRover(), box = $('missionBar'); if (!st || !r) { box.innerHTML = ''; return; }
   const C = MR.campaignOf(st), cadet = r.role === 'cadet', gp = MR.goalProgress(st), cur = gp.find(g => !g.done && !g.bonus) || gp.find(g => !g.done);
   if (!cur) { box.innerHTML = ''; return; }
   const o = MR.objectiveInfo(st, cur), card = cur.res && MR.CARDS[cur.res];
   const pic = card ? `<span class="mgem" style="background:${card.color}"></span>` : `<span class="mgem ico">${cur.kind === 'deliver' ? '⌂' : cur.kind === 'sites' ? '?' : '★'}</span>`;
-  box.innerHTML = `<div class="mb">${pic}<span class="mt">${C ? `<small>Campaign ${st.camp.i + 1} of ${MR.CAMPAIGNS[st.map].length} · ${esc(C.name)}</small>` : '<small>Mission</small>'}<b>${esc(cadet && o.kid ? o.kid : cur.t)}</b>${!cadet && o.what ? `<span class="mw">${esc(o.what)}</span>` : ''}</span><span class="mp">${Math.min(cur.n, cur.of)}/${cur.of}</span>${C && !cadet ? '<button class="btn" id="briefBtn">Briefing</button>' : ''}</div>`;
+  box.innerHTML = `<div class="mb">${pic}<span class="mt">${C ? `<small>${campLabel(st)} · ${esc(C.name)}</small>` : '<small>Mission</small>'}<b>${esc(cadet && o.kid ? o.kid : cur.t)}</b>${!cadet && o.what ? `<span class="mw">${esc(o.what)}</span>` : ''}</span><span class="mp">${Math.min(cur.n, cur.of)}/${cur.of}</span>${C && !cadet ? '<button class="btn" id="briefBtn">Briefing</button>' : ''}</div>`;
   if ($('briefBtn')) $('briefBtn').onclick = () => briefingModal();
 }
 /* Briefing: the campaign story, the real mission it follows, and each objective with what, why and when it is done.
@@ -443,7 +461,7 @@ function briefingModal(prev){
     return `<li class="${g.done ? 'done' : ''}"><b>${g.done ? '✓ ' : ''}${esc(g.t)}${g.bonus ? ' <i class="bonus">bonus</i>' : ''}</b><span>${esc(o.what || '')}</span><span class="why"><b>Why scientists want it:</b> ${esc(spec ? o.whyFull || o.why : o.why || '')}</span><small>${esc(crit(g))}</small>${g.res && MR.MINERALS[g.res] ? `<button class="mini-b wide" data-tablet="${g.res}">Mineral tablet</button>` : ''}</li>`; }).join('');
   modal(prev ? `Campaign complete: ${prev.name}` : C.name,
     (prev ? `<div class="debrief"><p>${esc(prev.debrief)}</p><small>Based on ${esc(prev.real)}.</small></div><h3 class="t">Next: ${esc(C.name)}</h3>` : '')
-    + `<p class="real">Campaign ${st.camp.i + 1} of ${list.length} · based on ${esc(C.real)}</p><p>${esc(C.brief)}</p><ol class="brieflist">${objs}</ol>`
+    + `<p class="real">${campLabel(st)} · based on ${esc(C.real)}</p><p>${esc(C.brief)}</p><ol class="brieflist">${objs}</ol>`
     + `<div class="row" style="justify-content:flex-end"><button class="btn primary" data-close>Let's go</button></div>`);
   document.querySelectorAll('[data-tablet]').forEach(b => b.onclick = () => UI.mineralTablet(b.dataset.tablet));
 }
@@ -614,6 +632,7 @@ $('crewBar').onclick = e => { const b = e.target.closest('.cchip'); if (!b) retu
 function renderTeam(){
   renderCrewBar();
   if (!G.state) return;
+  R.offline = new Set(team() ? G.lobby.players.filter(x => !x.connected).map(x => x.pid) : []);
   let t = '';
   if (G.phase === 'run') t = 'The rovers are carrying out their plans…';
   else if (G.phase === 'won' && !G.contAfterWin) t = 'Expedition complete!';
@@ -630,7 +649,7 @@ function renderTeam(){
 /* palette + plans */
 function cmdsForMe(){ const r = myRover(); return r ? MR.cmdsFor(r.role, r.job) : []; }
 function maxPlan(){ const r = myRover(); if (!r) return 12; return r.role === 'cadet' ? MR.CADET_LEN(r.rank) : MR.ROLES[r.role].maxCmd; }
-const KEYCAP = {forward:'W', left:'A', back:'S', right:'D', scan:'Q', analyze:'R', drill:'Space', dig:'G', charge:'C', catalog:'Q', make_water:'1', make_metal:'2', make_bricks:'3', make_glass:'4', build_solar_farm:'5', build_radio_tower:'6', build_garage:'7', build_greenhouse:'8'};
+const KEYCAP = {forward:'W', left:'A', back:'S', right:'D', scan:'Q', analyze:'R', drill:'Space', dig:'G', charge:'C', photo:'P', catalog:'Q', make_water:'1', make_metal:'2', make_bricks:'3', make_glass:'4', build_solar_farm:'5', build_radio_tower:'6', build_garage:'7', build_greenhouse:'8'};
 function renderPalette(){
   const have = cmdsForMe(), btn = (k, cls = '') => { const d = MR.CMDS[k];
     return `<button class="pal cat-${d.cat} ${cls}" data-c="${k}" aria-label="${d.label}${KEYCAP[k] ? ` (${KEYCAP[k]})` : ''}"><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span><small>${d.cost}</small>${KEYCAP[k] ? `<span class="key">${KEYCAP[k]}</span>` : ''}</button>`; };
@@ -639,12 +658,13 @@ function renderPalette(){
   const relay = relayOK(), r = myRover(), code = r && r.role === 'specialist';
   const blk = k => { const b = MR.BLOCKS[k]; return `<button class="pal blk ${b.relay && !relay ? 'locked' : ''}" data-b="${k}" aria-label="${b.label}" title="${esc(b.desc)}${b.relay && !relay ? ' (needs the satellite relay kit)' : ''}" ${b.relay && !relay ? 'disabled' : ''}><span class="ic" aria-hidden="true">${b.icon}</span><span class="lb">${b.label}</span><small>${code ? 'Python' : 'holds blocks'}</small></button>`; };
   $('palette').innerHTML = `<div class="pgroup drive"><span class="pgl">Drive</span><div class="dpad">${btn('forward','up')}${btn('left','lf')}${btn('back','dn')}${btn('right','rt')}</div></div>`
-    + group('Science', ['scan','analyze','drill']) + group('Tools', ['dig']) + group('Power', ['charge'])
+    + group('Science', ['scan','analyze','drill','photo']) + group('Tools', ['dig']) + group('Power', ['charge'])
     + (relay ? group('Relay', ['go_signal','go_home']) : '')
     + `<div class="pgroup smart"><span class="pgl">${code ? 'Sensors' : 'Smart'}</span><div class="pbtns">${Object.keys(MR.BLOCKS).filter(k => relay || code ? true : k === 'repeat').map(blk).join('')}</div></div>`;
 }
 /* The satellite relay kit unlocks at the second rank (uses the live profile, so it works mid-expedition). */
-function relayOK(){ const r = myRover(), p = me(); return !!r && r.role !== 'cadet' && r.job !== 'lab' && !!p && MR.rankOf(p.xp) >= 1; }
+function relayOK(){ const r = myRover(), p = me(), m = G.state && G.state.day && MR.missionOf(G.state.day);
+  return !!r && r.role !== 'cadet' && r.job !== 'lab' && !!p && (MR.rankOf(p.xp) >= 1 || !!(m && m.week >= 4)); }
 const isBlk = c => !!(c && MR.BLOCKS[c.type]);
 const countIn = list => list.reduce((n, c) => n + 1 + (c.body ? countIn(c.body) : 0), 0);
 function planCount(){ return countIn(G.plan); }
@@ -968,7 +988,7 @@ function sendPlan(){
   if (!pa.actions.length && myRole() === 'cadet') return;
   G.planInfo = pa.info || null; G.ready = true; MR.sfx.click(); $('solCard').innerHTML = '';
   G.plan.forEach(c => c.state = ''); G.cursor = null;
-  toHost({type:'plan', actions:pa.actions, program:pa.program || null, cancel:!!G.cancelProg && !pa.program});
+  toHost({type:'plan', actions:pa.actions, program:pa.program || null, cancel:!!G.cancelProg && !pa.program, loop:!!(pa.info && pa.info.loops)});
   if (pa.program && myRole() === 'specialist') $('editor').dataset.touched = '';
   renderPlan(); renderTeam();
 }
@@ -989,8 +1009,8 @@ function markPlan(idx, skipped){
 async function playEvent(ev){
   if (!G.state) return;
   const st = G.state, W = st.world, r = st.rovers.find(x => x.pid === ev.pid), a = r && R.anim[r.pid], mine = ev.pid === G.myPid;
-  if (ev.msg) log(ev.msg.k, ev.msg.text);
-  if (mine && ev.idx != null && ev.t !== 'skip') markPlan(ev.idx);
+  if (ev.msg && !G.replaying) log(ev.msg.k, ev.msg.text);
+  if (mine && ev.idx != null && ev.t !== 'skip' && !G.replaying) markPlan(ev.idx);
   const cell = i => [i % MW, (i / MW) | 0];
   const seen = list => (list || []).forEach(i => W.seen[i] = 1);
   switch (ev.t) {
@@ -1028,7 +1048,11 @@ async function playEvent(ev){
       if (ev.sols > 1) { R.addFx({type:'ring', x:r.x, y:r.y, dur:1800, r:7.5}); if (mine) MR.sfx.scan(); await wait(900); } break;
     case 'progstop': if (mine) MR.sfx.bump(); await wait(300); break;
     case 'progcont': case 'progend': case 'proginfo': break;
-    case 'campaign': G.campDone = {i:ev.i, last:ev.last, map:st.map}; MR.sfx.good(); R.addFx({type:'confetti', x:r ? r.x + .5 : MR.MAPS[st.map].station.x, y:r ? r.y + .5 : MR.MAPS[st.map].station.y, dur:1600, parts:MR.confetti()}); await wait(500); break;
+    case 'photo': r.bat = ev.bat; R.addFx({type:'ring', x:r.x, y:r.y, dur:500, r:1.2}); MR.sfx.click(); await wait(250);
+      if (mine && !G.replaying) { const img = R.snapshot(r.pid, `NAVCAM · ${MR.MAPS[st.map].name.toUpperCase()} · SOL ${st.sol} · ${ev.place.toUpperCase()}`);
+        const p = me(); if (img && p) { const ph = MR.Photos.add({data:img, map:st.map, sol:st.sol, place:ev.place, rover:r.name}); MR.Notebook.add(p, {kind:'photo', text:`Photo of ${ev.place}`, map:st.map, sol:st.sol, photo:ph && ph.id}); } }
+      break;
+    case 'campaign': if (!G.replaying) G.campDone = {i:ev.i, last:ev.last, map:st.map}; MR.sfx.good(); R.addFx({type:'confetti', x:r ? r.x + .5 : MR.MAPS[st.map].station.x, y:r ? r.y + .5 : MR.MAPS[st.map].station.y, dur:1600, parts:MR.confetti()}); await wait(500); break;
     case 'campnext': st.goals = ev.goals; st.camp = ev.camp; renderSide(); break;
     case 'catalog': if (st.lab) { st.lab.inbox = []; st.lab.catalog.push(...ev.entries); } MR.sfx.click(); await wait(500); break;
     case 'make': if (st.lab) st.lab.mat = ev.mats; await wait(600); break;
@@ -1038,6 +1062,24 @@ async function playEvent(ev){
     default: await wait(150);
   }
   renderHud();
+}
+/* Sol replay (like Open MCT's time conductor): play an earlier sol again on the map, then come back to now. */
+/* A real sol arriving (or the host starting one) ends a replay at once, so play always continues from the live state. */
+function stopReplay(){
+  if (!G.replaying) return;
+  G.replayAbort = true; G.replaying = false; G.state = G.replayCur; G.replayCur = null; R.running = false; $('runLine').hidden = true;
+  G.phase = 'plan'; R.setView(G.state, G.myPid, myRole());
+}
+async function replaySol(k){
+  const rp = G.replays[k]; if (!rp || G.phase !== 'plan' || G.ready) return;
+  const gen = G.gen, cur = G.state; G.phase = 'replay'; G.replaying = true; G.replayAbort = false; G.replayCur = cur; renderLock();
+  G.state = MR.stateFromWire(JSON.parse(JSON.stringify(rp.before))); R.running = false; R.setView(G.state, G.myPid, myRole()); R.running = true;
+  $('runLine').hidden = false; $('runLine').textContent = `Replaying sol ${rp.sol}…`;
+  try { for (const tick of rp.timeline) { await Promise.all(tick.map(playEvent)); if (gen !== G.gen || G.replayAbort) return; } } catch (e) { console.error(e); }
+  if (gen !== G.gen || G.replayAbort) return;
+  G.replaying = false; G.replayCur = null; R.running = false; $('runLine').hidden = true; G.state = cur; G.phase = 'plan';
+  R.setView(cur, G.myPid, myRole()); renderGame(); updateGhost();
+  if (isHostish()) maybeRun();
 }
 function uplink(){
   if (!G.state) return Promise.resolve();
@@ -1052,6 +1094,7 @@ function uplink(){
 }
 async function playSol(timeline, newState){
   const gen = G.gen;
+  try { G.replays = (G.replays || []).concat([{sol:G.state.sol, before:MR.stateToWire(G.state), timeline}]).slice(-3); } catch (e) {}
   G.solPlayed = G.state.sol; G.solStorm = !!(G.state.wx && G.state.wx.storm); G.phase = 'run'; G.ready = false; if (!isHostish()) G.readyPids = []; R.running = true; R.ghost = []; R.drafts = {}; G.drafts = {};
   renderTeam(); renderPlan();
   await uplink();
@@ -1065,15 +1108,17 @@ async function playSol(timeline, newState){
   const p = me();
   if (p) {
     const code = myRole() === 'cadet' ? null : codeReview(timeline.flat().filter(e => e.pid === G.myPid), G.planInfo, newState);
-    const notices = MR.applyRewards(p, G.myPid, timeline.flat(), {map:newState.map, players:newState.rovers.length, planInfo:G.planInfo, code, storm:G.solStorm, greenhouse:!!(newState.lab && newState.lab.built.greenhouse)});
+    const notices = MR.applyRewards(p, G.myPid, timeline.flat(), {map:newState.map, players:newState.rovers.length, planInfo:G.planInfo, code, storm:G.solStorm, greenhouse:!!(newState.lab && newState.lab.built.greenhouse), day:newState.day});
     renderSolCard(timeline.flat().filter(e => e.pid === G.myPid), newState, code);
     UI.notify(notices, myRole() === 'cadet');
+    notices.filter(n => (n.k === 'card' || n.k === 'shiny') && MR.CARDS[n.id]).forEach(n => MR.Notebook.add(p, {kind:'find', text:`Found ${MR.CARDS[n.id].name}${n.k === 'shiny' ? ' (shiny!)' : ''}`, map:newState.map, sol:G.solPlayed, card:n.id}));
+    if (G.campDone) { const C = MR.campaignOf({...newState, camp:{...newState.camp, i:G.campDone.i}}) || null; if (C) MR.Notebook.add(p, {kind:'campaign', text:`Campaign complete: ${C.name}`, map:newState.map, sol:G.solPlayed}); }
   }
   G.planInfo = null;
   const mineEv = timeline.flat().filter(e => e.pid === G.myPid);
   const found = mineEv.some(e => e.t === 'drill' || e.t === 'artifact' || (e.t === 'scan' && e.sigs.length) || (e.t === 'analyze' && e.cells.length) || (e.t === 'dock' && e.n) || (e.t === 'move' && e.sigs && e.sigs.length));
   G.dull = found ? 0 : (G.dull || 0) + 1;
-  if (won) {
+  if (won && !newState.day) {
     const next = MR.MAP_ORDER.filter(k => MR.MAPS[k].unlock === newState.map);
     if (MR.Store.unlock(next)) next.forEach(k => UI.toast('★', '#58cfbe', `New map unlocked: ${MR.MAPS[k].name}`, 'The whole team can explore it now.', 7000));
     if (isHostish()) G.lobby.unlocked = MR.Store.unlocked();
@@ -1125,6 +1170,7 @@ function renderSolCard(mine, st, code){
   $('solCard').innerHTML = `<div class="solcard"><div class="ph"><b>Sol ${G.solPlayed || st.sol} report</b>${starHtml}</div><span>${bits.join(' · ')}</span>${code ? `<small>${esc(code.tip)}</small>` : ''}</div>`;
 }
 function showWin(st){
+  if (st.day && MR.LogUI) { $('win').hidden = true; G.campDone = null; MR.LogUI.dayDone(st); return; }
   const par = MR.parOf(st), s = st.sol <= par ? 3 : st.sol <= Math.ceil(par*1.5) ? 2 : 1;
   $('winStars').innerHTML = '★'.repeat(s) + `<i>${'★'.repeat(3-s)}</i>`;
   const lastC = st.camp && MR.CAMPAIGNS[st.map][st.camp.i]; G.campDone = null;
@@ -1141,6 +1187,15 @@ $('leaveGameBtn').onclick = () => {
   leave();
 };
 
+/* Play time for the parent page, and a gentle break reminder after the chosen number of minutes. */
+setInterval(() => {
+  const p = me(); if (!p || document.hidden || $('scrGame').hidden) return;
+  p.stats.minutes = (p.stats.minutes || 0) + 1; const d = new Date().toISOString().slice(0, 10);
+  p.daily = p.daily || {}; p.daily[d] = (p.daily[d] || 0) + 1; G.sessionMins++;
+  const brk = MR.Store.settings.breakMins ?? 60;
+  if (brk && G.sessionMins === brk) UI.toast('☕', '#f0bf5a', 'Time for a break', `You have played for ${brk} minutes. Mission Control says: stretch, rest your eyes, and come back later. Your expedition is saved.`, 12000);
+  MR.Store.save();
+}, 60000);
 /* ---------- log, chat, tooltip ---------- */
 function log(kind, text){
   const el = document.createElement('li');
@@ -1225,9 +1280,10 @@ $('zoomOut').onclick = () => R.zoom(.8);
 $('centerBtn').onclick = () => { R.cam.follow = true; };
 G.toggleBig = () => { document.body.classList.toggle('bigmap'); requestAnimationFrame(() => R.resize()); };
 $('bigBtn').onclick = () => G.toggleBig();
+$('opsBtn').onclick = () => MR.Ops.open();
 
 /* After clicking a control on the game screen, give focus back so Enter sends the plan instead of re-clicking. */
-document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#palette button, #tabs button, #relayBar button, #goals button, #missionBar button, .mapbtns button, .cadet button, #prog button, #seq button, #nudges button, #finds button, #tapMenu button, #crewBar button');
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#palette button, #opsBtn, #tabs button, #relayBar button, #goals button, #missionBar button, .mapbtns button, .cadet button, #prog button, #seq button, #nudges button, #finds button, #tapMenu button, #crewBar button');
   if (b && e.detail > 0) b.blur(); });
 /* ---------- keyboard (game) ---------- */
 let tabIdx = 0;
@@ -1249,6 +1305,7 @@ document.addEventListener('keydown', e => {
   if (lk === 'f') { R.cam.follow = true; return; }
   if (lk === 'm') { G.toggleBig(); return; }
   if (lk === 'h') { healthModal(); return; }
+  if (lk === 'o' && MR.Ops) { MR.Ops.open(); return; }
   if (k === '+' || k === '=') { R.zoom(1.2); return; } if (k === '-' || k === '_') { R.zoom(.83); return; }
   if (k === 'Enter') { e.preventDefault(); sendPlan(); return; }
   if (k === 'Backspace' && role !== 'specialist') { e.preventDefault(); if (!G.ready && G.phase === 'plan' && G.plan.length) { pushUndo(); const body = role === 'cadet' ? G.plan : curBody(), last = body[body.length-1];
@@ -1256,7 +1313,7 @@ document.addEventListener('keydown', e => {
     renderPlan(); renderLock(); updateGhost(); } return; }
   const move = {w:'forward', ArrowUp:'forward', a:'left', ArrowLeft:'left', d:'right', ArrowRight:'right', s:'back', ArrowDown:'back', ' ':'drill'}[lk];
   const labKeys = {q:'catalog', 1:'make_water', 2:'make_metal', 3:'make_bricks', 4:'make_glass', 5:'build_solar_farm', 6:'build_radio_tower', 7:'build_garage', 8:'build_greenhouse'};
-  const tool = (myRover() && myRover().job === 'lab') ? labKeys[lk] : {q:'scan', r:'analyze', g:'dig', c:'charge'}[lk];
+  const tool = (myRover() && myRover().job === 'lab') ? labKeys[lk] : {q:'scan', r:'analyze', g:'dig', c:'charge', p:'photo'}[lk];
   const cmd = move || tool;
   if (!cmd || !cmdsForMe().includes(cmd)) return;
   e.preventDefault(); addCmd(cmd);

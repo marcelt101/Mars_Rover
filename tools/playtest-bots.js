@@ -4,7 +4,7 @@ global.window = global; global.location = {search:''};
 const mem = {}; global.localStorage = {getItem:k => mem[k] ?? null, setItem:(k,v) => { mem[k] = v; }};
 global.btoa = s => Buffer.from(s, 'binary').toString('base64'); global.atob = s => Buffer.from(s, 'base64').toString('binary');
 const fs = require('fs');
-for (const f of ['data','minerals','campaigns','world','sim','profile']) eval(fs.readFileSync(require('path').join(__dirname, '../game/js', f + '.js'),'utf8'));
+for (const f of ['data','minerals','campaigns','missionlog','world','sim','profile']) eval(fs.readFileSync(require('path').join(__dirname, '../game/js', f + '.js'),'utf8'));
 const MR = window.MR, {MW, MH, DIRS} = MR;
 MR.Store.save = () => {};
 

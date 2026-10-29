@@ -2,7 +2,7 @@
 (function () {
 const MR = window.MR = window.MR || {};
 
-MR.VERSION = 3;
+MR.VERSION = 4;
 MR.MW = 64; MR.MH = 44; MR.BASE = 32;
 MR.MAX_PLAYERS = 6;
 
@@ -62,6 +62,7 @@ MR.CMDS = {
   drill:   {label:'Drill', icon:'⊛', cat:'sci', cost:'8%', py:'drill'},
   dig:     {label:'Dig', icon:'▲', cat:'build', cost:'6%', py:'dig', jobs:['excavator']},
   charge:  {label:'Charge', icon:'ϟ', cat:'power', cost:'+15%', py:'charge'},
+  photo:   {label:'Photo', icon:'▣', cat:'sci', cost:'1%', py:'photo'},
   go_signal: {label:'Go to signal', icon:'⌖', cat:'move', cost:'2% / square', py:'go_to_signal', macro:'go_signal', relay:true},
   go_home:   {label:'Go home', icon:'⌂', cat:'move', cost:'2% / square', py:'go_home', macro:'go_home', relay:true},
   catalog: {label:'Catalog samples', icon:'▤', cat:'sci', cost:'free', lab:'catalog', jobs:['lab']},
@@ -123,21 +124,21 @@ MR.RARITY = {
 };
 
 MR.CARDS = {
-  basalt:    {name:'Basalt', kid:'Rock', rar:'C', color:'#7a645a', pts:5, maps:['jezero','gusev'],
+  basalt:    {name:'Basalt', kid:'Rock', rar:'C', color:'#7a645a', pts:5, maps:['jezero','gusev','meridiani','gale'],
     fact:'Dark volcanic rock, the most common rock on Mars. Lava flows covered much of the planet billions of years ago.'},
-  olivine:   {name:'Olivine', kid:'Green crystal', rar:'U', color:'#9cc35a', pts:30, maps:['jezero','gusev'],
+  olivine:   {name:'Olivine', kid:'Green crystal', rar:'U', color:'#9cc35a', pts:30, maps:['jezero','gusev','gale'],
     fact:'A green volcanic crystal. It breaks down quickly in water, so finding lots of it tells scientists the rock stayed dry for a long time.'},
-  clay:      {name:'Clay', kid:'Mud rock', rar:'U', color:'#5fb7a8', pts:30, maps:['jezero'],
+  clay:      {name:'Clay', kid:'Mud rock', rar:'U', color:'#5fb7a8', pts:30, maps:['jezero','meridiani','gale'],
     fact:"Clay forms when water soaks rock for a long time. Jezero's delta is full of it, which is why Perseverance landed there."},
-  salts:     {name:'Sulfate salts', kid:'Water salt', rar:'U', color:'#7fb2ff', pts:40, maps:['jezero','gusev'],
+  salts:     {name:'Sulfate salts', kid:'Water salt', rar:'U', color:'#7fb2ff', pts:40, maps:['jezero','gusev','meridiani','gale'],
     fact:'Salts left behind when salty water dried up. Some hold water inside their crystals. Spirit dug some up by accident with a stuck wheel.'},
   carbonate: {name:'Carbonate', kid:'Lake rock', rar:'R', color:'#e8dab0', pts:50, maps:['jezero','gusev'],
     fact:'Carbonates form in water, often at the edges of lakes. On Earth they can lock away traces of tiny living things.'},
-  meteorite: {name:'Iron-nickel meteorite', kid:'Space metal', rar:'R', color:'#c2c9d1', pts:60, maps:['jezero','gusev'],
+  meteorite: {name:'Iron-nickel meteorite', kid:'Space metal', rar:'R', color:'#c2c9d1', pts:60, maps:['jezero','gusev','meridiani','gale'],
     fact:'A chunk of metal that fell from space. Rovers have found several on Mars. Future builders could use the metal.'},
   silica:    {name:'Silica', kid:'Glass rock', rar:'R', color:'#f4f1ea', pts:70, maps:['gusev'],
     fact:'Almost pure silica, like glass. On Earth it forms around hot springs, which are great homes for microbes. Spirit found it next to Home Plate.'},
-  organics:  {name:'Organic molecules', kid:'Life clue', rar:'L', color:'#b48ce8', pts:120, maps:['jezero'],
+  organics:  {name:'Organic molecules', kid:'Life clue', rar:'L', color:'#b48ce8', pts:120, maps:['jezero','gale'],
     fact:'Carbon-based molecules are building blocks of life. Not proof of life, but a big clue. Perseverance found organics in Jezero rocks.'},
   art_backshell: {name:"Perseverance's backshell", rar:'A', color:'#e6e2da', pts:100, maps:['jezero'], artifact:true,
     fact:"The cone-shaped shell that protected Perseverance as it fell through the Martian air in 2021. Ingenuity photographed it lying in the sand."},
@@ -155,6 +156,8 @@ MR.CARDS = {
     fact:'Apollo astronauts left mirrors on the Moon. Scientists still bounce lasers off them today to measure the distance to the Moon to within a few millimeters.'},
   art_feather: {name:'Hammer and feather', rar:'A', color:'#e6e2da', pts:100, maps:['moon'], artifact:true,
     fact:'Commander Dave Scott dropped a hammer and a falcon feather at the same moment. With no air, they hit the ground together, just as Galileo predicted.'},
+  art_opportunity: {name:'Opportunity rover', rar:'A', color:'#d8d2c4', pts:100, maps:['meridiani'], artifact:true,
+    fact:'Opportunity was planned to last 90 sols and kept going for almost 15 years, driving more than 45 kilometers. Its last signal came in June 2018, during a dust storm that covered the whole planet. It rests in Perseverance Valley.'},
   art_spirit: {name:'Spirit rover', rar:'A', color:'#d8d2c4', pts:100, maps:['gusev'], artifact:true,
     fact:'Spirit got stuck in soft sand at a spot called Troy in 2009 and sent its last message in 2010. It is still parked there today.'},
 };
@@ -184,6 +187,8 @@ MR.PATCHES = [
   {id:'life_clue', name:'Life Clue', icon:'❋', desc:'Find organic molecules', test:s => s.organics >= 1},
   {id:'jezero', name:'Jezero Expedition', icon:'J', desc:'Complete a Jezero expedition', test:s => (s.exp.jezero||0) >= 1},
   {id:'gusev', name:'Gusev Expedition', icon:'G', desc:'Complete a Gusev expedition', test:s => (s.exp.gusev||0) >= 1},
+  {id:'meridiani', name:'Meridiani Expedition', icon:'M', desc:'Complete a Meridiani expedition', test:s => (s.exp.meridiani||0) >= 1},
+  {id:'gale', name:'Gale Expedition', icon:'⛰', desc:'Complete a Gale expedition', test:s => (s.exp.gale||0) >= 1},
   {id:'moonwalker', name:'Moonwalker', icon:'☾', desc:'Complete an expedition on the Moon', test:s => (s.exp.moon||0) >= 1},
   {id:'genesis', name:'Genesis', icon:'◇', desc:'Find the Genesis Rock', test:s => s.genesis >= 1},
   {id:'full_crew', name:'Full Crew', icon:'⁂', desc:'Play a team game with 3 or more players', test:s => s.crew3 >= 1},
@@ -203,6 +208,11 @@ MR.PATCHES = [
   {id:'builder', name:'Base Builder', icon:'⌂', desc:'Build a base upgrade', test:s => s.builds >= 1},
   {id:'storm_survivor', name:'Storm Survivor', icon:'≋', desc:'Keep working through a dust storm', test:s => s.stormSols >= 1},
   {id:'lucky_gust', name:'Lucky Gust', icon:'∿', desc:'Have your solar panels cleaned by the wind', test:s => s.cleaned >= 1},
+  {id:'log_week1', name:'Jezero Week', icon:'1', desc:'Finish week 1 of the Mission Log', test:s => s.logWeeks >= 1},
+  {id:'log_week2', name:'Gusev Week', icon:'2', desc:'Finish week 2 of the Mission Log', test:s => s.logWeeks >= 2},
+  {id:'log_week3', name:'Moon Week', icon:'3', desc:'Finish week 3 of the Mission Log', test:s => s.logWeeks >= 3},
+  {id:'log_week4', name:'Meridiani and Gale Week', icon:'4', desc:'Finish week 4 of the Mission Log', test:s => s.logWeeks >= 4},
+  {id:'log_done', name:'Mission Log Complete', icon:'✪', desc:'Finish all 30 days of the Mission Log', test:s => s.logDays >= 30},
   {id:'graduate', name:'Mission Trainee', icon:'✎', desc:'Finish the tutorial', test:s => s.tutorial >= 1},
   {id:'marathon', name:'Marathon', icon:'∞', desc:'Drive or fly 500 squares', test:s => s.squares + s.flown >= 500},
   {id:'treasure100', name:'Treasure Legend', icon:'♛', desc:'Find 100 treasures', test:s => s.treasures >= 100},
@@ -298,9 +308,25 @@ MR.MAPS.moon = {
   regions:['Mare plains','Bright highland rock','Soft regolith','Mare plains','Rille floor','Apennine Mountains','Mount Hadley Delta','Cliffs','Ejecta','Hadley Rille'],
   par:30, parCadet:14,
 };
+MR.MAPS.meridiani = {
+  name:'Meridiani Planum', rover:'Opportunity', year:'2004–2018', unlock:'moon',
+  blurb:'Flat dark plains full of tiny hematite "blueberries", and the craters Opportunity explored on its 45-kilometer journey.',
+  station:{x:9, y:23}, startDir:1,
+  labels:[{t:'EAGLE CRATER', x:4, y:20.6},{t:'ENDURANCE', x:20, y:13.2},{t:'PURGATORY', x:27, y:21.4},{t:'VICTORIA CRATER', x:34, y:25.6},{t:'CAPE YORK', x:45, y:9.4},{t:'ENDEAVOUR CRATER', x:56, y:23},{t:'PERSEVERANCE VALLEY', x:46, y:39.5}],
+  regions:['Meridiani plains','Burns outcrop','Sand ripples','Plains','Crater floor','Crater rim','Endeavour rim hills','Cliffs','Bright outcrop','Crater rim'],
+  par:44, parCadet:14,
+};
+MR.MAPS.gale = {
+  name:'Gale Crater', rover:'Curiosity', year:'2012–today', unlock:'meridiani',
+  blurb:'Curiosity\'s home: an old lake bed at the foot of Mount Sharp, a mountain of rock layers that record Mars drying out.',
+  station:{x:12, y:9}, startDir:1,
+  labels:[{t:'BRADBURY LANDING', x:12, y:6.6},{t:'YELLOWKNIFE BAY', x:22, y:11.8},{t:'THE KIMBERLEY', x:22, y:22.2},{t:'BAGNOLD DUNES', x:24, y:30.4},{t:'VERA RUBIN RIDGE', x:38, y:15.4},{t:'MOUNT SHARP', x:50, y:38},{t:'PAHRUMP HILLS', x:31, y:34.4}],
+  regions:['Aeolis Palus','Mudstone','Bagnold Dunes','Plains','Yellowknife Bay','Crater wall','Mount Sharp slopes','Cliffs','Layered rock','Crater wall'],
+  par:38, parCadet:14,
+};
 MR.MAPS.jezero.regions.push('Crater rim'); MR.MAPS.gusev.regions.push('Crater rim');
-MR.MAP_ORDER = ['jezero','gusev','moon'];
-MR.parOf = st => st.goals.some(g => g.kind === 'treasure') ? MR.MAPS[st.map].parCadet : MR.MAPS[st.map].par;
+MR.MAP_ORDER = ['jezero','gusev','moon','meridiani','gale'];
+MR.parOf = st => st.day && MR.missionOf && MR.missionOf(st.day) ? MR.missionOf(st.day).par : st.goals.some(g => g.kind === 'treasure') ? MR.MAPS[st.map].parCadet : MR.MAPS[st.map].par;
 MR.cadetGoals = n => [{t:`Find ${3+2*n} treasures`, kind:'treasure', of:3+2*n}];
 
 const KEYS = 'More keys: I or E opens your inventory, T talks to the team, Tab looks at the next rover, Shift + WASD moves the camera, F follows your rover, M makes the map big, + and − zoom, Esc closes windows.';

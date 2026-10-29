@@ -2,7 +2,7 @@
 (function () {
 const MR = window.MR;
 const SLOT = (new URLSearchParams(location.search).get('slot') || '').replace(/[^a-z0-9]/gi, '');
-const KEY = 'mr2.profiles' + SLOT, TEAM = 'mr2.team' + SLOT, SET = 'mr2.settings' + SLOT, EXP = 'mr2.expedition' + SLOT;
+const KEY = 'mr2.profiles' + SLOT, TEAM = 'mr2.team' + SLOT, SET = 'mr2.settings' + SLOT, EXP = 'mr2.expedition' + SLOT, PHOTOS = 'mr2.photos' + SLOT;
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
@@ -94,6 +94,7 @@ MR.applyRewards = (p, myPid, events, ctx) => {
         else e.entries.forEach(x => { if (x.by === myPid || x.driller === myPid) addXp(3); }); break;
       case 'build': addXp(20); if (me) s.builds++; break;
       case 'win':
+        if (ctx.day) { addXp(40); out.push({k:'win'}); sticker(.15); break; }   // a Mission Log day is not a whole expedition
         s.exp[ctx.map] = (s.exp[ctx.map]||0) + 1; addXp(120);
         if (ctx.players > 1) s.teamWins++;
         if (ctx.players >= 3) s.crew3++;
@@ -109,7 +110,7 @@ MR.applyRewards = (p, myPid, events, ctx) => {
   s.stickerKinds = Object.keys(p.stickers).length;
   s.cardKinds = MR.CARD_ORDER.filter(id => p.cards[id] && (p.cards[id].n || p.cards[id].shiny)).length;
   if (MR.chartStats) { const cs = MR.chartStats(p); s.life12 = cs.life; s.elements = cs.elems.size; s.familyRows = cs.families.length; }
-  MR.PATCHES.forEach(pt => { if (!p.patches[pt.id] && pt.test(s)) { p.patches[pt.id] = Date.now(); addXp(25); out.push({k:'patch', id:pt.id}); } });
+  out.push(...MR.awardPatches(p, addXp));
   const rank1 = MR.rankOf(p.xp);
   if (rank1 > rank0) {
     out.push({k:'rank', rank:rank1});
@@ -121,5 +122,30 @@ MR.applyRewards = (p, myPid, events, ctx) => {
   }
   MR.Store.save();
   return out;
+};
+/* Patches are checked after every sol and after a Mission Log day. */
+MR.awardPatches = (p, addXp) => {
+  const s = p.stats, out = [], log = p.log || {};
+  s.logDays = Object.keys(log).length;
+  s.logWeeks = [1, 2, 3, 4].filter(w => MR.MISSIONS.filter(m => m.week === w).every(m => log[m.day])).length;
+  MR.PATCHES.forEach(pt => { if (!p.patches[pt.id] && pt.test(s)) { p.patches[pt.id] = Date.now(); if (addXp) addXp(25); else p.xp += 25; out.push({k:'patch', id:pt.id}); } });
+  return out;
+};
+/* Science notebook: finds, campaigns and photos are logged automatically; players add their own notes. */
+MR.Notebook = {
+  list: p => (p && p.notebook) || [],
+  add(p, e){ if (!p) return; p.notebook = p.notebook || []; p.notebook.push({id:'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), t:Date.now(), ...e, text:String(e.text || '').slice(0, 1000)});
+    if (p.notebook.length > 300) p.notebook.splice(0, p.notebook.length - 300); MR.Store.save(); },
+  remove(p, id){ if (!p || !p.notebook) return; p.notebook = p.notebook.filter(e => e.id !== id); MR.Store.save(); },
+};
+/* Photo album: small JPEGs kept on this device (the newest 40). */
+MR.Photos = {
+  list(){ return load(PHOTOS, []); },
+  add(ph){ const list = this.list(), e = {id:'ph' + Date.now().toString(36), t:Date.now(), ...ph}; list.push(e);
+    while (list.length > 40) list.shift();
+    try { localStorage.setItem(PHOTOS, JSON.stringify(list)); } catch (err) { list.splice(0, Math.ceil(list.length/2)); try { localStorage.setItem(PHOTOS, JSON.stringify(list)); } catch (e2) {} }
+    return e; },
+  remove(id){ save(PHOTOS, this.list().filter(x => x.id !== id)); },
+  get(id){ return this.list().find(x => x.id === id) || null; },
 };
 })();

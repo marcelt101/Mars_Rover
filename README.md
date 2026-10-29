@@ -1,6 +1,6 @@
 # Mars Rover Ops
 
-A co-op browser game where you plan rover commands, send them to Mars, and watch the rovers carry them out. Up to 6 players, each on their own device. Set in real places: Jezero Crater (Perseverance) and Gusev Crater (Spirit) on Mars, and Hadley Rille on the Moon (Apollo 15).
+A co-op browser game where you plan rover commands, send them to Mars, and watch the rovers carry them out. Up to 6 players, each on their own device. Set in real places: Jezero Crater (Perseverance), Gusev Crater (Spirit), Meridiani Planum (Opportunity) and Gale Crater (Curiosity) on Mars, and Hadley Rille on the Moon (Apollo 15).
 
 **Play now: https://marcelt101.github.io/Mars_Rover/**
 
@@ -10,7 +10,7 @@ No install needed. Works in Chrome, Edge, Firefox and Safari on PCs, Chromebooks
 
 | Link | What it is |
 |---|---|
-| [`/game/`](https://marcelt101.github.io/Mars_Rover/game/) | **Version 2**: team play, profiles, collecting, perks, three maps |
+| [`/game/`](https://marcelt101.github.io/Mars_Rover/game/) | **Version 2**: team play, profiles, collecting, perks, five maps, the 30-day Mission Log |
 | [`/v1/`](https://marcelt101.github.io/Mars_Rover/v1/) | **Version 1**: single-player Jezero Expedition, kept as it was (also on the `v1` branch) |
 | [`/classic/`](https://marcelt101.github.io/Mars_Rover/classic/) | The original five small grid missions |
 
@@ -73,6 +73,35 @@ The Scout finds and flags a site, a teammate drills it, and the Lab catalogs the
 
 Without a Lab player, samples are cataloged automatically.
 
+## 30-day Mission Log
+
+About one hour a day for 30 days, made for families and homeschool. Open it from the start screen (or press **L**).
+
+| Week | Place | Coding idea |
+|---|---|---|
+| 1 | Jezero (Perseverance) | Sequences |
+| 2 | Gusev (Spirit) | Loops |
+| 3 | The Moon (Apollo 15) | Conditions (if, while) |
+| 4 | Meridiani (Opportunity) and Gale (Curiosity) | Programs that run for days, functions |
+| Day 30 | Jezero | Mars Sample Return |
+
+Each day has a real story, a coding idea, a mission (a real campaign or a special day like *Dust Storm*, *Free Spirit* or *Hammer and Feather*), then a 3-question quiz and a journal page that goes into the science notebook. Days earn up to 3 stars. Missing a day never breaks anything. Weekly patches and a printable certificate at the end. Team games work too: every player's own Mission Log records the day.
+
+**Parents and saves** shows each child's days, stars, quiz score, minutes played today and in total, and what they learned. It also has a break reminder (default: after 60 minutes).
+
+## Mission Control
+
+Press **O** (or ☷ next to the map) for a kid-sized version of NASA's Open MCT mission control software:
+- every rover's status in one table, with colored alarms (battery, wheels, dust, tubes) and gray "No signal" for players who dropped out
+- charts of battery, dust, wheels and distance per sol
+- the sol timeline: what each rover plans to do this sol
+- your own alarm rules ("if battery < 40 then yellow")
+- a Mars clock, and replays of the last few sols
+
+## Science notebook and photos
+
+Finds, campaigns, photos and Mission Log journal pages go into your **Notebook** automatically (inventory, **I**); add your own notes too. Add **Photo** (**P**, or `rover.photo()`) to a plan to take a Navcam picture; the newest 40 are kept in the **Photos** album.
+
 ## Campaigns and objectives
 
 Each map is split into the campaigns NASA's teams really ran:
@@ -82,12 +111,14 @@ Each map is split into the campaigns NASA's teams really ran:
 | Jezero | Crater Floor, Delta Front, Margin and Neretva Vallis (Perseverance, 2021–2024) |
 | Gusev | Gusev Plains, Columbia Hills, Home Plate (Spirit, 2004–2009) |
 | Moon | Hadley Rille, Apennine Front, Back to Falcon (Apollo 15, 1971) |
+| Meridiani | Eagle Crater, Endurance and Victoria, Endeavour Crater (Opportunity, 2004–2018) |
+| Gale | Yellowknife Bay, the Kimberley and Pahrump Hills, Vera Rubin Ridge and the sulfate unit (Curiosity, 2012–today) |
 
 A **briefing** opens at the start of each campaign: the real story, then each objective with what to do, why scientists want it and when it is done. The **mission bar** at the top of the side panel always shows the objective to work on now. Tap **Why?** next to an objective to read the science, and **Show** to see where to look. When a needed mineral has been spotted, a helper offers to plan the route there. Finishing a campaign shows a debrief and the next briefing; finishing the last one completes the map.
 
 ## Minerals chart
 
-Press **I** and open **Minerals chart**. It is laid out like the periodic table, with one row per mineral family (silicates, carbonates, sulfates, chlorides, oxides, phosphates, organics, metals, rocks). Every mineral has an **information tablet**: what it is made of, where a rover really found it, the instrument that detects it, and why scientists care. ❋ marks the 12 signs of a living Mars. Under the chart, an **element strip** lights up as you find minerals containing each element. Four of the minerals come with future maps.
+Press **I** and open **Minerals chart**. It is laid out like the periodic table, with one row per mineral family (silicates, carbonates, sulfates, chlorides, oxides, phosphates, organics, metals, rocks). Every mineral has an **information tablet**: what it is made of, where a rover really found it, the instrument that detects it, and why scientists care. ❋ marks the 12 signs of a living Mars. Under the chart, an **element strip** lights up as you find minerals containing each element. One mineral (halite) comes with a future map.
 
 ## Satellite relay kit
 
@@ -112,7 +143,7 @@ Unlocks at the second rank (Rover Driver). Programs can then keep running for mo
 - **54 stickers**, **50 mission patches** (including coding ones like *Hello, Mars*, *Perfect Plan*, *Loop in a Loop*, *Smart Rover*, *Mission Control*, *Life Hunter* and *Element Explorer*), **10 ranks** from Trainee to Mars Legend, and **perks** (Wide wheels, Sharp eyes, Better radio, SuperCam laser, High-gain antenna, Big battery).
 - **Music:** calm space music made live in the browser, with a Music switch and volume slider under the map. It changes for driving, dust storms and the Moon.
 - **Signal delay:** each sol's commands take 5–10 seconds to reach Mars with the stock antenna. Better radio makes it 30% faster, the High-gain antenna twice as fast. Cadets get both automatically as they rank up.
-- Finishing Jezero unlocks Gusev, and finishing Gusev unlocks the Moon.
+- Finishing Jezero unlocks Gusev, then the Moon, Meridiani and Gale.
 - **Expeditions are saved** after every sol on the device that runs the game (solo, or the host). Tap **Continue** on the start screen to pick up where you left off, even after closing the browser. In a team game the host gets a new room code, and everyone who joins again with the same profile gets their own rover back.
 - Progress is saved in each device's browser. **Parents and saves** on the start screen has a backup code to move or restore profiles, and a switch to unlock all maps.
 
@@ -127,6 +158,9 @@ Unlocks at the second rank (Rover Driver). Programs can then keep running for mo
 | Q / R / G / C | Scan / Analyze / Dig (Excavator) / Charge |
 | Q, 1–8 (Lab) | Catalog, make materials, build upgrades |
 | H | Rover health |
+| O | Mission Control |
+| P | Photo |
+| L | Mission Log (start screen) |
 | Backspace | Remove the last step |
 | Ctrl+Z | Undo |
 | Enter | Send or Ready (Ctrl+Enter in the Python editor) |
@@ -153,6 +187,7 @@ rover.analyze()     # identify what is under the rover
 rover.drill()       # collect a sample into a tube
 rover.dig()         # Excavator only: clear a rock or sand trap in front
 rover.charge()      # +15% battery
+rover.photo()       # take a Navcam picture
 
 for i in range(3):
     rover.forward(2)
@@ -193,6 +228,9 @@ Plain HTML, CSS and JavaScript. No build step.
 - `game/js/minerals.js`: the minerals chart: families, elements and the information tablets
 - `game/js/campaigns.js`: campaigns and their science objectives
 - `game/js/music.js`: the generated background music
+- `game/js/missionlog.js`: the 30 days: stories, missions, quizzes, journal prompts
+- `game/js/log-ui.js`: the Mission Log screens, notebook, photos and parent page
+- `game/js/ops.js`: Mission Control
 - `game/js/world.js`: map generation and the terrain picture
 - `game/js/sim.js`: the rules. The host runs every rover's plan at the same time and records a timeline. Also the Python parser and the program runner for the relay kit (programs live on the rover, so they carry across sols)
 - `game/js/net.js`: host-as-server networking (PeerJS / WebRTC)

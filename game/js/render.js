@@ -79,6 +79,14 @@ R.hit = (cx, cy) => {
   return best;
 };
 R.screenOf = pid => { const a = R.anim[pid], b = R.canvas.getBoundingClientRect(); return a ? {x:b.left + (a.px+.5-R.cam.x)*R.cam.ts, y:b.top + (a.py-R.cam.y)*R.cam.ts} : null; };
+/* A Navcam-style photo: a crop of the map around a rover, with a caption strip. Returns a small JPEG. */
+R.snapshot = (pid, label) => { const a = R.anim[pid], cv = R.canvas; if (!a || !cv) return null;
+  const k = cv.width / Math.max(1, cv.getBoundingClientRect().width), ts = R.cam.ts * k, cx = (a.px + .5 - R.cam.x) * ts, cy = (a.py + .5 - R.cam.y) * ts, w = 7.5 * ts, h = 5 * ts;
+  const out = document.createElement('canvas'); out.width = 240; out.height = 160; const g = out.getContext('2d');
+  g.fillStyle = '#1a0d08'; g.fillRect(0, 0, 240, 160); g.drawImage(cv, cx - w/2, cy - h/2, w, h, 0, 0, 240, 160);
+  const v = g.createRadialGradient(120, 80, 50, 120, 80, 150); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = v; g.fillRect(0, 0, 240, 160);
+  g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(0, 142, 240, 18); g.fillStyle = '#e6ecf1'; g.font = '10px monospace'; g.fillText(label, 6, 155);
+  try { return out.toDataURL('image/jpeg', .72); } catch (e) { return null; } };
 R.addFx = o => { o.t0 = performance.now(); o.dur *= MR.speed(); R.fx.push(o); };
 
 function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -512,7 +520,7 @@ function drawLab(c, r, s, lod){
 function drawRover(c, r, a, t, ts, ghost){
   const s = ts*.92, cx = (a.px-R.cam.x+.5)*ts, cy = (a.py-R.cam.y+.5)*ts, heli = r.job === 'heli', lod = ts < 20 ? 0 : ts < 32 ? 1 : 2;
   c.save(); c.translate(cx, cy);
-  if (ghost) c.globalAlpha = .35;
+  if (ghost) c.globalAlpha = .35; else if (R.offline && R.offline.has(r.pid)) c.globalAlpha = .45;
   if (heli) { c.fillStyle='rgba(40,12,4,0.28)'; c.beginPath(); c.ellipse(s*.12, s*.25, s*.32, s*.17, 0, 0, Math.PI*2); c.fill(); c.translate(0, -s*.12); }
   const moon0 = R.view && MR.MAPS[R.view.map].airless, perse = !heli && r.job !== 'buggy' && r.job !== 'lab' && !moon0;
   if (perse) { c.save(); c.translate(s*.07, s*.09); c.rotate(a.ang*Math.PI/180); roverShadow(c, r, s); c.restore();

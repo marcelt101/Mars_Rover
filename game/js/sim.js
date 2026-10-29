@@ -35,16 +35,18 @@ MR.makeRover = (p, cell, map) => {
   return r;
 };
 
-MR.newGame = ({map, seed, players}) => {
+MR.newGame = ({map, seed, players, day}) => {
   const cadets = players.filter(p => p.role === 'cadet').length, others = players.length - cadets;
   const world = MR.genWorld(map, seed, cadets > 0);
   const cells = spawnCells(map);
   const st = {v:MR.VERSION, map, seed, sol:1, won:false, rng:(seed ^ 0x5bd1e995) | 0,
     team:{score:0, delivered:0, treasures:0, col:{}}, rovers:[], world, sites:{}, lab:{inbox:[], catalog:[], mat:{water:0, metal:0, bricks:0, glass:0}, built:{}},
     goals: MR.cadetGoals(cadets)};
+  if (day && MR.missionOf(day)) st.day = day;
   if (others) startCampaign(st, 0, others);
   players.forEach((p, i) => { const r = MR.makeRover(p, cells[i % cells.length], map); if (players.length > 1 && r.job === 'scout') r.tubeAdj = -2; st.rovers.push(r); reveal(world, r.x, r.y, MR.sightOf(r)); });
   st.rovers.forEach(r => { if (r.job === 'lab') { const S2 = MR.MAPS[map].station; r.x = S2.x; r.y = S2.y; } });
+  if (st.day) applyDayRules(st, MR.missionOf(st.day).rules || {});
   rollWeather(st);
   return st;
 };
@@ -72,24 +74,37 @@ MR.stateToWire = st => ({...st, world:MR.worldToWire(st.world)});
 MR.stateFromWire = (o, prevWorld) => MR.ensureCampaign({...o, world:MR.worldFromWire(o.world, prevWorld)});
 MR.cloneState = st => ({...JSON.parse(JSON.stringify({...st, world:null})), world:MR.cloneWorld(st.world)});
 
+/* Mission Log day rules: a low battery, a dust storm on given sols, or the first rover starting stuck in sand. */
+function applyDayRules(st, rules){
+  const power = st.rovers.filter(isPower);
+  if (rules.bat) power.forEach(r => r.bat = Math.round(r.batMax * rules.bat / 100));
+  if (rules.storm) { st.stormPlan = st.stormPlan || {}; rules.storm.forEach(s => st.stormPlan[s] = true); }
+  if (rules.stuck && power[0]) { const r = power[0], W = st.world, S = MR.MAPS[st.map].station; let best = -1, bd = 1e9;
+    for (let i = 0; i < W.ter.length; i++) { const x = i % MW, y = (i/MW) | 0, d = Math.hypot(x - S.x, y - S.y);
+      if (W.ter[i] === T.DUNE && !W.obs[i] && !W.res[i] && d > 6 && d < bd) { bd = d; best = i; } }
+    if (best >= 0) { r.x = best % MW; r.y = (best/MW) | 0; r.stuck = true; W.trap[best] = 1; W.trapSeen[best] = 1; reveal(W, r.x, r.y, MR.sightOf(r)); } }
+}
 /* Campaigns (see campaigns.js). st.camp = {i, n, base}; st.goals holds the current campaign's objectives
    (small: the texts are looked up with MR.objectiveInfo). Cadet-only games keep the treasure goal. */
 function startCampaign(st, i, n){
-  const C = MR.CAMPAIGNS[st.map][i];
-  st.camp = {i, n, started:st.sol, base:{delivered:st.team.delivered, sites:Object.keys(st.sites || {}).length}};
-  st.goals = C.obj(n).map((g, k) => ({k, t:g.t, kind:g.kind, res:g.res, of:g.of, bonus:!!g.bonus}));
+  const C = st.day ? MR.dayCampaign(st.day) : MR.CAMPAIGNS[st.map][i], tm = st.team;
+  st.camp = {i, n, started:st.sol, day:st.day || undefined, base:{delivered:tm.delivered, sites:Object.keys(st.sites || {}).length, squares:tm.squares || 0, scans:tm.scans || 0, photos:tm.photos || 0, smart:tm.smart || 0, relay:tm.relay || 0, loops:tm.loops || 0, freed:tm.freed || 0}};
+  st.goals = C.obj(n).map((g, k) => ({k, t:g.t, kind:g.kind, res:g.res, region:g.region, of:g.of, bonus:!!g.bonus}));
 }
-MR.campaignOf = st => st.camp && MR.CAMPAIGNS[st.map] ? MR.CAMPAIGNS[st.map][st.camp.i] : null;
+MR.campaignOf = st => !st.camp ? null : st.camp.day ? MR.dayCampaign(st.camp.day) : MR.CAMPAIGNS[st.map] ? MR.CAMPAIGNS[st.map][st.camp.i] : null;
+MR.campaignCount = st => st.camp && st.camp.day ? 1 : (MR.CAMPAIGNS[st.map] || []).length;
 MR.objectiveInfo = (st, g) => { const C = MR.campaignOf(st); return C ? C.obj(st.camp.n)[g.k] : g; };
 /* Older saves had plain goals; give them campaigns (progress already made still counts). */
 MR.ensureCampaign = st => {
-  if (st.camp || !MR.CAMPAIGNS[st.map] || st.goals.some(g => g.kind === 'treasure')) return st;
+  if (st.camp || st.day || !MR.CAMPAIGNS[st.map] || st.goals.some(g => g.kind === 'treasure')) return st;
   startCampaign(st, 0, Math.max(1, st.rovers.filter(r => r.role !== 'cadet').length)); return st;
 };
 MR.goalProgress = st => st.goals.map(g => {
-  const b = (st.camp && st.camp.base) || {delivered:0, sites:0};
-  const n = g.kind === 'col' ? (st.team.col[g.res] || 0) : g.kind === 'ident' ? Math.max((st.team.ident || {})[g.res] || 0, st.team.col[g.res] || 0)
-    : g.kind === 'deliver' ? st.team.delivered - b.delivered : g.kind === 'sites' ? Object.keys(st.sites || {}).length - b.sites : st.team.treasures;
+  const b = (st.camp && st.camp.base) || {}, tm = st.team, rel = k => (tm[k] || 0) - (b[k] || 0);
+  const n = g.kind === 'col' ? (tm.col[g.res] || 0) : g.kind === 'ident' ? Math.max((tm.ident || {})[g.res] || 0, tm.col[g.res] || 0)
+    : g.kind === 'deliver' ? tm.delivered - (b.delivered || 0) : g.kind === 'sites' ? Object.keys(st.sites || {}).length - (b.sites || 0)
+    : g.kind === 'reach' ? ((tm.visited || {})[g.region] ? 1 : 0) : ['squares','scans','photos','smart','relay','loops','freed'].includes(g.kind) ? rel(g.kind)
+    : g.kind === 'free' ? rel('freed') : g.kind === 'loop' ? rel('loops') : tm.treasures;
   return {...g, n, done: n >= g.of};
 });
 /* After every tick: when the required objectives are done, the campaign ends; the last one wins the map. */
@@ -97,9 +112,9 @@ function campaignStep(st, evs){
   const req = MR.goalProgress(st).filter(g => !g.bonus);
   if (!req.every(g => g.done)) return;
   if (!st.camp) { st.won = true; evs.push({t:'win', msg:{k:'good', text:'Expedition complete! Every objective is done.'}}); return; }
-  const list = MR.CAMPAIGNS[st.map], C = list[st.camp.i], last = st.camp.i >= list.length - 1;
+  const list = st.camp.day ? [MR.dayCampaign(st.camp.day)] : MR.CAMPAIGNS[st.map], C = list[st.camp.i], last = st.camp.i >= list.length - 1;
   evs.push({t:'campaign', i:st.camp.i, id:C.id, last, msg:{k:'good', text:`Campaign complete: ${C.name}!`}});
-  if (last) { st.won = true; evs.push({t:'win', msg:{k:'good', text:'Expedition complete! Every campaign is done.'}}); return; }
+  if (last) { st.won = true; evs.push({t:'win', msg:{k:'good', text: st.camp.day ? `Day ${st.camp.day} complete!` : 'Expedition complete! Every campaign is done.'}}); return; }
   startCampaign(st, st.camp.i + 1, st.camp.n);
   evs.push({t:'campnext', i:st.camp.i, goals:st.goals, camp:st.camp, msg:{k:'info', text:`New campaign: ${list[st.camp.i].name}.`}});
 }
@@ -184,16 +199,16 @@ function act(st, r, a, E){
       const i = ny*MW+nx;
       if (power && !spend(moveCost(r, W, i), 'drive')) return false;
       const from = [r.x, r.y], reg0 = MR.regionAt(st, r.x, r.y);
-      r.x = nx; r.y = ny;
+      r.x = nx; r.y = ny; r.odo = (r.odo || 0) + 1; st.team.squares = (st.team.squares || 0) + 1;
       const seen = reveal(W, nx, ny, sightNow(st, r));
       if (power && r.job !== 'heli') { const t2 = W.ter[i], rough = t2 === T.BED || t2 === T.HILL || t2 === T.PLATE;
         r.wheels = Math.max(0, +(r.wheels - (rough ? .5 : .15) * (has(r,'wide_wheels') ? .5 : 1) * (built(st,'garage') ? .5 : 1)).toFixed(1)); }
       const sigs = r.job === 'heli' ? markSignals(W, nx, ny, 2, false).sigs : [];
       flagSites(st, r, sigs);
-      const reg = MR.regionAt(st, nx, ny);
+      const reg = MR.regionAt(st, nx, ny); (st.team.visited = st.team.visited || {})[reg] = 1;
       E({t:'move', from, to:[nx,ny], fly:r.job === 'heli', slow:!!MR.TER[W.ter[i]].sandy && r.job !== 'heli', seen, sigs, bat:r.bat, wheels:r.wheels,
         msg: reg !== reg0 && !cadet ? {k:'info', text:`${nm} is entering ${reg}.`} : (sigs.length ? {k:'good', text:`${nm} spotted ${sigs.length} treasure${sigs.length>1?'s':''} from the air!`} : null)});
-      if (r.stuck && a.sgn < 0) { r.stuck = false; E({t:'free', msg:{k:'good', text:`${nm} backed out of the sand trap. Free!`}}); }
+      if (r.stuck && a.sgn < 0) { r.stuck = false; st.team.freed = (st.team.freed || 0) + 1; E({t:'free', msg:{k:'good', text:`${nm} backed out of the sand trap. Free!`}}); }
       docArtifacts();
       if (W.trap[i] && canStick(r)) {
         r.stuck = true; W.trapSeen[i] = 1;
@@ -212,6 +227,7 @@ function act(st, r, a, E){
     case 'scan': {
       if (cadet) return true;
       if (!spend(5, 'scan')) return false;
+      st.team.scans = (st.team.scans || 0) + 1;
       const rad = scanNow(st, r), seen = reveal(W, r.x, r.y, rad), m = markSignals(W, r.x, r.y, rad, true);
       flagSites(st, r, m.sigs);
       const parts = [];
@@ -270,6 +286,13 @@ function act(st, r, a, E){
       if (W.obs[i] === 'R') { W.obs[i] = ''; W.seen[i] = 1; E({t:'dig', i, what:'rock', bat:r.bat, msg:{k:'good', text:`${nm} pushed a rock out of the way.`}}); return true; }
       if (W.trap[i]) { W.trap[i] = 0; W.trapSeen[i] = 0; W.seen[i] = 1; E({t:'dig', i, what:'trap', bat:r.bat, msg:{k:'good', text:`${nm} packed down a sand trap. It's safe now.`}}); return true; }
       E({t:'dig', i, what:'none', bat:r.bat, msg:{k:'info', text:`${nm} dug, but there was nothing to clear in front.`}}); return true;
+    }
+    case 'photo': {
+      if (cadet) return true;
+      if (!spend(1, 'take a photo')) return false;
+      st.team.photos = (st.team.photos || 0) + 1;
+      const where = MR.regionAt(st, r.x, r.y);
+      E({t:'photo', at:[r.x, r.y], dir:r.dir, place:where, bat:r.bat, msg:{k:'info', text:`${nm} took a Navcam photo of ${where}.`}}); return true;
     }
     case 'charge': {
       if (!power) return true;
@@ -333,7 +356,7 @@ function expand(r, actions){
 }
 
 /* Cadets never run out of treasure: when few gems are left near a Cadet, a few new ones appear nearby. */
-const KID_GEMS = {moon:['moon_basalt','breccia','glass'], jezero:['olivine','clay','salts','meteorite','carbonate','basalt'], gusev:['olivine','salts','silica','meteorite','carbonate','basalt']};
+const KID_GEMS = {meridiani:['hematite','salts','meteorite','basalt'], gale:['clay','olivine','salts','basalt'], moon:['moon_basalt','breccia','glass'], jezero:['olivine','clay','salts','meteorite','carbonate','basalt'], gusev:['olivine','salts','silica','meteorite','carbonate','basalt']};
 function spawnCadetGems(st, timeline){
   const W = st.world, kinds = KID_GEMS[st.map] || KID_GEMS.jezero, evs = [];
   st.rovers.filter(r => r.role === 'cadet').forEach(r => {
@@ -448,8 +471,14 @@ MR.simulateSol = (prev, plans) => {
   const st = MR.ensureCampaign(MR.cloneState(prev)), timeline = [], q = {}, starts = [];
   st.rovers.forEach(r => {
     const p = plans[r.pid], plan = Array.isArray(p) ? {actions:p} : (p || {});
+    if (plan.loop) st.team.loops = (st.team.loops || 0) + 1;
     if (plan.program && MR.validProgram(plan.program) && r.role !== 'cadet') {
       MR.startProgram(r, plan.program); starts.push(r);
+      const walk = list => list.some(nd => nd.n === 'if' || nd.n === 'while' || (nd.body && walk(nd.body)) || (nd.else && walk(nd.else)));
+      const loops = list => list.some(nd => nd.n === 'repeat' || nd.n === 'while' || (nd.body && loops(nd.body)));
+      if (walk(plan.program.body) || Object.values(plan.program.defs || {}).some(walk)) st.team.smart = (st.team.smart || 0) + 1;
+      if ((plan.program.sols|0) >= 2) st.team.relay = (st.team.relay || 0) + 1;
+      if (!plan.loop && (loops(plan.program.body) || plan.program.perSol && plan.program.sols > 1)) st.team.loops = (st.team.loops || 0) + 1;
     } else if (r.prog && (plan.cancel || (plan.actions && plan.actions.length))) {
       r.prog = null; if (plan.cancel) starts.push({cancel:r});
     }
@@ -514,6 +543,7 @@ MR.simulateSol = (prev, plans) => {
       const solar = Math.round((MR.ROLES[r.role].solar + (built(st,'solar_farm') ? 10 : 0)) * (wasStorm ? .5 : 1) * (1 - (r.dust || 0)/300));
       r.bat = Math.max(0, Math.min(r.batMax, r.bat + solar - heater));
       charges.push({pid:r.pid, before, bat:r.bat, solar, heater, dust:Math.round(r.dust || 0), cleaned}); });
+    st.hist = (st.hist || []).concat([{sol:st.sol, r:Object.fromEntries(st.rovers.filter(isPower).map(r => [r.pid, {b:r.bat, d:Math.round(r.dust || 0), s:r.odo || 0, w:Math.round(r.wheels ?? 100)}]))}]).slice(-80);
     st.sol++;
     rollWeather(st);
     const lucky = charges.filter(c => c.cleaned).map(c => st.rovers.find(q2 => q2.pid === c.pid).name);

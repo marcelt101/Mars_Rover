@@ -25,6 +25,7 @@ UI.avatar = (p, cls = '') => `<span class="av ${cls}" style="background:${MR.col
 UI.show = name => {
   ['scrHome','scrLobby','scrGame'].forEach(s => $(s).hidden = s !== name);
   UI.renderMe();
+  if (MR.LogUI) MR.LogUI.renderHome();
 };
 UI.renderMe = () => {
   const p = MR.Store.current();
@@ -51,6 +52,7 @@ UI.renderHome = () => {
   $('hostBtn').disabled = !cur || !MR.netAvailable();
   $('joinBtn').disabled = !cur || !MR.netAvailable();
   UI.renderMe();
+  if (MR.LogUI) MR.LogUI.renderHome();
 };
 $('profiles').addEventListener('click', e => {
   const b = e.target.closest('.pcard'); if (!b) return;
@@ -104,7 +106,7 @@ UI.inventory = tab => {
   const p = MR.Store.current(); if (!p) return;
   if (tab) invTab = tab;
   UI.invOpenedAt = Date.now();
-  const tabs = [['cards','Cards'],['chart','Minerals chart'],['stickers','Stickers'],['patches','Patches'],['rover','Rover'],['stats','Stats']];
+  const tabs = [['cards','Cards'],['chart','Minerals chart'],['notebook','Notebook'],['photos','Photos'],['stickers','Stickers'],['patches','Patches'],['rover','Rover'],['stats','Stats']];
   const ri = MR.rankInfo(p);
   const owned = MR.CARD_ORDER.filter(id => p.cards[id] && p.cards[id].n);
   const shinies = MR.CARD_ORDER.filter(id => p.cards[id] && p.cards[id].shiny).length;
@@ -119,6 +121,10 @@ UI.inventory = tab => {
         return `<button class="card ${sh ? 'shiny' : ''} ${sel === id ? 'sel' : ''}" data-card="${id}">${sh ? '<span class="shn" title="Shiny">✦</span>' : ''}<span class="n">×${p.cards[id].n + (p.cards[id].shiny||0)}</span><div class="gm" style="background:${c.color}"></div><b>${esc(p.role === 'cadet' && c.kid ? c.kid : c.name)}</b><span class="rar" style="color:${rar.col}">${rar.name}</span></button>`; }).join('')}</div>`;
   } else if (invTab === 'chart') {
     body = chartHtml(p);
+  } else if (invTab === 'notebook') {
+    body = MR.LogUI.notebookHtml(p);
+  } else if (invTab === 'photos') {
+    body = MR.LogUI.photosHtml();
   } else if (invTab === 'stickers') {
     const st = p.stickers || {}, got = MR.STICKERS.filter(x => st[x.id]).length;
     body = `<p class="muted" style="margin:0">${got} of ${MR.STICKERS.length} stickers. ${p.role === 'cadet' ? 'Every treasure gives a sticker!' : 'You get a sticker for every delivery and every find from Mars history.'}</p>
@@ -154,6 +160,7 @@ UI.inventory = tab => {
   $('invTabs').onclick = e => { const b = e.target.closest('.tab'); if (b) UI.inventory(b.dataset.tab); };
   $('sheet').querySelectorAll('[data-card]').forEach(b => b.onclick = () => { invSel = b.dataset.card; UI.inventory(); });
   $('sheet').querySelectorAll('[data-min]').forEach(b => b.onclick = () => UI.mineralTablet(b.dataset.min, () => UI.inventory('chart')));
+  if (invTab === 'notebook' || invTab === 'photos') MR.LogUI.wireInventory(p, () => UI.inventory());
   $('sheet').querySelectorAll('[data-el]').forEach(b => b.onclick = () => elementModal(b.dataset.el, p));
   if ($('invEdit')) $('invEdit').onclick = () => UI.profileModal(p);
   if ($('perkList')) $('perkList').onclick = e => { const b = e.target.closest('.perk'); if (!b || b.disabled) return;
@@ -222,7 +229,9 @@ UI.parents = () => {
       <div class="field"><span>Restore from a backup code</span>
         <textarea class="input" id="impCode" rows="3" placeholder="MR2:..." style="font-family:var(--mono);font-size:12px"></textarea>
         <div class="row"><button class="btn" id="impBtn">Restore</button><span class="muted" id="impMsg"></span></div></div>
+      ${MR.LogUI ? MR.LogUI.parentHtml() : ''}
     </div>`, true);
+  if ($('brkSel')) $('brkSel').onchange = e => { MR.Store.settings.breakMins = +e.target.value; MR.Store.save(); };
   $('allMaps').onchange = e => { MR.Store.team.allMaps = e.target.checked; MR.Store.save(); };
   $('copyCode').onclick = () => { const t = $('expCode'); navigator.clipboard && navigator.clipboard.writeText(t.value).then(() => $('copyMsg').textContent = 'Copied.', () => { t.select(); $('copyMsg').textContent = 'Press Ctrl+C to copy.'; }); if (!navigator.clipboard) { t.select(); $('copyMsg').textContent = 'Press Ctrl+C to copy.'; } };
   $('impBtn').onclick = () => { try { const n = MR.Store.importCode($('impCode').value); $('impMsg').textContent = `Restored ${n} profile${n === 1 ? '' : 's'}.`; UI.renderHome(); } catch (e) { $('impMsg').textContent = 'That code did not work. Check that it was copied completely.'; } };
@@ -237,6 +246,7 @@ UI.toast = (icon, color, title, sub, ms = 4200) => {
   const el = document.createElement('div'); el.className = 'toast';
   el.innerHTML = `<span class="ti" style="background:${color}">${esc(icon)}</span><span><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>`;
   $('toasts').appendChild(el); while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
+  $('toasts').classList.toggle('low', UI.modalOpen());   // keep toasts off the window the player is reading
   setTimeout(() => el.remove(), ms);
 };
 const chestQueue = []; let chestBusy = false;
@@ -271,5 +281,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (UI.modalOpen()) { UI.closeModal(); e.preventDefault(); } else if (typing) e.target.blur(); return; }
   if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
   if ((e.key === 'i' || e.key === 'I' || e.key === 'e' || e.key === 'E') && MR.Store.current()) { e.preventDefault(); UI.toggleInventory(); }
+  if ((e.key === 'l' || e.key === 'L') && MR.Store.current() && MR.LogUI && !$('scrHome').hidden) { e.preventDefault(); if (UI.modalOpen()) UI.closeModal(); else MR.LogUI.calendar(); }
 });
 })();

@@ -189,6 +189,8 @@ Several of these are already cards (clay, carbonate, silica, olivine, salts). Th
 - Easier editing: drag cards to reorder, and bigger + and − buttons for squares and repeats.
 - Cadets keep the picture buttons and big picture steps.
 
+**Batch 5 (done):** the 30-day Mission Log (calendar, 15 campaign days and 15 special days, quizzes, journal, stars, weekly patches, certificate, parent page with play time and a break reminder); two new maps, Meridiani Planum (Opportunity) and Gale Crater (Curiosity), with their campaigns, which make gypsum, jarosite and manganese oxide findable; science notebook and Photo command with an album; Mission Control (status table with alarms and staleness, charts, sol timeline, alarm rules, Mars clock, sol replay). Playtest: Meridiani about 42 minutes (80% finished by the hint-following bot), Gale about 34 minutes (97%).
+
 **Batch 5 (planned): the 30-day Mission Log, for families and homeschool.** Goal: one hour a day for 30 days. Built on the batch 4 campaigns.
 - Four weeks plus a finale, following real NASA history and one coding idea per week:
   - Week 1, Jezero: driving, scanning, minerals, what water leaves behind. Sequences.

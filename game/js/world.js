@@ -65,6 +65,51 @@ function terGusev(w, seed){
   }
 }
 
+/* Meridiani Planum (Opportunity): dark plains with bright outcrop and sand ripples, and the craters it visited
+   in order: Eagle (landing), Endurance, Victoria, and the hills on the rim of giant Endeavour crater. */
+function terMeridiani(w, seed){
+  const nA = makeNoise(seed+11), nB = makeNoise(seed+23), nS = makeNoise(seed+37);
+  const ring = (x, y, cx, cy, R, wd, gap) => { const d = Math.hypot(x-cx, y-cy), a = Math.atan2(y-cy, x-cx);
+    if (Math.abs(d - R) < wd) return gap(a) ? 'gap' : 'rim'; return d < R - wd ? 'in' : null; };
+  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
+    let t = T.FLOOR;
+    if (nB(x/4+40, y/4) > .57) t = T.BED;
+    if (Math.sin((x*.8 + y*.45)*1.15 + nS(x/6, y/6)*3) > .84 && nS(x/5+9, y/5) > .42) t = T.DUNE;
+    const eg = ring(x, y, 4, 24, 2.2, .6, a => Math.abs(a) < .6);
+    if (eg) t = eg === 'rim' ? T.RIM : T.BED;
+    const en = ring(x, y, 20, 18, 3.6, .8, a => Math.abs(Math.abs(a) - Math.PI) < .55);
+    if (en) t = en === 'rim' ? T.RIM : en === 'gap' ? T.BED : (Math.hypot(x-20, y-18) < 1.6 ? T.CHAN : T.BED);
+    const vd = Math.hypot(x-34, y-32), va = Math.atan2(y-32, x-34), vr = 5*(1 + .06*Math.sin(va*8));
+    if (Math.abs(vd - vr) < 1) t = Math.sin(va*8) > .7 ? T.CLIFF : T.RIM; else if (vd < vr - 1) t = T.CHAN;
+    if (((x-27)/3)**2 + ((y-24)/1.6)**2 < 1) t = T.DUNE;                       // Purgatory dune
+    const xr = 47 + 3*Math.sin(y/9) + (nA(3, y/4)-.5)*1.2;
+    if (Math.abs(x - xr) < 1.3) t = (y >= 10 && y <= 17) || (y >= 30 && y <= 37) ? T.HILL : T.RIM;  // Cape York, Solander Point
+    else if (x > xr + 1.3) t = T.CHAN;                                          // inside Endeavour
+    w.ter[y*MW+x] = t;
+  }
+  /* smooth shapes for the terrain picture (the grid above decides where rovers can drive) */
+  w.relief = [{kind:'crater', x:4.5, y:24.5, R:2.2, depth:.9}, {kind:'crater', x:20.5, y:18.5, R:3.6, depth:1.3}, {kind:'crater', x:34.5, y:32.5, R:5, depth:1.8, scallop:8}];
+}
+/* Gale Crater (Curiosity): the Aeolis Palus plains near Bradbury Landing, Yellowknife Bay, the Bagnold Dunes,
+   Vera Rubin Ridge and the layered slopes of Mount Sharp rising in the south-east. */
+function terGale(w, seed){
+  const nA = makeNoise(seed+11), nB = makeNoise(seed+23);
+  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
+    let t = T.FLOOR;
+    if (nB(x/5+40, y/5) > .6) t = T.BED;
+    if (((x-22)/4.5)**2 + ((y-8)/2.6)**2 < 1 + (nA(x/3, y/3)-.5)*.4) t = T.CHAN;           // Yellowknife Bay
+    if (((x-22)/3)**2 + ((y-19)/2.2)**2 < 1) t = T.PLATE;                                  // the Kimberley
+    const md = ((x-48)/24)**2 + ((y-42)/18)**2 + (nA(x/5, y/5)-.5)*.35;                    // Mount Sharp
+    if (md < 1) t = md < .45 ? (nA(x/2.5+9, y/2.5) > .55 ? T.CLIFF : T.HILL) : md < .7 ? T.PLATE : T.HILL;
+    if (md >= .78 && md < 1 && Math.sin(md*40) > .4) t = T.PLATE;                         // layered terraces
+    if (distSeg(x, y, 29, 22, 42, 17) < 1.1 + nA(x/3, y/3)*.5) t = T.HILL;                 // Vera Rubin Ridge
+    if (((x-25)/5)**2 + ((y-27)/2.2)**2 < 1 + (nB(x/3, y/3)-.5)*.5) t = T.DUNE;           // Bagnold Dunes
+    if (distSeg(x, y, 44, 43, 38, 31) < .9) t = T.CHAN;                                    // Gediz Vallis
+    if (y < 1 + nA(x/4, 2)*2.5) t = T.RIM;                                                 // the crater wall to the north
+    w.ter[y*MW+x] = t;
+  }
+  w.relief = [{kind:'mound', x:48.5, y:42.5, rx:24, ry:18, h:3.2, layers:true}, {kind:'ridge', ax:29.5, ay:22.5, bx:42.5, by:17.5, w:1.6, h:.9}];
+}
 function terMoon(w, seed){
   const nA = makeNoise(seed+11), nB = makeNoise(seed+23);
   for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
@@ -110,7 +155,7 @@ function placeMinerals(w, map, seed){
 }
 MR.genWorld = function (map, seed, cadetGems) {
   const w = blankWorld(map, seed, cadetGems), r = mulberry32(seed), M = MR.MAPS[map];
-  if (map === 'gusev') terGusev(w, seed); else if (map === 'moon') terMoon(w, seed); else terJezero(w, seed);
+  if (map === 'gusev') terGusev(w, seed); else if (map === 'moon') terMoon(w, seed); else if (map === 'meridiani') terMeridiani(w, seed); else if (map === 'gale') terGale(w, seed); else terJezero(w, seed);
   const S = M.station;
   for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
     const i = y*MW+x, t = w.ter[i];
@@ -133,6 +178,27 @@ MR.genWorld = function (map, seed, cadetGems) {
     place('glass', 3, (x,y,t) => !MR.TER[t].block && y < 33 && Math.abs(x - w.rilleX(y)) > 1.5 && Math.abs(x - w.rilleX(y)) < 4.5);
     place('breccia', 5, isT(T.HILL, T.BED));
     place('moon_basalt', 12, isT(T.FLOOR));
+  } else if (map === 'meridiani') {
+    nearest(48, 35, 'art_opportunity');
+    place('hematite', 7, isT(T.FLOOR, T.DUNE));
+    place('jarosite', 3, (x,y,t) => t === T.BED && x < 24);
+    place('salts', 3, (x,y,t) => (t === T.BED || t === T.CHAN) && Math.hypot(x-20, y-18) < 5);
+    place('meteorite', 1, (x,y,t) => t === T.FLOOR && Math.hypot(x-21, y-23) < 4);           // Heat Shield Rock
+    place('gypsum', 3, (x,y,t) => t === T.HILL && y < 20);                                    // Homestake, Cape York
+    place('clay', 2, (x,y,t) => t === T.HILL && y < 20);                                      // Matijevic Hill
+    place('mn_oxide', 2, (x,y,t) => t === T.HILL && y > 25);
+    place('basalt', 12, isT(T.FLOOR, T.BED));
+  } else if (map === 'gale') {
+    place('clay', 4, (x,y,t) => t === T.CHAN && Math.hypot(x-22, y-8) < 6);                   // John Klein, Yellowknife Bay
+    place('clay', 2, (x,y,t) => !MR.TER[t].block && Math.hypot(x-34, y-29) < 4);              // Glen Torridon
+    place('mn_oxide', 2, (x,y,t) => Math.hypot(x-22, y-19) < 4);                              // the Kimberley
+    place('organics', 3, (x,y,t) => (t === T.BED || t === T.PLATE) && Math.hypot(x-31, y-30) < 5);  // Pahrump Hills
+    place('gypsum', 3, (x,y,t) => (t === T.BED || t === T.PLATE) && Math.hypot(x-29, y-31) < 6);
+    place('hematite', 3, (x,y,t) => t === T.HILL && distSeg(x, y, 29, 22, 42, 17) < 2.2);    // Vera Rubin Ridge
+    place('salts', 3, (x,y,t) => t === T.PLATE && Math.hypot(x-42, y-30) < 8);                // sulfate unit
+    place('meteorite', 1, isT(T.FLOOR));                                                      // Lebanon
+    place('olivine', 3, isT(T.DUNE));
+    place('basalt', 12, isT(T.FLOOR, T.BED));
   } else if (map === 'gusev') {
     nearest(36, 32, 'art_spirit');
     place('silica', 3, (x,y,t) => Math.hypot(x-41,y-28) < 6.5 && Math.hypot(x-41,y-28) > 2);
@@ -155,7 +221,7 @@ MR.genWorld = function (map, seed, cadetGems) {
     place('basalt', 12, isT(T.FLOOR, T.BED));
   }
   if (cadetGems) {
-    const kinds = map === 'moon' ? ['moon_basalt','breccia','glass'] : map === 'gusev' ? ['olivine','salts','silica','meteorite','carbonate','basalt'] : ['olivine','clay','salts','meteorite','carbonate','basalt'];
+    const kinds = map === 'moon' ? ['moon_basalt','breccia','glass'] : map === 'meridiani' ? ['hematite','salts','meteorite','basalt'] : map === 'gale' ? ['clay','olivine','salts','basalt'] : map === 'gusev' ? ['olivine','salts','silica','meteorite','carbonate','basalt'] : ['olivine','clay','salts','meteorite','carbonate','basalt'];
     let k = 0, g = 0;
     while (k < 10 && g++ < 4000) {
       const x = Math.floor(r()*MW), y = Math.floor(r()*MH), i = y*MW+x, d = Math.hypot(x-S.x, y-S.y);
@@ -168,7 +234,7 @@ MR.genWorld = function (map, seed, cadetGems) {
     if (w.ter[i] !== T.DUNE || w.res[i] || w.obs[i]) continue;
     const x = i % MW, y = (i / MW) | 0;
     if (MR.nearStation(map,x,y,8)) continue;
-    const troy = map === 'gusev' && Math.hypot(x-36, y-32) < 3.5;
+    const troy = (map === 'gusev' && Math.hypot(x-36, y-32) < 3.5) || (map === 'meridiani' && Math.hypot(x-27, y-24) < 3);
     if (r() < (troy ? .35 : .1)) w.trap[i] = 1;
   }
   placeMinerals(w, map, seed);
@@ -215,6 +281,8 @@ MR.cloneWorld = w => {
 const COLS = {
   jezero:[[181,96,61],[150,78,51],[210,140,92],[160,104,80],[138,76,54],[108,56,41],[150,92,66],[96,54,40],[196,150,118],[70,40,30]],
   gusev: [[166,98,68],[136,80,58],[204,142,98],[160,104,80],[128,74,54],[104,58,44],[156,96,68],[94,56,42],[204,170,140],[70,40,30]],
+  meridiani:[[92,70,62],[196,160,122],[120,86,70],[160,104,80],[150,118,94],[110,72,56],[150,110,84],[100,62,48],[204,176,140],[70,40,30]],
+  gale:  [[184,128,86],[162,112,78],[86,70,66],[160,104,80],[170,124,92],[118,76,56],[176,126,94],[112,74,56],[206,164,124],[70,40,30]],
   moon:  [[104,103,100],[146,144,138],[124,122,118],[112,110,106],[96,95,92],[150,148,143],[138,136,131],[118,116,112],[160,158,152],[44,44,46]],
 };
 /* The terrain picture: a height map lit from the north-west (hillshading), so craters, the delta,
@@ -225,7 +293,8 @@ MR.bakeTerrain = function (w) {
   const S = 10, PW = MW*S, PH = MH*S;
   // tile heights, blurred once so slopes look natural
   const th = new Float32Array(N), tb = new Float32Array(N);
-  for (let i=0;i<N;i++) { const x = i % MW, y = (i/MW)|0, t = w.ter[i]; th[i] = HEIGHT[t] + (t === T.RIM || t === T.HILL || t === T.CLIFF ? (nz(x/4+20, y/4)-.5)*1.2 : (nz(x/5, y/5)-.5)*.25); }
+  const rel = w.relief || [], inRelief = (x, y) => rel.some(o => o.kind === 'crater' ? Math.hypot(x - o.x, y - o.y) < o.R*1.5 : o.kind === 'mound' ? ((x-o.x)/o.rx)**2 + ((y-o.y)/o.ry)**2 < 1.1 : distSeg(x, y, o.ax, o.ay, o.bx, o.by) < o.w + 1);
+  for (let i=0;i<N;i++) { const x = i % MW, y = (i/MW)|0, t = w.ter[i]; th[i] = (inRelief(x + .5, y + .5) ? HEIGHT[0] : HEIGHT[t]) + (t === T.RIM || t === T.HILL || t === T.CLIFF ? (nz(x/4+20, y/4)-.5)*1.2 : (nz(x/5, y/5)-.5)*.25); }
   for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) { let s2 = 0, n2 = 0; for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) { if (!MR.inb(x+dx,y+dy)) continue; const wt = dx||dy ? 1 : 2; s2 += th[(y+dy)*MW+x+dx]*wt; n2 += wt; } tb[y*MW+x] = s2/n2; }
   const bil = (arr, fx, fy) => { const x0 = Math.max(0, Math.min(MW-1, Math.floor(fx))), y0 = Math.max(0, Math.min(MH-1, Math.floor(fy))), x1 = Math.min(MW-1, x0+1), y1 = Math.min(MH-1, y0+1), tx = Math.max(0, Math.min(1, fx-x0)), ty = Math.max(0, Math.min(1, fy-y0));
     return (arr[y0*MW+x0]*(1-tx) + arr[y0*MW+x1]*tx)*(1-ty) + (arr[y1*MW+x0]*(1-tx) + arr[y1*MW+x1]*tx)*ty; };
@@ -241,6 +310,13 @@ MR.bakeTerrain = function (w) {
     const dw = bil(dune, fx, fy);
     if (dw > 0) { const ph = (ux*wc + uy*ws) * Math.PI*2/1.5 + nd(ux*.22, uy*.22)*1.4, sw = Math.sin(ph);
       h += dw * (.03 + .035*nd(ux*.8+3, uy*.8)) * (sw > 0 ? sw : sw*.4); }
+    for (const o of rel) {
+      if (o.kind === 'crater') { const a = Math.atan2(uy - o.y, ux - o.x), R = o.R * (1 + (o.scallop ? .06*Math.sin(a*o.scallop) : 0)), d = Math.hypot(ux - o.x, uy - o.y) / R;
+        if (d < 1) h -= o.depth * (1 - d*d); h += o.depth * .55 * Math.exp(-(((d - 1)/.22)**2)); }
+      else if (o.kind === 'mound') { const d = Math.sqrt(((ux-o.x)/o.rx)**2 + ((uy-o.y)/o.ry)**2);
+        if (d < 1.15) { const k = Math.max(0, 1 - d); h += o.h * (k*k*(3 - 2*k)) + (o.layers ? .08*Math.sin(d*55) * k : 0); } }
+      else if (o.kind === 'ridge') { const d = distSeg(ux, uy, o.ax, o.ay, o.bx, o.by) / o.w; if (d < 2) h += o.h * Math.exp(-d*d*1.5); }
+    }
     H[at(px, py)] = h;
   }
   craters.forEach(c => { const R = c.R, x0 = Math.floor((c.x - R*2)*S), x1 = Math.ceil((c.x + R*2)*S), y0 = Math.floor((c.y - R*2)*S), y1 = Math.ceil((c.y + R*2)*S);
