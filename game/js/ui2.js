@@ -136,4 +136,14 @@ if (MR.PREVIEW && MR.PREVIEW.includes('menu')) {
     $('mResume').hidden = $('resumePanel').hidden; };
   UI.renderHome();
 }
+/* Title screen (preview: ?preview=splash): only the picture and one PLAY button. PLAY opens the start screen.
+   It shows once per visit; coming back from a game goes straight to the start screen. */
+if (MR.PREVIEW && MR.PREVIEW.includes('splash')) {
+  const sp = document.createElement('div'); sp.className = 'splash'; sp.id = 'splash';
+  sp.innerHTML = '<button class="splashplay" id="splashPlay">▶&nbsp; PLAY</button><p class="splashtag">Plan. Send. Explore. Real places on Mars and the Moon, played together.</p>';
+  document.body.append(sp); document.body.classList.add('onsplash');
+  const go = () => { sp.classList.add('out'); document.body.classList.remove('onsplash'); MR.sfx && MR.sfx.click(); setTimeout(() => sp.remove(), 350); };
+  $('splashPlay').onclick = go;
+  addEventListener('keydown', e => { if (document.getElementById('splash') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } });
+}
 })();
