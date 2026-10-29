@@ -16,6 +16,9 @@ const myRover = () => G.state && G.state.rovers.find(r => r.pid === G.myPid);
 const myRole = () => (myRover() || me() || {role:'explorer'}).role;
 const isHostish = () => G.mode === 'solo' || G.mode === 'host';
 const team = () => G.mode !== 'solo';
+/* Code mode: Specialists always write Python; Explorers can switch to it from the Python tab ("Write my own"),
+   and the choice is kept in their profile. */
+const isCode = r => !!r && (r.role === 'specialist' || (r.role === 'explorer' && r.pid === G.myPid && !!(me() || {}).pyMode));
 
 /* ---------- start-up ---------- */
 $('fast').checked = MR.Store.settings.fast; $('sound').checked = MR.Store.settings.sound;
@@ -386,7 +389,7 @@ function enterGame(st){
   const M = MR.MAPS[st.map];
   log('info', `Welcome to ${M.name}! ${M.blurb}`);
   if (myRole() === 'cadet') log('info', 'Tap the pictures to plan, then press GO!');
-  if (myRole() === 'specialist' && !$('editor').dataset.touched) $('editor').value = `from mars import rover\n\n# Scan around, then head out.\nrover.scan()\nfor i in range(2):\n    rover.forward(3)\nrover.analyze()\n`;
+  if (isCode(myRover()) && !$('editor').dataset.touched) $('editor').value = `from mars import rover\n\n# Scan around, then head out.\nrover.scan()\nfor i in range(2):\n    rover.forward(3)\nrover.analyze()\n`;
   R.resize(); R.cam.follow = true; setTimeout(() => R.focus(G.myPid, true), 30);
   renderGame(); updateGhost(); saveExpedition();
   if (st.camp && st.camp.i === 0 && st.sol === 1 && !G.noSave && myRole() !== 'cadet' && q.get('brief') !== '0') setTimeout(() => { if (!UI.modalOpen()) briefingModal(); }, 500);
@@ -399,13 +402,53 @@ function setGameState(st){
 }
 function renderGame(){
   if (!G.state) return;
-  const r = myRover(), role = r ? r.role : 'explorer', cadet = role === 'cadet', code = role === 'specialist';
+  const r = myRover(), role = r ? r.role : 'explorer', cadet = role === 'cadet', code = isCode(r);
   $('cadetPanel').hidden = !cadet; $('planPanel').hidden = cadet;
   $('tabs').hidden = code; $('editor').hidden = !code; $('prog').hidden = code || G.showCode; $('code').hidden = code || !G.showCode;
   $('planTitle').textContent = code ? "Today's program" : "Today's plan";
   $('howList').innerHTML = MR.HOW[role].map(h => `<li>${esc(h)}</li>`).join('');
   $('chatRow').hidden = !team() || !msgRules().chat;
+  renderPyBar();
   renderPalette(); renderPlan(); renderHud(); renderSide(); renderCrewBar(); renderTeam(); renderLock(); renderNet(); computeHints(); renderNudges(); renderFinds(); renderWeather(); renderLab(); renderRelay();
+}
+/* Explorers: write Python instead of blocks, and back. Switching to Python starts from the blocks' own code. */
+function renderPyBar(){
+  const r = myRover(), p = me(), box = $('pyBar'); if (!r || r.role !== 'explorer' || r.job === 'lab' || !p) { box.hidden = true; return; }
+  if (p.pyMode) box.innerHTML = `<span><b>You are writing Python.</b> The blocks below the editor still add lines for you.</span><button class="btn" id="pyBack">Back to blocks</button>`;
+  else if (G.showCode) box.innerHTML = `<span>This is your plan in Python. Want to write it yourself?</span><button class="btn primary" id="pyGo">✎ Write my own Python</button>`;
+  else { box.hidden = true; return; }
+  box.hidden = false;
+  if ($('pyGo')) $('pyGo').onclick = () => setPyMode(true);
+  if ($('pyBack')) $('pyBack').onclick = () => setPyMode(false);
+}
+function setPyMode(on){
+  const p = me(); if (!p || G.ready || G.phase !== 'plan') return;
+  const start = on ? ($('code').textContent || '').replace(/^# Sol \d+ plan\n/, '').trim() : '';
+  p.pyMode = on; p.tips = p.tips || {}; p.tips.py = true; MR.Store.save(); G.undo = [];
+  if (on) { $('editor').value = (start.startsWith('from mars') ? start : 'from mars import rover\n\n' + start) + '\n'; $('editor').dataset.touched = '1'; G.plan = []; MR.sfx.click(); }
+  else { G.showCode = false; $('tabBlocks').setAttribute('aria-selected', true); $('tabCode').setAttribute('aria-selected', false); }
+  renderGame(); if (on) setTimeout(() => $('editor').focus(), 50);
+}
+/* Tips that point Explorers to programming at the right moment, a few times at most. */
+function repeatTip(body){
+  const p = me(), r = myRover(); if (!p || !r || r.role !== 'explorer' || p.pyMode) return;
+  const t = body.map(c => c.type), n = t.length;
+  const triple = n >= 3 && t[n-1] === t[n-2] && t[n-2] === t[n-3], pair = n >= 4 && t[n-1] === t[n-3] && t[n-2] === t[n-4] && t[n-1] !== t[n-2];
+  if (!triple && !pair) return;
+  p.tips = p.tips || {}; if ((p.tips.rep || 0) >= 3 || Date.now() - (G.lastRepTip || 0) < 60000) return;
+  p.tips.rep = (p.tips.rep || 0) + 1; G.lastRepTip = Date.now(); MR.Store.save();
+  UI.toast('⟲', '#b48ce8', 'Tip: use a Repeat block', 'Your plan repeats itself. A Repeat block (under Smart) does the same in one step. Programmers call it a loop.', 7000);
+  const b = document.querySelector('.pal[data-b=repeat]'); if (b) { b.classList.add('coachring'); setTimeout(() => b.classList.remove('coachring'), 4000); }
+}
+function offerPython(){
+  const p = me(), r = myRover(); if (!p || !r || r.role !== 'explorer' || p.pyMode || (p.tips && p.tips.py)) return;
+  p.tips = p.tips || {}; p.tips.py = true; MR.Store.save();
+  UI.openModal(`<div class="sh"><h2>Ready for Python?</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div><div class="sb">
+    <p style="margin:0">You finished a whole map with blocks. Real rover teams write their plans as code. Want to try writing yours in <b>Python</b>, a real programming language?</p>
+    <pre class="code" style="margin:0">from mars import rover\n\nfor i in range(3):\n    rover.forward(2)\n    rover.scan()</pre>
+    <p class="muted" style="margin:0">This drives 2 squares and scans, 3 times. You can switch back to blocks any time from the plan panel.</p>
+    <div class="row" style="justify-content:flex-end"><button class="btn" data-close>Maybe later</button><button class="btn primary" id="pyYes">Try Python</button></div></div>`, true);
+  $('pyYes').onclick = () => { UI.closeModal(); setPyMode(true); };
 }
 const WX_ICON = {clear:'☀', hazy:'⛅', storm:'🌪', none:'☾'};
 function renderWeather(){
@@ -512,7 +555,7 @@ function renderMission(){
    After a campaign ends it opens with the debrief of the one just finished. */
 function briefingModal(prev){
   const st = G.state, C = MR.campaignOf(st), r = myRover(); if (!C || !r || r.role === 'cadet') return;
-  const spec = r.role === 'specialist', list = MR.CAMPAIGNS[st.map];
+  const spec = isCode(r), list = MR.CAMPAIGNS[st.map];
   const crit = g => g.kind === 'col' ? `Done when the team drills ${g.of} ${MR.CARDS[g.res].name.toLowerCase()}.` : g.kind === 'ident' ? `Done when Analyze (or a drill sample) identifies ${MR.CARDS[g.res].name.toLowerCase()}.`
     : g.kind === 'sites' ? `Done when ${g.of} new signals are flagged.` : g.kind === 'deliver' ? `Done when ${g.of} samples are delivered.` : '';
   const objs = MR.goalProgress(st).map(g => { const o = MR.objectiveInfo(st, g);
@@ -525,7 +568,7 @@ function briefingModal(prev){
 }
 function objectiveModal(k){
   const st = G.state, g = MR.goalProgress(st).find(x => x.k === k), r = myRover(); if (!g || !r) return;
-  const o = MR.objectiveInfo(st, g), spec = r.role === 'specialist';
+  const o = MR.objectiveInfo(st, g), spec = isCode(r);
   modal(g.t, `<p>${esc(o.what || '')}</p><p class="why"><b>Why scientists want it:</b> ${esc(spec ? o.whyFull || o.why : o.why || '')}</p>${g.res && MR.MINERALS[g.res] ? `<button class="btn" data-tablet="${g.res}">Open the ${esc(MR.CARDS[g.res].name)} tablet</button>` : ''}`);
   document.querySelectorAll('[data-tablet]').forEach(b => b.onclick = () => UI.mineralTablet(b.dataset.tablet));
 }
@@ -597,7 +640,7 @@ const planToPy = acts => acts.map(a => MR.pyOf(a.type, a.arg)).join('\n');
 function applyPlan(acts, replace){
   const r = myRover(); if (!r || G.ready || G.phase !== 'plan') return;
   pushUndo();
-  if (r.role === 'specialist') {
+  if (isCode(r)) {
     const ta = $('editor'), code = planToPy(acts);
     ta.value = replace ? `from mars import rover\n\n${code}\n` : ta.value.replace(/\s*$/, '\n') + code + '\n'; ta.dataset.touched = '1';
   } else {
@@ -647,7 +690,7 @@ $('finds').addEventListener('click', e => {
   if (go) { const i = +go.dataset.go, st = G.state, from = planEnd(), x = i % MW, y = (i/MW)|0; if (!from) return;
     const path = MR.findPath(st, from, (px, py) => px === x && py === y);
     if (!path) { UI.toast('!', '#f0bf5a', 'No route found', 'The rover can not see a safe way there yet.'); return; }
-    const acts = MR.pathToPlan(from, path, Math.max(1, maxPlan() - (myRole() === 'specialist' ? 0 : G.plan.length) - 2));
+    const acts = MR.pathToPlan(from, path, Math.max(1, maxPlan() - (isCode(myRover()) ? 0 : G.plan.length) - 2));
     if (!st.world.known[i]) acts.push({type:'analyze'}); acts.push({type:'drill'}); applyPlan(acts, false);
     if (team() && !(st.sites[i] || {}).claim) toHost({type:'claim', i, on:true}); }
   if (ren) { const li = ren.closest('li'), b = li.querySelector('b'), old = b.textContent;
@@ -719,7 +762,7 @@ function renderPalette(){
     return `<button class="pal cat-${d.cat} ${cls}" data-c="${k}" aria-label="${d.label}${KEYCAP[k] ? ` (${KEYCAP[k]})` : ''}"><span class="ic" aria-hidden="true">${d.icon}</span><span class="lb">${d.label}</span><small>${d.cost}</small>${KEYCAP[k] ? `<span class="key">${KEYCAP[k]}</span>` : ''}</button>`; };
   const group = (label, keys, cls) => { const ks = keys.filter(k => have.includes(k)); return ks.length ? `<div class="pgroup ${cls||''}"><span class="pgl">${label}</span><div class="pbtns">${ks.map(k => btn(k)).join('')}</div></div>` : ''; };
   if (have.includes('catalog')) { $('palette').innerHTML = group('Lab', ['catalog','make_water','make_metal','make_bricks','make_glass']) + group('Build', ['build_solar_farm','build_radio_tower','build_garage','build_greenhouse']); return; }
-  const relay = relayOK(), r = myRover(), code = r && r.role === 'specialist';
+  const relay = relayOK(), r = myRover(), code = r && isCode(r);
   const blk = k => { const b = MR.BLOCKS[k]; return `<button class="pal blk ${b.relay && !relay ? 'locked' : ''}" data-b="${k}" aria-label="${b.label}" title="${esc(b.desc)}${b.relay && !relay ? ' (needs the satellite relay kit)' : ''}" ${b.relay && !relay ? 'disabled' : ''}><span class="ic" aria-hidden="true">${b.icon}</span><span class="lb">${b.label}</span><small>${code ? 'Python' : 'holds blocks'}</small></button>`; };
   $('palette').innerHTML = `<div class="pgroup drive"><span class="pgl">Drive</span><div class="dpad">${btn('forward','up')}${btn('left','lf')}${btn('back','dn')}${btn('right','rt')}</div></div>`
     + group('Science', ['scan','analyze','drill','photo']) + group('Tools', ['dig']) + group('Power', ['charge'])
@@ -728,7 +771,9 @@ function renderPalette(){
 }
 /* The satellite relay kit unlocks at the second rank (uses the live profile, so it works mid-expedition). */
 function relayOK(){ const r = myRover(), p = me(), m = G.state && G.state.day && MR.missionOf(G.state.day);
-  return !!r && r.role !== 'cadet' && r.job !== 'lab' && !!p && (MR.rankOf(p.xp) >= 1 || !!(m && m.week >= 4)); }
+  /* Unlocks at Rover Driver, or as soon as the first campaign of a map is done (so it shows up in normal play). */
+  const camp = G.state && !G.state.day && G.state.camp && G.state.camp.i >= 1, exp = p && Object.values((p.stats || {}).exp || {}).some(v => v > 0);
+  return !!r && r.role !== 'cadet' && r.job !== 'lab' && !!p && (MR.rankOf(p.xp) >= 1 || camp || exp || !!(m && m.week >= 4)); }
 const isBlk = c => !!(c && MR.BLOCKS[c.type]);
 const countIn = list => list.reduce((n, c) => n + 1 + (c.body ? countIn(c.body) : 0), 0);
 function planCount(){ return countIn(G.plan); }
@@ -740,14 +785,14 @@ function curBody(){ const f = G.cursor != null ? locate(G.cursor) : null; return
 const MAX_DEPTH = 2;
 function renderRelay(){
   const r = myRover(), box = $('relayBar'); if (!r || !G.state || r.role === 'cadet' || r.job === 'lab') { box.innerHTML = ''; return; }
-  const ok = relayOK(), canEdit = G.phase === 'plan' && !G.ready, P = r.prog, code = r.role === 'specialist';
+  const ok = relayOK(), canEdit = G.phase === 'plan' && !G.ready, P = r.prog, code = isCode(r);
   let h = '';
   if (P) h += `<div class="progcard"><span class="pi">⌁</span><span><b>Program running</b><small>Sol ${P.sols - P.solsLeft + 1} of ${P.sols}${P.name ? ' · ' + esc(P.name) : ''}. ${G.cancelProg ? 'It will be cancelled when you send.' : 'Send an empty plan to let it keep going, or make a new plan to replace it.'}</small></span><button class="btn" id="cancelProg" ${canEdit ? '' : 'disabled'}>${G.cancelProg ? 'Keep it' : 'Cancel program'}</button></div>`;
   h += `<div class="relayrow">`;
   if (ok && !code) h += `<button class="btn sol2 ${G.relaySols > 1 ? 'on' : ''}" id="sols2" ${canEdit ? '' : 'disabled'} aria-pressed="${G.relaySols > 1}" title="The relay satellite keeps your plan running the next sol too">⌁ Run for 2 sols${G.relaySols > 1 ? ' ✓' : ''}</button>`;
   h += `<button class="btn" id="recipesBtn" ${canEdit ? '' : 'disabled'}>Recipes</button>`;
   if (code) h += `<button class="btn" id="sensorsBtn">Sensors</button>`;
-  if (!ok) { const p = me(); h += `<span class="relaylock">⌁ Satellite relay kit unlocks at ${esc(MR.RANKS[1].name)}${p ? ` (${Math.max(0, MR.RANKS[1].xp - p.xp)} XP to go)` : ''}</span>`; }
+  if (!ok) { const p = me(); h += `<span class="relaylock">⌁ Satellite relay kit unlocks after this campaign, or at ${esc(MR.RANKS[1].name)}${p ? ` (${Math.max(0, MR.RANKS[1].xp - p.xp)} XP to go)` : ''}</span>`; }
   h += `</div>`;
   box.innerHTML = h;
 }
@@ -761,7 +806,7 @@ $('relayBar').addEventListener('click', e => {
 });
 const modal = (title, body) => UI.openModal(`<div class="sh"><h2>${esc(title)}</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div><div class="sb">${body}</div>`);
 function recipesModal(){
-  const r = myRover(); if (!r) return; const ok = relayOK(), code = r.role === 'specialist';
+  const r = myRover(); if (!r) return; const ok = relayOK(), code = isCode(r);
   modal('Mission recipes', `<p class="muted">Ready-made programs to start from. Pick one, then change it however you like.</p><div class="recipes">${MR.RECIPES.map(x => {
     const lock = x.relay && !ok;
     return `<button class="recipe" data-rec="${x.id}" ${lock ? 'disabled' : ''}><span class="ri">${x.icon}</span><span><b>${esc(x.name)}</b>${x.sols > 1 ? ' <i>2 sols</i>' : ''}<small>${esc(x.desc)}${lock ? ' Needs the satellite relay kit.' : ''}</small></span></button>`; }).join('')}</div>`
@@ -771,7 +816,7 @@ function recipesModal(){
 function useRecipe(x){
   const r = myRover(); if (!r || G.ready || G.phase !== 'plan') return;
   pushUndo();
-  if (r.role === 'specialist') { $('editor').value = x.py; $('editor').dataset.touched = '1'; $('err').hidden = true; }
+  if (isCode(r)) { $('editor').value = x.py; $('editor').dataset.touched = '1'; $('err').hidden = true; }
   else { G.plan = JSON.parse(JSON.stringify(x.blocks)).map(fillBlock); G.cursor = null; G.relaySols = relayOK() ? x.sols : 1; }
   MR.sfx.click(); renderPlan(); renderRelay(); renderLock(); updateGhost();
 }
@@ -863,7 +908,7 @@ function renderPlan(){
     $('cadetCount').textContent = `${G.plan.length} / ${n}`;
     return;
   }
-  if (r.role === 'specialist') { $('count').textContent = `max ${MR.ROLES.specialist.maxCmd} moves`; return; }
+  if (isCode(r)) { $('count').textContent = `max ${MR.ROLES.specialist.maxCmd} moves`; return; }
   $('count').textContent = `${planCount()} / ${maxPlan()}`;
   const dis = G.ready || G.phase !== 'plan' ? 'disabled' : '';
   const pv = planPreview(r);
@@ -909,7 +954,7 @@ function renderLock(){
   $('clearBtn').disabled = !canEdit;
   $('trashBtn').disabled = !canEdit;
   const empty = r.role !== 'specialist' && !G.plan.length, hasPlan = true;
-  const keep = r.prog && !G.cancelProg && (r.role === 'specialist' ? !progTouched() : !G.plan.length);
+  const keep = r.prog && !G.cancelProg && (isCode(r) ? !progTouched() : !G.plan.length);
   const label = G.phase === 'run' ? 'Rovers driving…' : G.phase === 'won' && !G.contAfterWin ? 'Done' : G.ready ? 'Change plan' : keep ? 'Keep program running' : empty ? 'Wait this sol' : team() ? 'Ready' : 'Send to Mars';
   $('sendBtn').textContent = label; $('sendBtn').disabled = G.phase !== 'plan' || (!G.ready && !hasPlan);
   $('goBtn').textContent = G.phase === 'run' ? '…' : G.ready ? 'WAITING' : 'GO!';
@@ -917,7 +962,7 @@ function renderLock(){
 }
 function planActions(){
   const r = myRover(); if (!r) return {actions:[]};
-  if (r.role === 'specialist') {
+  if (isCode(r)) {
     if (r.prog && !progTouched()) return {actions:[], keep:true};
     const res = MR.parsePy($('editor').value, MR.ROLES.specialist.maxCmd, {relay:relayOK()});
     if (res.error) return {error:res.error};
@@ -955,13 +1000,13 @@ function updateGhost(){
   draftTimer = setTimeout(() => toHost({type:'draft', path:R.ghost.map(p => [p[0], p[1]])}), 250);
 }
 const _ug = updateGhost; updateGhost = function(){ _ug(); planEstimate(); };
-function pushUndo(){ const r = myRover(); G.undo = G.undo || []; G.undo.push(r && r.role === 'specialist' ? {code:$('editor').value} : {plan:JSON.parse(JSON.stringify(G.plan))}); if (G.undo.length > 40) G.undo.shift(); }
+function pushUndo(){ const r = myRover(); G.undo = G.undo || []; G.undo.push(r && isCode(r) ? {code:$('editor').value} : {plan:JSON.parse(JSON.stringify(G.plan))}); if (G.undo.length > 40) G.undo.shift(); }
 function undo(){ if (G.ready || G.phase !== 'plan' || !G.undo || !G.undo.length) return; const u = G.undo.pop();
   if (u.code != null) $('editor').value = u.code; else { G.plan = u.plan; G.cursor = null; } MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); renderNudges(); }
 function addCmd(k){
   const r = myRover(); if (!r || G.phase !== 'plan' || G.ready) return;
   pushUndo();
-  if (r.role === 'specialist') return insertPy(k);
+  if (isCode(r)) return insertPy(k);
   const body = r.role === 'cadet' ? G.plan : curBody(), last = body[body.length - 1];
   if (r.role !== 'cadet' && last && last.type === k && (k === 'forward' || k === 'back') && last.arg < 20) {
     last.arg++; G.plan.forEach(c => c.state = ''); MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); return;
@@ -969,12 +1014,12 @@ function addCmd(k){
   if ((r.role === 'cadet' ? G.plan.length : planCount()) >= maxPlan()) { MR.sfx.bump(); return; }
   G.plan.forEach(c => c.state = '');
   body.push({type:k, arg: MR.CMDS[k] && MR.CMDS[k].arg ? 1 : undefined});
-  MR.sfx.click(); renderPlan(); renderLock(); updateGhost();
+  MR.sfx.click(); renderPlan(); renderLock(); updateGhost(); repeatTip(body);
 }
 function addBlock(k){
   const r = myRover(), b = MR.BLOCKS[k]; if (!r || !b || G.phase !== 'plan' || G.ready || (b.relay && !relayOK())) return;
   pushUndo();
-  if (r.role === 'specialist') return insertPyLine(b.py(b.def || 3), true);
+  if (isCode(r)) return insertPyLine(b.py(b.def || 3), true);
   if (planCount() >= maxPlan() - 1) { MR.sfx.bump(); return; }
   G.plan.forEach(c => c.state = '');
   const depth = G.cursor != null ? String(G.cursor).split('.').length : 0;
@@ -1038,7 +1083,7 @@ $('editor').addEventListener('keydown', e => {
 });
 let pyTimer = null;
 $('editor').addEventListener('input', e => { e.target.dataset.touched = '1'; $('err').hidden = true; clearTimeout(pyTimer); pyTimer = setTimeout(updateGhost, 250); });
-$('clearBtn').onclick = () => { if (G.ready || G.phase !== 'plan') return; pushUndo(); if (myRole() === 'specialist') { $('editor').value = 'from mars import rover\n\n'; $('editor').dataset.touched = '1'; } else { G.plan = []; G.cursor = null; } renderPlan(); renderLock(); updateGhost(); };
+$('clearBtn').onclick = () => { if (G.ready || G.phase !== 'plan') return; pushUndo(); if (isCode(myRover())) { $('editor').value = 'from mars import rover\n\n'; $('editor').dataset.touched = '1'; } else { G.plan = []; G.cursor = null; } renderPlan(); renderLock(); updateGhost(); };
 $('tabBlocks').onclick = () => { G.showCode = false; $('tabBlocks').setAttribute('aria-selected', true); $('tabCode').setAttribute('aria-selected', false); renderGame(); };
 $('tabCode').onclick = () => { G.showCode = true; $('tabBlocks').setAttribute('aria-selected', false); $('tabCode').setAttribute('aria-selected', true); renderGame(); };
 $('sendBtn').onclick = () => sendPlan();
@@ -1054,7 +1099,7 @@ function sendPlan(){
   G.plan.forEach(c => c.state = ''); G.cursor = null;
   toHost({type:'plan', actions:pa.actions, program:pa.program || null, cancel:!!G.cancelProg && !pa.program, loop:!!(pa.info && pa.info.loops)});
   if (team()) uplink(true);
-  if (pa.program && myRole() === 'specialist') $('editor').dataset.touched = '';
+  if (pa.program && isCode(myRover())) $('editor').dataset.touched = '';
   renderPlan(); renderTeam();
 }
 
@@ -1067,7 +1112,7 @@ function tween(ms, f){
 const wait = ms => new Promise(r => setTimeout(r, ms * MR.speed()));
 function markPlan(idx, skipped){
   const r = myRover(); if (!r) return;
-  if (r.role === 'specialist') { if (idx != null && !skipped) { $('runLine').hidden = false; $('runLine').textContent = `Running line ${idx}`; } return; }
+  if (isCode(r)) { if (idx != null && !skipped) { $('runLine').hidden = false; $('runLine').textContent = `Running line ${idx}`; } return; }
   G.plan.forEach((c, i) => { if (skipped) { if (i > idx) c.state = 'skipped'; } else c.state = i < idx ? 'done' : i === idx ? 'active' : (c.state === 'skipped' ? 'skipped' : ''); });
   renderPlan();
 }
@@ -1172,6 +1217,7 @@ async function playSol(timeline, newState){
   R.running = false; $('runLine').hidden = true; MR.music.setMode('plan');
   setGameState(newState); saveExpedition();
   const won = timeline.some(t => t.some(e => e.t === 'win'));
+  if (won && !newState.day) setTimeout(() => { if (!UI.modalOpen()) offerPython(); else G.pyOfferLater = true; }, 4000);
   const p = me();
   if (p) {
     const code = myRole() === 'cadet' ? null : codeReview(timeline.flat().filter(e => e.pid === G.myPid), G.planInfo, newState);
@@ -1329,7 +1375,7 @@ $('tapMenu').addEventListener('click', e => {
   const st = G.state, from = planEnd(); if (!from) return;
   const path = MR.findPath(st, from, a === 'home' ? (px, py) => MR.onStation(st.map, px, py) : (px, py) => px === x && py === y);
   if (!path) { UI.toast('!', '#f0bf5a', 'No route found', 'The rover can not see a safe way there yet.'); return; }
-  const room = maxPlan() - (myRole() === 'specialist' ? 0 : G.plan.length);
+  const room = maxPlan() - (isCode(myRover()) ? 0 : G.plan.length);
   const acts = MR.pathToPlan(from, path, Math.max(1, room - (a === 'check' ? 2 : a === 'drivescan' ? 1 : 0)));
   if (a === 'check') { const i = y*MW + x; if (!st.world.known[i]) acts.push({type:'analyze'}); acts.push({type:'drill'}); }
   if (a === 'drivescan') acts.push({type:'scan'});

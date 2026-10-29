@@ -99,10 +99,14 @@ function startCampaign(st, i, n){
   const C = st.day ? MR.dayCampaign(st.day) : MR.CAMPAIGNS[st.map][i], tm = st.team;
   st.camp = {i, n, started:st.sol, day:st.day || undefined, base:{delivered:tm.delivered, sites:Object.keys(st.sites || {}).length, squares:tm.squares || 0, scans:tm.scans || 0, photos:tm.photos || 0, smart:tm.smart || 0, relay:tm.relay || 0, loops:tm.loops || 0, freed:tm.freed || 0}};
   st.goals = C.obj(n).map((g, k) => ({k, t:g.t, kind:g.kind, res:g.res, region:g.region, of:g.of, bonus:!!g.bonus}));
+  /* Map campaigns (not Mission Log days, which teach coding their own way) each have one code challenge, so
+     programming comes up in normal play. Any player on the team can do it. */
+  if (!st.day && MR.CODE_CHALLENGES) { const ci = i % MR.CODE_CHALLENGES.length, cc = MR.CODE_CHALLENGES[ci];
+    st.goals.splice(1, 0, {k:-1, code:ci, t:cc.t, kind:cc.kind, of:cc.of, bonus:false}); }
 }
 MR.campaignOf = st => !st.camp ? null : st.camp.day ? MR.dayCampaign(st.camp.day) : MR.CAMPAIGNS[st.map] ? MR.CAMPAIGNS[st.map][st.camp.i] : null;
 MR.campaignCount = st => st.camp && st.camp.day ? 1 : (MR.CAMPAIGNS[st.map] || []).length;
-MR.objectiveInfo = (st, g) => { const C = MR.campaignOf(st); return C ? C.obj(st.camp.n)[g.k] : g; };
+MR.objectiveInfo = (st, g) => { if (g.code != null && MR.CODE_CHALLENGES) return MR.CODE_CHALLENGES[g.code]; const C = MR.campaignOf(st); return C ? C.obj(st.camp.n)[g.k] : g; };
 /* Older saves had plain goals; give them campaigns (progress already made still counts). */
 MR.ensureCampaign = st => {
   if (st.camp || st.day || !MR.CAMPAIGNS[st.map] || st.goals.some(g => g.kind === 'treasure')) return st;

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 460" font-family="Arial, Helvetica, sans-serif">
+  <!-- How Curiosity's two labs work: drill, powder, CheMin (minerals) and SAM (gases). A simple drawing, not to scale. -->
+  <rect width="800" height="460" fill="#fbf7f2"/>
+  <text x="400" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#2a2420">The labs inside Curiosity</text>
+  <text x="400" y="56" text-anchor="middle" font-size="13" fill="#6b625a">A simple drawing, not to scale</text>
+  <!-- ground and rock -->
+  <path d="M0 400 Q200 385 400 398 T800 392 V460 H0Z" fill="#d39a72"/>
+  <path d="M60 400 Q90 360 150 366 Q200 372 205 402Z" fill="#a8653e"/>
+  <!-- rover body -->
+  <rect x="250" y="150" width="440" height="150" rx="16" fill="#e8ebee" stroke="#8d949c" stroke-width="3"/>
+  <circle cx="300" cy="330" r="34" fill="#4b5056"/><circle cx="470" cy="330" r="34" fill="#4b5056"/><circle cx="640" cy="330" r="34" fill="#4b5056"/>
+  <circle cx="300" cy="330" r="12" fill="#b0b7be"/><circle cx="470" cy="330" r="12" fill="#b0b7be"/><circle cx="640" cy="330" r="12" fill="#b0b7be"/>
+  <!-- arm and drill -->
+  <path d="M260 175 L190 230 L150 300" fill="none" stroke="#8d949c" stroke-width="10" stroke-linecap="round"/>
+  <rect x="128" y="296" width="44" height="34" rx="6" fill="#5d636a"/>
+  <rect x="146" y="330" width="8" height="34" fill="#c9a227"/>
+  <text x="40" y="250" font-size="15" font-weight="700" fill="#2a2420">1. Drill</text>
+  <text x="40" y="268" font-size="13" fill="#4a423c">makes rock powder</text>
+  <!-- powder path -->
+  <path d="M150 296 Q170 130 330 128 L330 150" fill="none" stroke="#c9a227" stroke-width="4" stroke-dasharray="8 7"/>
+  <path d="M150 296 Q190 100 560 118 L560 150" fill="none" stroke="#c9a227" stroke-width="4" stroke-dasharray="8 7"/>
+  <text x="300" y="96" font-size="15" font-weight="700" fill="#2a2420">2. A pinch of powder goes into two inlets</text>
+  <rect x="316" y="140" width="28" height="14" rx="3" fill="#5d636a"/><rect x="546" y="140" width="28" height="14" rx="3" fill="#5d636a"/>
+  <!-- CheMin -->
+  <rect x="280" y="170" width="170" height="118" rx="10" fill="#dff1ee" stroke="#3aa595" stroke-width="2.5"/>
+  <text x="365" y="192" text-anchor="middle" font-size="16" font-weight="700" fill="#1f5a52">CheMin</text>
+  <circle cx="330" cy="236" r="9" fill="#f2d27a" stroke="#8a6320" stroke-width="2"/>
+  <path d="M290 236 L321 236" stroke="#e8484a" stroke-width="3"/><path d="M339 236 L400 222 M339 236 L404 236 M339 236 L400 250" stroke="#e8484a" stroke-width="2" stroke-dasharray="4 3"/>
+  <rect x="404" y="214" width="8" height="44" fill="#3a3f47"/>
+  <text x="365" y="266" text-anchor="middle" font-size="12" fill="#1f5a52">X-rays shine through</text><text x="365" y="280" text-anchor="middle" font-size="12" fill="#1f5a52">the powder</text>
+  <!-- SAM -->
+  <rect x="490" y="170" width="180" height="118" rx="10" fill="#f4e6f7" stroke="#9a5ee0" stroke-width="2.5"/>
+  <text x="580" y="192" text-anchor="middle" font-size="16" font-weight="700" fill="#5a2f8a">SAM</text>
+  <rect x="510" y="210" width="44" height="40" rx="6" fill="#ff9a4d"/><text x="532" y="235" text-anchor="middle" font-size="11" fill="#2a0f04">oven</text>
+  <path d="M554 222 Q575 210 595 222 T635 222" fill="none" stroke="#9a5ee0" stroke-width="2.5"/>
+  <circle cx="645" cy="226" r="12" fill="#c7a6f0" stroke="#5a2f8a" stroke-width="2"/>
+  <text x="580" y="266" text-anchor="middle" font-size="12" fill="#5a2f8a">Bakes the powder,</text><text x="580" y="280" text-anchor="middle" font-size="12" fill="#5a2f8a">sniffs the gas</text>
+  <!-- results -->
+  <text x="365" y="430" text-anchor="middle" font-size="14" font-weight="700" fill="#1f5a52">CheMin: which minerals?</text>
+  <text x="365" y="448" text-anchor="middle" font-size="12" fill="#3a332e">like clay that formed in water</text>
+  <text x="580" y="430" text-anchor="middle" font-size="14" font-weight="700" fill="#5a2f8a">SAM: organic molecules?</text>
+  <text x="580" y="448" text-anchor="middle" font-size="12" fill="#3a332e">carbon building blocks of life</text>
+  <text x="790" y="20" text-anchor="end" font-size="11" fill="#8a8178">Drawing: Crater Crew</text>
+</svg>

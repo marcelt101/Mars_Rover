@@ -122,7 +122,7 @@ function drawStation(c, t, ts){
   const S = MR.MAPS[R.view.map].station, sx = (S.x-R.cam.x)*ts, sy = (S.y-R.cam.y)*ts, s = ts*2;
   drawUpgrades(c, ts);
   if (MR.MAPS[R.view.map].airless) return drawLM(c, sx, sy, s);
-  if (MR.PREVIEW && MR.PREVIEW.includes('station')) return drawBase(c, t, sx, sy, s, ts < 20 ? 0 : ts < 32 ? 1 : 2);
+  return drawBase(c, t, sx, sy, s, ts < 20 ? 0 : ts < 32 ? 1 : 2);
   c.fillStyle='rgba(40,14,6,0.35)'; c.fillRect(sx+s*.08, sy+s*.1, s*.92, s*.92);
   c.fillStyle='#9aa3ab'; c.fillRect(sx+s*.06, sy+s*.06, s*.88, s*.88);
   c.strokeStyle='rgba(240,191,90,0.9)'; c.lineWidth=Math.max(1.5,ts*.05); c.setLineDash([ts*.14,ts*.1]); c.strokeRect(sx+s*.12, sy+s*.12, s*.76, s*.76); c.setLineDash([]);

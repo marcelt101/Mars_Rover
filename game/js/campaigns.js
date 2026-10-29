@@ -189,4 +189,19 @@ MR.CAMPAIGNS = {
       ]},
   ],
 };
+/* Code challenges: one per map campaign (see startCampaign). Blocks for Explorers, Python for Specialists. */
+MR.CODE_CHALLENGES = [
+  {t:'Code challenge: use a loop', kid:'Use the repeat button', kind:'loop', of:1,
+    what:'Send a plan with a Repeat block (under Smart), or a for loop in Python. Try: Repeat 3 × [Forward 2, Scan].',
+    why:'Rover drivers reuse patterns instead of writing every step. A loop repeats them for you.',
+    whyFull:'Rover command sequences are built from reusable pieces. Loops keep a plan short, so the team can check it quickly before the uplink.'},
+  {t:'Code challenge: use an If', kid:'Use a smart button', kind:'smart', of:1,
+    what:'Send a plan with an If block, such as "If worth drilling", or use if with a sensor in Python: if rover.worth_drilling():',
+    why:'An If lets the rover decide by itself on Mars, without waiting for a message from Earth.',
+    whyFull:'Signals take minutes to reach Mars, so rovers carry onboard checks: Perseverance\'s AutoNav steers around hazards by itself between uplinks. Conditions save whole sols.'},
+  {t:'Code challenge: two loops', kid:'Use the repeat button twice', kind:'loop', of:2,
+    what:'Use a loop in 2 different plans during this campaign. A loop inside a loop counts too.',
+    why:'The more you use loops, the faster you can plan long drives.',
+    whyFull:'Nested loops cover areas in rows (like mowing a lawn), which is how rover teams plan wide surveys.'},
+];
 })();

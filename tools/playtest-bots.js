@@ -109,7 +109,11 @@ function playGame(kind, profile, map, seed, clock, log){
     const r = st.rovers[0];
     GUIDED = kind === 'guided';
     const plan = (kind === 'cadet' ? cadetPlan : (kind === 'novice' || kind === 'guided') ? novicePlan : goodPlan)(st, r).map((a, i) => ({...a, arg:a.arg || 1, idx:i}));
-    const {timeline, state} = MR.simulateSol(st, {bot:plan}); st = state;
+    /* Code challenges: the explorer bots use a loop or an If when a campaign asks for one, like a player would. */
+    const cc = kind !== 'cadet' && MR.goalProgress(st).find(g => g.code != null && !g.done);
+    const sent = !cc ? plan : cc.kind === 'loop' ? {actions:plan, loop:true}
+      : {actions:plan, program:{sols:1, perSol:true, defs:{}, body:[...plan.map(a => ({n:'cmd', type:a.type, arg:a.arg, idx:a.idx})), {n:'if', cond:{c:'signal_here'}, body:[{n:'cmd', type:'scan', arg:1, idx:plan.length}]}]}};
+    const {timeline, state} = MR.simulateSol(st, {bot:sent}); st = state;
     let secs = PLAN[kind] + UPLINK; timeline.forEach(t => { secs += Math.max(.1, ...t.map(e => (e.slow ? DUR.slow : DUR[e.t]) || .3)); });
     clock.t += secs; out.sols++;
     const evs = timeline.flat();
