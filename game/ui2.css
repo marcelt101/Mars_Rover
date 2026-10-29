@@ -134,3 +134,7 @@ body.ui-cards .mart i{font-style:normal;font-family:var(--mono);font-size:11px;l
 }
 @keyframes scrIn{from{opacity:0;transform:translateY(10px)}}
 @keyframes sheetIn{from{opacity:0;transform:scale(.92)}}
+/* Map cards drawn from the real map (preview: ?preview=mapthumbs) */
+body.ui-cards .mart.real{height:auto;aspect-ratio:64/44;background-size:cover;background-position:center}
+body.ui-cards .mapcard:disabled .mart.real{filter:grayscale(.7) brightness(.7)}
+@media (max-width:560px){ body.ui-cards .mart.real{aspect-ratio:auto;height:130px} }

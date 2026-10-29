@@ -2,7 +2,7 @@
    button, phone tab bar, lobby picture cards and motion. All are on by default. For testing, ?ui=off turns them
    off, ?ui=title,console picks some and ?ui=all goes back to all; the choice is remembered on this device. */
 (function () {
-const MR = window.MR, UI = MR.UI, $ = UI.$;
+const MR = window.MR, UI = MR.UI, $ = UI.$, {MW, MH} = MR;
 const ALL = ['title','console','hud','launch','phone','cards','motion'];
 const parse = v => v === 'off' ? [] : v === 'all' || v == null ? ALL : v.split(',').filter(k => ALL.includes(k));
 let pick = ALL;
@@ -66,12 +66,34 @@ if (on('phone')) {
 }
 
 /* 6. Lobby cards with pictures: each rover drawn by the game, each map with its own landscape colors. */
+/* Map pictures drawn from a real map of each place: the same terrain, rocks and craters as in the game, and the
+   base station. Each game still gets its own random details, so this is a typical look. The pictures are made once
+   by tools/make-map-thumbs.js into img/maps/ (drawing them while the lobby opens is too slow); run it again after
+   changing how a map looks. */
+const thumbs = {};
+function mapThumb(k){
+  if (thumbs[k]) return thumbs[k];
+  const w = MR.genWorld(k, 1000 + MR.MAP_ORDER.indexOf(k), false), t = MR.bakeTerrain(w), c = document.createElement('canvas');
+  c.width = 512; c.height = Math.round(512 * MH / MW); const g = c.getContext('2d'), s = c.width / MW;
+  g.drawImage(t, 0, 0, c.width, c.height);
+  for (let i = 0; i < w.obs.length; i++) { const o = w.obs[i]; if (o !== 'R' && o !== 'C') continue;
+    const x = (i % MW + .5) * s, y = (Math.floor(i / MW) + .5) * s;
+    g.fillStyle = o === 'R' ? 'rgba(40,22,14,.75)' : 'rgba(30,20,16,.45)'; g.beginPath(); g.arc(x, y, o === 'R' ? s * .32 : s * .42, 0, Math.PI * 2); g.fill(); }
+  const S = MR.MAPS[k].station; g.fillStyle = '#e9eef3'; g.strokeStyle = '#58cfbe'; g.lineWidth = 2;
+  g.fillRect(S.x * s, S.y * s, 2 * s, 2 * s); g.strokeRect(S.x * s - 1, S.y * s - 1, 2 * s + 2, 2 * s + 2);
+  const v = g.createRadialGradient(c.width / 2, c.height / 2, c.height * .3, c.width / 2, c.height / 2, c.width * .7); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.35)');
+  g.fillStyle = v; g.fillRect(0, 0, c.width, c.height);
+  return thumbs[k] = c.toDataURL('image/jpeg', .85);
+}
+MR.UI2.mapThumb = mapThumb;
+const realThumbs = () => MR.PREVIEW && MR.PREVIEW.includes('mapthumbs');
 if (on('cards')) {
   const deco = () => {
     const moon = MR.MAPS[MR.Game.lobby && MR.Game.lobby.map] && MR.MAPS[MR.Game.lobby.map].airless, p = MR.Store.current();
     document.querySelectorAll('#jobPick .job').forEach(b => { if (b.querySelector('canvas')) return; const c = document.createElement('canvas'); c.width = c.height = 120; c.className = 'jpic'; b.prepend(c);
       const job = b.dataset.job; MR.Render.drawPreview(c, {job, role:job === 'buggy' || job === 'heli' ? 'cadet' : 'explorer', color:(p && p.color) || 'teal', perks:[], tubes:job === 'hauler' ? ['clay','olivine','salts'] : [], dust:0}, moon && job !== 'heli' && job !== 'lab'); });
-    document.querySelectorAll('#mapPick .mapcard').forEach(b => { if (b.querySelector('.mart')) return; const a = document.createElement('span'); a.className = 'mart'; a.dataset.m = b.dataset.map; a.setAttribute('aria-hidden', 'true'); if (!(MR.Game.lobby && MR.Game.lobby.unlocked || MR.Store.unlocked()).includes(b.dataset.map)) a.innerHTML = '<i>LOCKED</i>'; b.prepend(a); });
+    document.querySelectorAll('#mapPick .mapcard').forEach(b => { if (b.querySelector('.mart')) return; const a = document.createElement('span'); a.className = 'mart'; a.dataset.m = b.dataset.map; a.setAttribute('aria-hidden', 'true');
+      if (realThumbs()) { a.classList.add('real'); a.style.backgroundImage = `url(img/maps/${b.dataset.map}.jpg)`; } if (!(MR.Game.lobby && MR.Game.lobby.unlocked || MR.Store.unlocked()).includes(b.dataset.map)) a.innerHTML = '<i>LOCKED</i>'; b.prepend(a); });
   };
   new MutationObserver(deco).observe($('jobPick'), {childList:true});
   new MutationObserver(deco).observe($('mapPick'), {childList:true});
