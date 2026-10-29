@@ -64,7 +64,8 @@ R.resize = () => {
   if (innerWidth >= 1100) {
     const top = box.getBoundingClientRect().top + scrollY, big = document.body.classList.contains('bigmap');
     R.VH = Math.round(Math.max(380, Math.min(1600, innerHeight - top - (big ? 52 : 64))));
-  } else R.VH = Math.round(Math.max(300, Math.min(640, R.VW*.62)));
+  } else if (innerWidth <= 760 && document.body.classList.contains('ui-phone')) R.VH = Math.round(Math.max(260, Math.min(520, innerHeight*.42)));
+  else R.VH = Math.round(Math.max(300, Math.min(640, R.VW*.62)));
   R.dpr = Math.min(window.devicePixelRatio || 1, 2);
   R.canvas.style.width = R.VW+'px'; R.canvas.style.height = R.VH+'px';
   R.canvas.width = Math.round(R.VW*R.dpr); R.canvas.height = Math.round(R.VH*R.dpr);

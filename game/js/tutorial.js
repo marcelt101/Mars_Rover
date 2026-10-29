@@ -70,6 +70,7 @@ function show(){
   const s = T.steps[T.i], el = s.target ? document.querySelector(s.target) : null;
   if (ring) ring.classList.remove('coachring');
   ring = el && s.target !== '#mapbox' ? el : null;
+  if (el && MR.UI2) MR.UI2.reveal(el);
   if (ring) { ring.classList.add('coachring'); ring.scrollIntoView({block:'nearest', behavior:'smooth'}); }
   const c = $('coach');
   c.innerHTML = `<span class="cs"><span class="grip" aria-hidden="true">⠿</span>Tutorial · step ${T.i + 1}/${T.steps.length} <small>${T.moved ? 'double-tap to snap back' : 'drag to move'}</small></span>

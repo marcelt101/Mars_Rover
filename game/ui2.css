@@ -1,0 +1,136 @@
+/* Batch 6 UI preview styles. Each block only applies when its switch is on (see js/ui2.js). */
+
+/* ---------- 1. Title screen ---------- */
+body.ui-title[data-scr="scrHome"],body.ui-title[data-scr="scrLobby"]{
+  background:
+    radial-gradient(1px 1px at 12% 18%,#fff8 50%,transparent 51%),radial-gradient(1px 1px at 72% 12%,#fff9 50%,transparent 51%),
+    radial-gradient(1.5px 1.5px at 38% 34%,#fffa 50%,transparent 51%),radial-gradient(1px 1px at 88% 40%,#fff7 50%,transparent 51%),
+    radial-gradient(1px 1px at 22% 62%,#fff6 50%,transparent 51%),radial-gradient(1.5px 1.5px at 60% 70%,#fff8 50%,transparent 51%),
+    radial-gradient(1px 1px at 5% 85%,#fff5 50%,transparent 51%),radial-gradient(1px 1px at 95% 78%,#fff6 50%,transparent 51%),
+    radial-gradient(120% 60% at 50% 115%,#6d2c18 0,#2a140f 45%,transparent 70%),
+    linear-gradient(#070a10,#0d1118 60%,#120d0d);
+  background-attachment:fixed;background-size:340px 340px,420px 420px,500px 500px,380px 380px,460px 460px,520px 520px,300px 300px,440px 440px,100% 100%,100% 100%}
+body.ui-title[data-scr="scrHome"] .top .brand{display:none}
+body.ui-title[data-scr="scrHome"] .top{justify-content:flex-end}
+body.ui-title .hero{display:flex;align-items:center;gap:22px;padding:6px 0 4px}
+body.ui-title .hero .planet{width:96px;height:96px;border-radius:50%;flex:none;background:radial-gradient(circle at 34% 30%,#f2b183,#c4643a 45%,#7a3019 75%,#3b160b);box-shadow:0 0 40px rgba(232,132,79,.35),inset -14px -10px 24px rgba(0,0,0,.45)}
+body.ui-title .hero .htitle{font-family:var(--display);font-weight:700;font-size:clamp(30px,6vw,54px);letter-spacing:.06em;text-transform:uppercase;line-height:1;margin:0;
+  background:linear-gradient(180deg,#fff 20%,#f2b183 95%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 12px rgba(232,132,79,.35))}
+body.ui-title .hero p{margin:8px 0 0;color:var(--soft);font-size:15px}
+body.ui-title .modes{gap:14px}
+body.ui-title .mode{position:relative;align-items:center;text-align:center;padding:20px 18px 18px;border-radius:18px;border:1px solid #3a2c28;
+  background:linear-gradient(180deg,rgba(60,32,24,.65),rgba(20,24,32,.85));box-shadow:0 10px 30px rgba(0,0,0,.4)}
+body.ui-title .mode .micon{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;background:rgba(88,207,190,.12);color:var(--signal);border:1px solid rgba(88,207,190,.35)}
+body.ui-title .mode .micon svg{width:34px;height:34px}
+body.ui-title .mode h3.t{font-size:20px}
+body.ui-title .mode .btn.big{width:100%;border-radius:12px;font-size:18px;padding:16px 20px}
+body.ui-title .mode .row{width:100%}
+body.ui-title .pcard{border-radius:16px;padding:14px;background:linear-gradient(180deg,#1c2632,#141b23)}
+body.ui-title .pcard[aria-pressed="true"]{box-shadow:0 0 0 1px var(--signal),0 0 22px rgba(88,207,190,.25)}
+body.ui-title .pcard .av{width:54px;height:54px;font-size:26px;border-radius:14px;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+body.ui-title .links{gap:8px}
+body.ui-title .links a,body.ui-title .links button{text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:rgba(21,28,36,.7);color:var(--soft);font-size:13px}
+body.ui-title .links a:hover,body.ui-title .links button:hover{border-color:var(--muted)}
+@media (max-width:560px){body.ui-title .hero{gap:14px}body.ui-title .hero .planet{width:64px;height:64px}}
+
+/* ---------- 2. Console panels and chunky buttons ---------- */
+body.ui-console .panel,body.ui-console .sheet{position:relative;background:linear-gradient(180deg,#19222c 0,#131a22 60px);border-color:#2d3b48;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 8px 22px rgba(0,0,0,.35)}
+body.ui-console .panel::before,body.ui-console .panel::after{content:'';position:absolute;width:14px;height:14px;pointer-events:none;border-color:var(--signal);opacity:.7}
+body.ui-console .panel::before{left:-1px;top:-1px;border-left:2px solid;border-top:2px solid;border-top-left-radius:12px}
+body.ui-console .panel::after{right:-1px;bottom:-1px;border-right:2px solid;border-bottom:2px solid;border-bottom-right-radius:12px}
+body.ui-console h3.t{display:flex;align-items:center;gap:9px}
+body.ui-console h3.t::before{content:'';width:8px;height:8px;border-radius:2px;background:var(--signal);box-shadow:0 0 8px var(--signal);flex:none}
+body.ui-console .btn{border-bottom-width:3px;border-bottom-color:#0b1015;transition:transform .06s,border-bottom-width .06s}
+body.ui-console .btn:active:not(:disabled){transform:translateY(2px);border-bottom-width:1px;margin-bottom:2px}
+body.ui-console .btn.primary{background:linear-gradient(180deg,#7fe3d4,#45b9a8);border-color:#3aa595;border-bottom-color:#226d62;box-shadow:0 0 18px rgba(88,207,190,.25)}
+body.ui-console .mbtn{border-radius:10px;border-bottom:3px solid rgba(0,0,0,.5)}
+body.ui-console .chip{border-radius:9px;border-color:rgba(88,207,190,.18);box-shadow:0 3px 10px rgba(0,0,0,.3)}
+body.ui-console .pal{border-bottom-width:3px}
+
+/* ---------- 3. In-game HUD: small top bar, settings in a gear menu ---------- */
+body.ui-hud[data-scr="scrGame"] .top .sub{display:none}
+body.ui-hud[data-scr="scrGame"] .top h1{font-size:17px}
+body.ui-hud[data-scr="scrGame"] .top .mark{width:26px;height:26px}
+body.ui-hud[data-scr="scrGame"] .app{gap:10px;padding-top:10px}
+.gearbtn{display:none}
+body.ui-hud[data-scr="scrGame"] .gearbtn{display:grid;place-items:center;padding:6px 9px}
+body.ui-hud #gearBtn svg{width:20px;height:20px}
+body.ui-hud .maptools.gearmenu{display:none}
+body.ui-hud.toolsopen .maptools.gearmenu{display:flex;flex-direction:column;align-items:stretch;position:fixed;z-index:32;right:16px;top:58px;width:min(280px,calc(100vw - 32px));
+  background:var(--panel);border:1px solid var(--signal);border-radius:14px;padding:14px;gap:10px;box-shadow:0 14px 40px rgba(0,0,0,.6)}
+body.ui-hud .gmt{font-family:var(--display);text-transform:uppercase;letter-spacing:.06em}
+body.ui-hud .gearmenu details.how{font-size:13px;max-height:40vh;overflow:auto}
+
+/* ---------- 4. Launch button ---------- */
+body.ui-launch .actions{flex-wrap:wrap}
+body.ui-launch #sendBtn{flex:1 1 100%;order:-1;padding:16px 20px;border-radius:14px;font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.08em;text-transform:uppercase;
+  background:linear-gradient(180deg,#ffb27a,#e8844f 55%,#c25e2c);border:0;border-bottom:4px solid #7a3517;color:#2a0f04;box-shadow:0 0 24px rgba(232,132,79,.35);display:flex;align-items:center;justify-content:center;gap:10px}
+body.ui-launch #sendBtn::before{content:'';width:22px;height:22px;background:currentColor;clip-path:polygon(50% 0,72% 38%,72% 70%,92% 90%,60% 82%,50% 100%,40% 82%,8% 90%,28% 70%,28% 38%)}
+body.ui-launch #sendBtn:not(:disabled){animation:launchGlow 1.8s ease-in-out infinite}
+body.ui-launch #sendBtn:active:not(:disabled){transform:translateY(3px);border-bottom-width:1px}
+body.ui-launch #undoBtn,body.ui-launch #clearBtn{flex:1}
+@keyframes launchGlow{50%{box-shadow:0 0 36px rgba(232,132,79,.6)}}
+body.ui-launch .ulbar{height:10px;border-radius:5px}
+body.ui-launch .ulbar span{background:repeating-linear-gradient(90deg,#ffb27a 0 8px,#e8844f 8px 16px);background-size:32px 100%;animation:ulMove .5s linear infinite}
+@keyframes ulMove{to{background-position:32px 0}}
+body.ui-launch .gobtn{background:linear-gradient(180deg,#a8eab0,#6cc777);border-bottom:5px solid #3e8a48;box-shadow:0 0 24px rgba(134,212,143,.35)}
+body.ui-launch .gobtn:active{transform:translateY(3px);border-bottom-width:2px}
+
+/* ---------- 5. Phone: map on top, tab bar at the bottom ---------- */
+.ptabs{display:none}
+@media (max-width:760px){
+  body.ui-phone[data-scr="scrGame"] .ptabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:28;background:rgba(14,19,25,.96);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));gap:6px;backdrop-filter:blur(6px)}
+  body.ui-phone .ptabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;border-radius:12px;padding:6px 0;color:var(--muted);font-family:var(--display);font-size:13px;letter-spacing:.04em;cursor:pointer;position:relative}
+  body.ui-phone .ptabs button svg{width:24px;height:24px}
+  body.ui-phone .ptabs button[aria-selected="true"]{color:var(--signal);background:rgba(88,207,190,.1)}
+  body.ui-phone .ptabs button.new::after{content:'';position:absolute;top:6px;right:calc(50% - 18px);width:9px;height:9px;border-radius:50%;background:var(--build);box-shadow:0 0 6px var(--build)}
+  body.ui-phone[data-scr="scrGame"] .app{padding-bottom:84px}
+  body.ui-phone[data-scr="scrGame"] .top .sub{display:none}
+  body.ui-phone[data-scr="scrGame"] .top h1{font-size:16px}
+  body.ui-phone[data-scr="scrGame"] .top .mark{width:24px;height:24px}
+  body.ui-phone[data-scr="scrGame"] .grid>.col:first-child{position:sticky;top:0;z-index:6;background:var(--bg);padding-bottom:6px;margin-inline:-4px;padding-inline:4px}
+  body.ui-phone[data-scr="scrGame"] .grid>.col:first-child .maptools:not(.gearmenu),body.ui-phone[data-scr="scrGame"] .grid>.col:first-child details.how{display:none}
+  body.ui-phone[data-ptab="plan"] .side>[data-ptab="mission"],body.ui-phone[data-ptab="plan"] .side>[data-ptab="log"],
+  body.ui-phone[data-ptab="mission"] .side>[data-ptab="plan"],body.ui-phone[data-ptab="mission"] .side>[data-ptab="log"],
+  body.ui-phone[data-ptab="log"] .side>[data-ptab="plan"],body.ui-phone[data-ptab="log"] .side>[data-ptab="mission"],
+  body.ui-phone[data-ptab="log"] .side>[data-ptab="both"]{display:none!important}
+  body.ui-phone .toasts{bottom:90px}
+  body.ui-phone[data-scr="scrGame"] .top h1{display:none}
+  body.ui-phone[data-scr="scrGame"] .top{flex-wrap:nowrap;gap:8px}
+  body.ui-phone[data-scr="scrGame"] .topright{flex-wrap:nowrap}
+  body.ui-phone[data-scr="scrGame"] .mechip small{display:none}
+  body.ui-phone .hud{gap:4px;left:6px;top:6px}
+  body.ui-phone .hud .chip{padding:2px 7px}
+  body.ui-phone .hud .chip .v{font-size:13.5px}
+  body.ui-phone .hud .chip .k{font-size:9px}
+  body.ui-phone .hud .chip.bat{min-width:96px}
+}
+
+/* ---------- 6. Lobby cards with pictures ---------- */
+body.ui-cards .jobs{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+body.ui-cards .job{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:12px 10px;border-radius:14px}
+body.ui-cards .job .jpic{width:84px;height:84px;border-radius:14px;margin-bottom:4px;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+body.ui-cards .job b{font-family:var(--display);font-size:16px}
+body.ui-cards .job[aria-pressed="true"]{box-shadow:0 0 0 1px var(--signal),0 0 20px rgba(88,207,190,.25)}
+body.ui-cards .jobw .job{padding-right:10px}
+body.ui-cards .mapcard{padding:0;overflow:hidden;border-radius:14px}
+body.ui-cards .mapcard>*:not(.mart){margin-inline:12px}
+body.ui-cards .mapcard>p{margin-bottom:12px}
+body.ui-cards .mapcard[aria-pressed="true"]{box-shadow:0 0 0 1px var(--signal),0 0 20px rgba(88,207,190,.25)}
+body.ui-cards .mart{display:grid;place-items:center;height:78px;margin-bottom:6px;position:relative}
+body.ui-cards .mart i{font-style:normal;font-family:var(--mono);font-size:11px;letter-spacing:.12em;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 10px;color:#fff}
+.mart[data-m="jezero"]{background:radial-gradient(60% 50% at 70% 40%,#3d6e74 0,transparent 60%),radial-gradient(40% 70% at 20% 100%,#6b3a22,transparent),linear-gradient(160deg,#c56b42,#7d3a20)}
+.mart[data-m="gusev"]{background:radial-gradient(30% 40% at 60% 55%,#4a2b1f 0,#4a2b1f 50%,transparent 52%),linear-gradient(170deg,#b8774f,#6e3b25)}
+.mart[data-m="moon"]{background:radial-gradient(14% 22% at 30% 40%,#5c5f64 0,#5c5f64 50%,transparent 53%),radial-gradient(10% 16% at 72% 62%,#55585d 0,#55585d 50%,transparent 53%),linear-gradient(170deg,#b9bcc0,#6f7378)}
+.mart[data-m="meridiani"]{background:radial-gradient(3px 3px at 20% 30%,#2b3a4a 50%,transparent 60%),radial-gradient(3px 3px at 55% 65%,#2b3a4a 50%,transparent 60%),radial-gradient(3px 3px at 80% 35%,#2b3a4a 50%,transparent 60%),linear-gradient(170deg,#a5654a,#5c3022);background-size:40px 40px,52px 52px,46px 46px,100% 100%}
+.mart[data-m="gale"]{background:linear-gradient(170deg,transparent 52%,#7d4428 52.5%),radial-gradient(70% 120% at 60% 100%,#9a5a39 0,#9a5a39 40%,transparent 41%),linear-gradient(180deg,#d9a27a,#b06a43)}
+
+/* ---------- 7. Motion: screens and windows slide in, buttons react ---------- */
+@media (prefers-reduced-motion:no-preference){
+  body.ui-motion .screen:not([hidden]){animation:scrIn .28s ease-out}
+  body.ui-motion .modal:not([hidden]) .sheet{animation:sheetIn .22s cubic-bezier(.2,.9,.3,1.2)}
+  body.ui-motion .pal:active,body.ui-motion .cbtn:active,body.ui-motion .job:active,body.ui-motion .mapcard:active,body.ui-motion .pcard:active{transform:scale(.96)}
+  body.ui-motion .pal,body.ui-motion .cbtn,body.ui-motion .job,body.ui-motion .mapcard,body.ui-motion .pcard{transition:transform .08s}
+}
+@keyframes scrIn{from{opacity:0;transform:translateY(10px)}}
+@keyframes sheetIn{from{opacity:0;transform:scale(.92)}}

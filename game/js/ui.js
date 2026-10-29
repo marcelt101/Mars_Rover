@@ -24,6 +24,7 @@ MR.sfx = {
 UI.avatar = (p, cls = '') => `<span class="av ${cls}" style="background:${MR.colorHex(p.color)}">${esc((p.name || '?').slice(0,1).toUpperCase())}</span>`;
 UI.show = name => {
   ['scrHome','scrLobby','scrGame'].forEach(s => $(s).hidden = s !== name);
+  scrollTo(0, 0);
   UI.renderMe();
   if (MR.LogUI) MR.LogUI.renderHome();
 };
