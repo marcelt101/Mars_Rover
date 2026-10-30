@@ -25,6 +25,21 @@ pressure. The real landers survived roughly one to two hours.
   rock chemistry.
 - Teaches: the greenhouse effect, pressure, heat, and why Venus is hotter than Mercury.
 - Could also become a one-hour challenge day in the Mission Log.
+- **First step:** a 20–30 second test of the descent for approval: entry glow (about 11 km/s), the parachute in
+  pale yellow sulfuric-acid clouds (65–48 km), free fall on the braking ring under the clouds, the darker orange
+  haze, touchdown, lens caps off, the fish-eye picture arriving line by line. Live telemetry for altitude, speed,
+  temperature and pressure, plus wind and rumble sounds.
+- **Soviet look:** the lander carries "СССР" and its mission name in Cyrillic ("ВЕНЕРА-13") in the style of the
+  real probes. Important on-screen text is in Russian first, with English under it, for example:
+  ВЫСОТА / Altitude, СКОРОСТЬ / Speed, ТЕМПЕРАТУРА / Temperature, ДАВЛЕНИЕ / Pressure, ПОСАДКА / Touchdown,
+  ПЕРЕДАЧА ДАННЫХ / Data transmission, СВЯЗЬ ПОТЕРЯНА / Signal lost, ЦУП (mission control) for the control room.
+  Russian is checked carefully (Cyrillic spelling, real terms), and the briefings tell the history in English.
+- Picked extras: the timed parachute and wind drift, two clocks (heat and the carrier spacecraft's radio window),
+  choosing what to transmit first, pre-launch upgrades (chilling, cooling block, insulation, camera, radio),
+  the landing-spot trade-off (hot smooth plains, cooler rocky highlands, risky volcano slopes), the camera with lens
+  caps, the drill and X-ray chemistry, the microphone, the lightning detector, the Venera 14 lens-cap story, history
+  campaigns (Venera 7, 9, 13 and the Vega balloons), a mission report ranking with a team total, panorama
+  postcards and "firsts" badges.
 
 ## Batch 9: Europa (NASA's Europa Clipper)
 Plan already agreed: each sol is one flyby from orbit, with a ground track and instruments switched on along it.
