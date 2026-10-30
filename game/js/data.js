@@ -2,7 +2,7 @@
 (function () {
 const MR = window.MR = window.MR || {};
 
-MR.VERSION = 4;
+MR.VERSION = 5;
 MR.MW = 64; MR.MH = 44; MR.BASE = 32;
 MR.MAX_PLAYERS = 32;   /* a whole class plus the teacher */
 
@@ -196,7 +196,7 @@ MR.PATCHES = [
   {id:'gusev', name:'Gusev Expedition', icon:'G', desc:'Complete a Gusev expedition', test:s => (s.exp.gusev||0) >= 1},
   {id:'meridiani', name:'Meridiani Expedition', icon:'M', desc:'Complete a Meridiani expedition', test:s => (s.exp.meridiani||0) >= 1},
   {id:'gale', name:'Gale Expedition', icon:'⛰', desc:'Complete a Gale expedition', test:s => (s.exp.gale||0) >= 1},
-  ...((MR.PREVIEW || []).includes('zhurong') ? [{id:'utopia', name:'Utopia Expedition', icon:'☀', desc:'Complete a Utopia Planitia expedition', test:s => (s.exp.utopia||0) >= 1}] : []),
+  {id:'utopia', name:'Utopia Expedition', icon:'☀', desc:'Complete a Utopia Planitia expedition', test:s => (s.exp.utopia||0) >= 1},
   {id:'moonwalker', name:'Moonwalker', icon:'☾', desc:'Complete an expedition on the Moon', test:s => (s.exp.moon||0) >= 1},
   {id:'genesis', name:'Genesis', icon:'◇', desc:'Find the Genesis Rock', test:s => s.genesis >= 1},
   {id:'full_crew', name:'Full Crew', icon:'⁂', desc:'Play a team game with 3 or more players', test:s => s.crew3 >= 1},
@@ -341,8 +341,7 @@ MR.MAPS.utopia = {
   par:40, parCadet:14,
 };
 MR.MAPS.jezero.regions.push('Crater rim'); MR.MAPS.gusev.regions.push('Crater rim');
-MR.MAP_ORDER = ['jezero','gusev','moon','meridiani','gale'];
-if ((MR.PREVIEW || []).includes('zhurong')) MR.MAP_ORDER.push('utopia');   /* batch 7, waiting for approval */
+MR.MAP_ORDER = ['jezero','gusev','moon','meridiani','gale','utopia'];
 MR.parOf = st => st.day && MR.missionOf && MR.missionOf(st.day) ? MR.missionOf(st.day).par : st.goals.some(g => g.kind === 'treasure') ? MR.MAPS[st.map].parCadet : MR.MAPS[st.map].par;
 MR.cadetGoals = n => [{t:`Find ${3+2*n} treasures`, kind:'treasure', of:3+2*n}];
 

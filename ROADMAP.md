@@ -3,9 +3,7 @@
 Order agreed with the user. Real missions only; future missions are labeled "as NASA plans it".
 
 ## Batch 7: Utopia Planitia, Mars (China's Zhurong rover, 2021)
-**Status:** built behind `?preview=zhurong`, waiting for approval. Going live means removing the preview check in
-`data.js` (map order and patch), `ui.js` (Zhurong button) and raising `MR.VERSION`, so older devices can't join a
-Utopia game.
+**Status:** approved and live for everyone (game version 5, so older devices can't join a Utopia game).
 - A new Mars map in the same style as the others. It unlocks after Gale.
 - Four campaigns from the real mission:
   1. Landing and the lander "selfie": Zhurong dropped a small camera to photograph itself next to its lander.
@@ -28,6 +26,7 @@ pressure. The real landers survived roughly one to two hours.
   rock chemistry.
 - Teaches: the greenhouse effect, pressure, heat, and why Venus is hotter than Mercury.
 - Could also become a one-hour challenge day in the Mission Log.
+- **Status:** the descent test is built at `game/venera-test.html`, waiting for approval.
 - **First step:** a 20–30 second test of the descent for approval: entry glow (about 11 km/s), the parachute in
   pale yellow sulfuric-acid clouds (65–48 km), free fall on the braking ring under the clouds, the darker orange
   haze, touchdown, lens caps off, the fish-eye picture arriving line by line. Live telemetry for altitude, speed,
