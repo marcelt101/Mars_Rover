@@ -26,7 +26,8 @@ pressure. The real landers survived roughly one to two hours.
   rock chemistry.
 - Teaches: the greenhouse effect, pressure, heat, and why Venus is hotter than Mercury.
 - Could also become a one-hour challenge day in the Mission Log.
-- **Status:** the descent test is built at `game/venera-test.html`, waiting for approval.
+- **Status:** on hold. The drawn descent test (`game/venera-test.html`, not linked from the game) was too
+  cartoonish; the user will get a realistic descent video made, and the batch restarts from that.
 - **First step:** a 20–30 second test of the descent for approval: entry glow (about 11 km/s), the parachute in
   pale yellow sulfuric-acid clouds (65–48 km), free fall on the braking ring under the clouds, the darker orange
   haze, touchdown, lens caps off, the fish-eye picture arriving line by line. Live telemetry for altitude, speed,
