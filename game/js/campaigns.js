@@ -253,6 +253,51 @@ MR.CAMPAIGNS = {
       ]},
   ],
 };
+/* Utopia Planitia: China's Zhurong rover (Tianwen-1 mission, 2021–2022). */
+MR.CAMPAIGNS.utopia = [
+  {id:'landing', name:'Landing and the Group Photo', real:'Tianwen-1 and Zhurong, May–June 2021',
+    brief:'On May 15, 2021, China\'s Tianwen-1 lander touched down on Utopia Planitia, a huge plain in Mars\'s northern lowlands. A week later the rover Zhurong rolled down a ramp onto the ground. Then it did something no rover had done: it dropped a small camera and drove away, so the camera could take a group photo of the rover and its lander.',
+    debrief:'The group photo went around the world. Zhurong was the second country\'s rover ever to drive on Mars. NASA\'s Viking 2 had also landed in Utopia Planitia, back in 1976, far to the north-east.',
+    obj:n => [
+      {t:'Take the group photo', kid:'Take a picture', kind:'photos', of:1, what:'Add Photo (P) to a plan near the lander, like Zhurong\'s famous picture.',
+        why:'Photos of the rover and lander show engineers that everything worked.', whyFull:'Zhurong released a wireless camera from its underside, drove about 10 meters away and turned, and the camera took the photo.'},
+      {t:'Scan 2 times', kid:'Scan 2 times', kind:'scans', of:2, what:'Scan around the landing site.',
+        why:'Scans show what is around before you drive.', whyFull:'Zhurong used its navigation and terrain camera to map the ground before each drive.'},
+      {t:'Flag 3 mystery signals', kid:'Find 3 sparkles', kind:'sites', of:3, what:'Flag 3 signals for the team.',
+        why:'Every flagged site is a possible target.', whyFull:'The team chose targets like rocks and the bright crusty soil from the rover\'s pictures.'},
+    ]},
+  {id:'south', name:'Driving South', real:'Zhurong, summer 2021',
+    brief:'Zhurong headed south across the plain, toward the edge of the old lowlands. On the way it studied dunes and ridges of sand made by the wind.',
+    debrief:'The dunes showed that the wind on Utopia Planitia had changed direction over time. Zhurong had already driven much farther than its planned 90 days.',
+    obj:n => [
+      {t:'Reach the dune field', kid:'Go to the sand', kind:'reach', region:'Dune field', of:1, what:'Drive south to the dune field. Scan first: sand can be soft.',
+        why:'Dunes record the winds of Mars.', whyFull:'The shapes and crusts of sand ridges tell scientists which way the wind blew and how long ago.'},
+      {t:'Drive 15 squares', kid:'Drive far', kind:'squares', of:15, what:'Every square driven counts. Plan long drives.',
+        why:'Zhurong drove about 1.9 kilometers in all.', whyFull:'Long drives need good planning: the team checked the route from orbit images taken by the Tianwen-1 orbiter.'},
+      {t:'Drill the dark basalt', kid:'Find a dark rock', kind:'col', res:'basalt', of:1, what:'Analyze and drill a basalt rock on the plain.', ...why('basalt')},
+    ]},
+  {id:'radar', name:'Looking Underground', real:'Zhurong, 2021–2022',
+    brief:'Zhurong carried a ground-penetrating radar that sent radio waves into the ground and listened for echoes. It showed the layers hidden under the plain, like reading a book without opening it.',
+    debrief:'The radar found many layers down to about 80 meters. Scientists think they were laid down by water or floods long ago. Zhurong also found crusty soil with salty minerals that need water to form.',
+    obj:n => [
+      {t:'Scan 4 times', kid:'Scan 4 times', kind:'scans', of:4, what:'Scan in 4 different places to "look under" the ground, like Zhurong\'s radar.',
+        why:'Radar sees layers that cameras can\'t.', whyFull:'Zhurong\'s radar (RoPeR) mapped layers tens of meters deep along its whole route.'},
+      {t:'Drill the salty crust', kid:'Find a water salt', kind:'col', res:'salts', of:1, what:'Look in the crusty ground near the landing site and drill a salty rock.', ...why('salts')},
+      {t:`Bring ${1+n} samples home`, kid:'Go home with treasure', kind:'deliver', of:1+n, what:'Bring your samples back to the lander.',
+        why:'The lander is your base: it charges the rover and keeps the samples.', whyFull:'Zhurong itself had no sample tubes; in the game the lander keeps your finds safe.'},
+    ]},
+  {id:'shoreline', name:'The Ancient Shoreline', real:'Zhurong 2022, studied in 2025',
+    brief:'Winter and dust were coming. In May 2022 Zhurong went to sleep to wait for spring, but dust covered its solar panels and it never woke up. Its radar data kept scientists busy for years: in 2025 they reported buried layers that look like an old beach.',
+    debrief:'If those layers really are a beach, Utopia Planitia once had an ocean with waves and sandy shores, billions of years ago. Zhurong worked for almost a year on Mars.',
+    obj:n => [
+      {t:'Reach the ancient shoreline', kid:'Go to the old beach', kind:'reach', region:'Ancient shoreline', of:1, what:'Drive far south to the terrace that may be an ancient shoreline.',
+        why:'A shoreline would mean Mars once had an ocean.', whyFull:'The radar showed layers sloping toward the north, the way sand builds up on a beach facing the sea.'},
+      {t:'Send a smart program', kid:'Use a smart button', kind:'smart', of:1, what:'Winter is coming: use an If block (or if with a sensor in Python) so the rover keeps itself safe.',
+        why:'Smart rovers protect themselves when Earth is too far to help.', whyFull:'Before winter, Zhurong\'s team planned for low sunlight and cold, the same problem every solar rover faces.'},
+      {t:`Bring ${1+n} samples home`, kid:'Go home with treasure', kind:'deliver', of:1+n, what:'Bring your last samples back before the winter sleep.',
+        why:'Finish the mission before the dust season.', whyFull:'Dust storms and winter cut the sunlight solar rovers need.'},
+    ]},
+];
 /* Code challenges: one per map campaign (see startCampaign). Blocks for Explorers, Python for Specialists. */
 MR.CODE_CHALLENGES = [
   {t:'Code challenge: use a loop', kid:'Use the repeat button', kind:'loop', of:1,

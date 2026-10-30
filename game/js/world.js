@@ -110,6 +110,26 @@ function terGale(w, seed){
   }
   w.relief = [{kind:'mound', x:48.5, y:42.5, rx:24, ry:18, h:3.2, layers:true}, {kind:'ridge', ax:29.5, ay:22.5, bx:42.5, by:17.5, w:1.6, h:.9}];
 }
+/* Utopia Planitia (Zhurong): a wide plain with crusty ground near the landing site, polygon troughs, pitted cones
+   (maybe old mud volcanoes), a field of wind-made dunes, and in the south a terrace that may be an ancient ocean
+   shoreline, with the rougher highlands beyond it. */
+function terUtopia(w, seed){
+  const nA = makeNoise(seed+11), nB = makeNoise(seed+23), nS = makeNoise(seed+37);
+  const cones = [[8,27],[13,31],[6,34],[44,24],[54,16]], craters = [[14,15,2.4],[55,32,3]];
+  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
+    let t = T.FLOOR;
+    if (nB(x/5+40, y/5) > .58) t = T.BED;
+    const px = x + (nA(x/6, y/6)-.5)*4, py = y + (nA(x/6+50, y/6)-.5)*4;
+    if (x > 36 && y < 20 && (Math.abs(((px % 7)+7)%7 - 3.5) > 3.05 || Math.abs(((py % 6)+6)%6 - 3) > 2.6)) t = T.CHAN;     // polygon troughs
+    if (((x-30)/15)**2 + ((y-27)/5.5)**2 < 1 + (nS(x/4, y/4)-.5)*.5 && Math.sin(x*.95 - y*.35 + nS(x/5, y/5)*2) > .45) t = T.DUNE;  // ridges of sand
+    cones.forEach(([cx, cy]) => { const d = Math.hypot(x-cx, y-cy); if (d < 1.7) t = d < .7 ? T.BED : T.HILL; });
+    craters.forEach(([cx, cy, R]) => { const d = Math.hypot(x-cx, y-cy); if (Math.abs(d - R) < .75) t = T.RIM; else if (d < R - .75) t = T.CHAN; });
+    const sh = 36.5 + 2.2*Math.sin(x/7) + (nA(x/5, 3)-.5)*2;
+    if (y > sh && y < sh + 2.2) t = T.PLATE; else if (y >= sh + 2.2) t = nA(x/3, y/3) > .62 ? T.CLIFF : T.HILL;      // shoreline terrace, highlands
+    w.ter[y*MW+x] = t;
+  }
+  w.relief = [...craters.map(([x, y, R]) => ({kind:'crater', x:x + .5, y:y + .5, R, depth:1.1})), ...cones.map(([x, y]) => ({kind:'mound', x:x + .5, y:y + .5, rx:1.8, ry:1.8, h:.7}))];
+}
 function terMoon(w, seed){
   const nA = makeNoise(seed+11), nB = makeNoise(seed+23);
   for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
@@ -155,7 +175,7 @@ function placeMinerals(w, map, seed){
 }
 MR.genWorld = function (map, seed, cadetGems) {
   const w = blankWorld(map, seed, cadetGems), r = mulberry32(seed), M = MR.MAPS[map];
-  if (map === 'gusev') terGusev(w, seed); else if (map === 'moon') terMoon(w, seed); else if (map === 'meridiani') terMeridiani(w, seed); else if (map === 'gale') terGale(w, seed); else terJezero(w, seed);
+  if (map === 'gusev') terGusev(w, seed); else if (map === 'moon') terMoon(w, seed); else if (map === 'meridiani') terMeridiani(w, seed); else if (map === 'gale') terGale(w, seed); else if (map === 'utopia') terUtopia(w, seed); else terJezero(w, seed);
   const S = M.station;
   for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) {
     const i = y*MW+x, t = w.ter[i];
@@ -199,6 +219,12 @@ MR.genWorld = function (map, seed, cadetGems) {
     place('meteorite', 1, isT(T.FLOOR));                                                      // Lebanon
     place('olivine', 3, isT(T.DUNE));
     place('basalt', 12, isT(T.FLOOR, T.BED));
+  } else if (map === 'utopia') {
+    place('salts', 4, (x,y,t) => t === T.BED && Math.hypot(x-24, y-12) < 11);                 // salty crust near the landing site
+    place('salts', 2, isT(T.PLATE));
+    place('olivine', 3, isT(T.DUNE));
+    place('meteorite', 1, isT(T.FLOOR));
+    place('basalt', 14, isT(T.FLOOR, T.BED));
   } else if (map === 'gusev') {
     nearest(36, 32, 'art_spirit');
     place('silica', 3, (x,y,t) => Math.hypot(x-41,y-28) < 6.5 && Math.hypot(x-41,y-28) > 2);
@@ -221,7 +247,7 @@ MR.genWorld = function (map, seed, cadetGems) {
     place('basalt', 12, isT(T.FLOOR, T.BED));
   }
   if (cadetGems) {
-    const kinds = map === 'moon' ? ['moon_basalt','breccia','glass'] : map === 'meridiani' ? ['hematite','salts','meteorite','basalt'] : map === 'gale' ? ['clay','olivine','salts','basalt'] : map === 'gusev' ? ['olivine','salts','silica','meteorite','carbonate','basalt'] : ['olivine','clay','salts','meteorite','carbonate','basalt'];
+    const kinds = map === 'moon' ? ['moon_basalt','breccia','glass'] : map === 'meridiani' ? ['hematite','salts','meteorite','basalt'] : map === 'gale' ? ['clay','olivine','salts','basalt'] : map === 'utopia' ? ['salts','olivine','basalt','meteorite'] : map === 'gusev' ? ['olivine','salts','silica','meteorite','carbonate','basalt'] : ['olivine','clay','salts','meteorite','carbonate','basalt'];
     let k = 0, g = 0;
     while (k < 10 && g++ < 4000) {
       const x = Math.floor(r()*MW), y = Math.floor(r()*MH), i = y*MW+x, d = Math.hypot(x-S.x, y-S.y);
@@ -283,6 +309,7 @@ const COLS = {
   gusev: [[166,98,68],[136,80,58],[204,142,98],[160,104,80],[128,74,54],[104,58,44],[156,96,68],[94,56,42],[204,170,140],[70,40,30]],
   meridiani:[[92,70,62],[196,160,122],[120,86,70],[160,104,80],[150,118,94],[110,72,56],[150,110,84],[100,62,48],[204,176,140],[70,40,30]],
   gale:  [[184,128,86],[162,112,78],[86,70,66],[160,104,80],[170,124,92],[118,76,56],[176,126,94],[112,74,56],[206,164,124],[70,40,30]],
+  utopia:[[178,124,90],[154,104,78],[200,152,112],[160,104,80],[132,86,64],[110,66,48],[152,100,74],[98,60,46],[190,152,118],[120,78,58]],
   moon:  [[104,103,100],[146,144,138],[124,122,118],[112,110,106],[96,95,92],[150,148,143],[138,136,131],[118,116,112],[160,158,152],[44,44,46]],
 };
 /* The terrain picture: a height map lit from the north-west (hillshading), so craters, the delta,

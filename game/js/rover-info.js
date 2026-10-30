@@ -99,6 +99,22 @@ MR.ROVER_INFO = {
       ['Navcams and Hazcams', 'Black-and-white driving cameras: Navcams on the head look far ahead, Hazcams at the front and back spot rocks and holes up close.'],
       ['MARDI', 'A camera under the body that filmed the ground coming closer while Curiosity landed.']],
     fact:'Curiosity found that Gale Crater once had a lake with fresh water that tiny life could have lived in.', game:'On the Gale Crater map, the team explores the same crater as Curiosity, near Mount Sharp.'},
+  zhurong:{real:'Zhurong (祝融号)', when:'China\'s Tianwen-1 mission, landed in Utopia Planitia in May 2021',
+    how:'Zhurong weighs about 240 kg, about as much as two big motorbikes. Four solar panels open out like butterfly wings. Its six wheels sit on active suspension: it can lift its body and even creep forward like an inchworm to get out of soft sand. Two windows on top catch sunlight and store the heat in a special wax, to keep warm through the freezing night.',
+    parts:[['Butterfly solar panels', 'Four panels that open like wings to catch sunlight.'],
+      ['Six wheels and active suspension', 'Each side can lift up and down, so the rover can raise its body or "walk" out of sand.'],
+      ['Heat-collector windows', 'Sunlight melts a wax inside; at night the wax hardens again and gives off its heat.'],
+      ['Mast and camera head', 'Holds the cameras high, like a neck and eyes.'],
+      ['Antennas', 'Talk to the Tianwen-1 orbiter above, which passes the messages on to Earth.'],
+      ['Group-photo camera', 'A small wireless camera the rover dropped on the ground to take a photo of itself with the lander.']],
+    science:[['Navigation and terrain cameras', 'Two cameras on the head that see in 3D, to plan safe drives.'],
+      ['Multispectral camera', 'Takes pictures in many colors of light, to tell rocks and soils apart.'],
+      ['MarSCoDe laser', 'Zaps rocks from a distance and studies the flash, plus an infrared sensor, to find what they are made of.'],
+      ['Ground-penetrating radar', 'Sends radio waves into the ground and listens for echoes, to see layers deep under the surface.'],
+      ['Climate station', 'Measures temperature, air pressure and wind, and has a microphone.'],
+      ['Magnetometer', 'Measures magnetism, to learn about Mars\'s ancient magnetic field.']],
+    fact:'Zhurong is named after the god of fire in Chinese mythology. It was planned to work for 90 days and kept going for almost a year.',
+    game:'On the Utopia Planitia map, every ground rover drives as Zhurong.'},
   lab:{real:'A Mars lab (not built yet)', when:'There is no lab on Mars yet',
     img:['img/curiosity-labs.svg', 'How the two labs inside Curiosity work. Drawing: Crater Crew, simplified and not to scale'],
     how:'Today, rovers carry small labs inside their bodies, and the best studies happen in labs on Earth. In the game, the Lab stays at the station and studies what the team brings home.',
@@ -107,8 +123,9 @@ MR.ROVER_INFO = {
     fact:'Apollo Moon rocks are still being studied, more than 50 years later.', game:'In the game, the Lab catalogs samples and builds base upgrades.'},
 };
 /* The info window, with a picture of the rover drawn by the game. */
-UI.roverInfo = (job, moon, back, gale) => {
-  key = moon && job !== 'heli' && job !== 'lab' ? 'lrv' : gale && (job === 'science' || job === 'excavator') ? 'curiosity' : job, I = MR.ROVER_INFO[key]; if (!I) return;
+UI.roverInfo = (job, moon, back, place) => {
+  const gale = place === true || place === 'gale', utopia = place === 'utopia';
+  key = moon && job !== 'heli' && job !== 'lab' ? 'lrv' : gale && (job === 'science' || job === 'excavator') ? 'curiosity' : utopia && ['scout','science','hauler','excavator'].includes(job) ? 'zhurong' : job, I = MR.ROVER_INFO[key]; if (!I) return;
   const p = MR.Store.current(), cadet = p && p.role === 'cadet', list = rows => rows.map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('');
   UI.openModal(`<div class="sh"><h2>${esc(I.real)}</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div><div class="sb">
     <div class="rinfo"><canvas id="riPic" width="360" height="360"></canvas><div><p class="real">${esc(I.when)}</p><p>${esc(I.how)}</p><p class="rfact">★ ${esc(I.fact)}</p></div></div>
@@ -118,7 +135,7 @@ UI.roverInfo = (job, moon, back, gale) => {
     <h3 class="t">Main parts</h3><ul class="rparts">${list(cadet ? I.parts.slice(0, 3) : I.parts)}</ul>
     <p class="muted" style="margin:0;font-size:13px">${esc(I.game)}</p>
     ${back ? '<div class="row" style="justify-content:flex-end"><button class="btn" id="riBack">Back</button></div>' : ''}</div>`);
-  const r = {job:key === 'lrv' ? 'scout' : key === 'curiosity' ? 'science' : key, role:job === 'buggy' || job === 'heli' ? 'cadet' : 'explorer', color:(p && p.color) || 'teal', perks:[], tubes:job === 'hauler' ? ['clay','olivine','salts'] : [], dust:0};
+  const r = {zh:key === 'zhurong', job:key === 'lrv' || key === 'zhurong' ? 'scout' : key === 'curiosity' ? 'science' : key, role:job === 'buggy' || job === 'heli' ? 'cadet' : 'explorer', color:(p && p.color) || 'teal', perks:[], tubes:job === 'hauler' ? ['clay','olivine','salts'] : [], dust:0};
   MR.Render.drawPreview($('riPic'), r, key === 'lrv');
   if (back) $('riBack').onclick = back;
 };

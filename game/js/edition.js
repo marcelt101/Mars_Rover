@@ -15,6 +15,9 @@ MR.EDITIONS = {
   desktop:     {label:'Desktop', maps:null, logDays:30, oldVersions:false, qr:true},
 };
 MR.ED = MR.EDITIONS[MR.EDITION] || MR.EDITIONS.web;
+/* Features waiting for approval: ?preview=a,b turns them on, ?preview=off turns them off (remembered on this device). */
+try { const q = new URLSearchParams(location.search).get('preview'); if (q != null) localStorage.setItem('mr2.preview', q === 'off' ? '' : q);
+  MR.PREVIEW = (localStorage.getItem('mr2.preview') || '').split(',').filter(Boolean); } catch (e) { MR.PREVIEW = []; }
 /* beta:true shows the Beta badge (closed beta and early access); set it to false for the full release. */
 /* Bug reports go to a Google Form: formUrl ends in /formResponse, fields are its entry ids. Without them the
    report can be copied and emailed instead. */

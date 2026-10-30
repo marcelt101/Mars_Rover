@@ -162,7 +162,7 @@ UI.inventory = tab => {
     }
     const jobs = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(p.role));
     body += `<h3 class="t">About the rovers</h3><p class="muted" style="margin:0;font-size:13px">Every rover in the game is based on a real one. Tap to see how it works and its science tools.</p>
-      <div class="row" id="rovAbout">${jobs.map(([k, j]) => `<button class="btn" data-info="${k}">${esc(j.label)}</button>`).join('')}${p.role === 'cadet' ? '' : '<button class="btn" data-info="curiosity">Curiosity</button><button class="btn" data-info="lrv">Moon buggy</button>'}</div>`;
+      <div class="row" id="rovAbout">${jobs.map(([k, j]) => `<button class="btn" data-info="${k}">${esc(j.label)}</button>`).join('')}${p.role === 'cadet' ? '' : '<button class="btn" data-info="curiosity">Curiosity</button><button class="btn" data-info="lrv">Moon buggy</button>' + ((MR.PREVIEW || []).includes('zhurong') ? '<button class="btn" data-info="zhurong">Zhurong</button>' : '')}</div>`;
   } else {
     const s = p.stats;
     const rows = [['Squares driven', s.squares],['Squares flown', s.flown],['Samples drilled', s.samples],['Samples delivered', s.delivered],['Treasures found', s.treasures],['Scans', s.scans],['Signals identified', s.identified],['Sand traps escaped', s.freed],['Bumps', s.bumps],['Rocks and traps cleared', s.cleared],['Shiny finds', s.shinies],['History found', s.artifacts],['Jezero expeditions', s.exp.jezero||0],['Gusev expeditions', s.exp.gusev||0],['Team wins', s.teamWins]];

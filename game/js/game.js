@@ -362,7 +362,7 @@ function renderNet(){
 }
 $('crewList').onclick = e => { const b = e.target.closest('[data-dm]'); if (b) MR.Msg.compose(b.dataset.dm);
   const k = e.target.closest('[data-kick]'); if (k) { if (k.dataset.armed) kickPlayer(k.dataset.kick); else { k.dataset.armed = '1'; k.textContent = 'Remove?'; k.classList.add('danger'); setTimeout(() => { if (k.isConnected) { delete k.dataset.armed; k.textContent = '✕'; k.classList.remove('danger'); } }, 3000); } } };
-$('jobPick').onclick = e => { const inf = e.target.closest('.jinfo'); if (inf) { UI.roverInfo(inf.dataset.info, MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless, null, G.lobby.map === 'gale'); MR.sfx.click(); return; }
+$('jobPick').onclick = e => { const inf = e.target.closest('.jinfo'); if (inf) { UI.roverInfo(inf.dataset.info, MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless, null, G.lobby.map); MR.sfx.click(); return; }
   const b = e.target.closest('.job'); if (!b) return; const p = me(); p.job = b.dataset.job; MR.Store.save();
   if (G.mode === 'client') G.net.send({type:'job', job:p.job}); else hostHandle(G.myPid, {type:'job', job:p.job}); MR.sfx.click();
   if (G.mode === 'client') { const lp = G.lobby.players.find(x => x.pid === G.myPid); if (lp) lp.job = p.job; renderLobby(); } };
@@ -492,7 +492,7 @@ function healthModal(){
       `<button class="gtile ${i === worst ? 'on' : ''}" data-g="${i}" aria-label="${esc(n)}: ${esc(v)}">${gauge(fill ?? h, lvl(h), lab)}<b>${esc(n)}</b><small>${esc(v)}</small></button>`).join('')}</div>
       <p class="gfact" id="gFact"><b>${esc(parts[worst][0])}:</b> ${esc(parts[worst][3])}</p></div></div>
     <div class="row" style="justify-content:space-between;align-items:center"><p class="muted" style="margin:0;font-size:13px;flex:1">Tap a gauge to learn about it. Docking at the station charges the battery, cleans the panels and repairs the wheels for free.</p><button class="btn" id="healthAbout">About this rover</button></div></div>`);
-  $('healthAbout').onclick = () => UI.roverInfo(r.job, MR.MAPS[st.map].airless, () => healthModal(), st.map === 'gale');
+  $('healthAbout').onclick = () => UI.roverInfo(r.job, MR.MAPS[st.map].airless, () => healthModal(), st.map);
   document.querySelectorAll('.gtile').forEach(b => b.onclick = () => { const p2 = parts[+b.dataset.g];
     document.querySelectorAll('.gtile').forEach(x => x.classList.toggle('on', x === b)); $('gFact').innerHTML = `<b>${esc(p2[0])}:</b> ${esc(p2[3])}`; });
   R.drawPreview($('healthPic'), r);

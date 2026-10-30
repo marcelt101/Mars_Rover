@@ -369,7 +369,7 @@ function expand(r, actions){
 }
 
 /* Cadets never run out of treasure: when few gems are left near a Cadet, a few new ones appear nearby. */
-const KID_GEMS = {meridiani:['hematite','salts','meteorite','basalt'], gale:['clay','olivine','salts','basalt'], moon:['moon_basalt','breccia','glass'], jezero:['olivine','clay','salts','meteorite','carbonate','basalt'], gusev:['olivine','salts','silica','meteorite','carbonate','basalt']};
+const KID_GEMS = {utopia:['salts','olivine','basalt','meteorite'], meridiani:['hematite','salts','meteorite','basalt'], gale:['clay','olivine','salts','basalt'], moon:['moon_basalt','breccia','glass'], jezero:['olivine','clay','salts','meteorite','carbonate','basalt'], gusev:['olivine','salts','silica','meteorite','carbonate','basalt']};
 function spawnCadetGems(st, timeline){
   const W = st.world, kinds = KID_GEMS[st.map] || KID_GEMS.jezero, evs = [];
   st.rovers.filter(r => r.role === 'cadet').forEach(r => {

@@ -518,6 +518,35 @@ function drawLRV(c, r, a, t, s, lod){
 }
 /* The Cadet's rover, styled on Sojourner (Mars Pathfinder, 1997): a small six-wheeled rover with a flat solar
    panel on top, cameras at the front and a whip antenna. The solar panel frame is the player's color. */
+/* Zhurong (Utopia Planitia map): a white body with two round heat-collector windows, four solar panels spread like
+   butterfly wings, a mast with the camera head at the front, a dish antenna, and six wheels on active suspension.
+   It has no arm: its laser (MarSCoDe) studies rocks from a distance, so it flashes a beam when it analyzes. */
+function drawZhurong(c, r, a, t, s, lod){
+  const col = MR.colorHex(r.color), ys = [-.3, 0, .3];
+  c.strokeStyle = '#3a3f45'; c.lineWidth = s*.04; c.lineCap = 'round';
+  [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd*.36*s, -.3*s); c.lineTo(sd*.25*s, 0); c.lineTo(sd*.36*s, .3*s); c.moveTo(sd*.25*s, 0); c.lineTo(sd*.36*s, 0); c.stroke(); });
+  c.lineCap = 'butt';
+  ys.forEach(y => [-1, 1].forEach(sd => metalWheel(c, sd*.36*s, y*s, .13*s, .2*s, lod, y !== 0)));
+  const panel = (px, py, ang) => { c.save(); c.translate(px*s, py*s); c.rotate(ang);
+    c.fillStyle = col; rr(c, -.21*s, -.105*s, .42*s, .21*s, .03*s); c.fill();
+    const g = c.createLinearGradient(-.19*s, -.09*s, .19*s, .09*s); g.addColorStop(0, '#2d4a78'); g.addColorStop(.5, '#1c2f52'); g.addColorStop(1, '#253f69');
+    c.fillStyle = g; c.fillRect(-.19*s, -.085*s, .38*s, .17*s);
+    if (lod >= 1) { c.strokeStyle = 'rgba(150,180,230,.35)'; c.lineWidth = Math.max(.5, s*.007);
+      for (let k = 1; k < 5; k++) { c.beginPath(); c.moveTo(-.19*s + k*.38*s/5, -.085*s); c.lineTo(-.19*s + k*.38*s/5, .085*s); c.stroke(); }
+      c.beginPath(); c.moveTo(-.19*s, 0); c.lineTo(.19*s, 0); c.stroke(); }
+    c.restore(); };
+  panel(-.3, -.2, -.45); panel(.3, -.2, .45); panel(-.3, .22, .45); panel(.3, .22, -.45);
+  c.fillStyle = '#e9ecef'; rr(c, -.17*s, -.27*s, .34*s, .54*s, .04*s); c.fill();
+  c.fillStyle = '#c7cdd4'; rr(c, -.13*s, -.2*s, .26*s, .4*s, .03*s); c.fill();
+  c.fillStyle = 'rgba(240,191,90,.85)'; [-1, 1].forEach(sd => { c.beginPath(); c.arc(sd*.065*s, .08*s, .045*s, 0, Math.PI*2); c.fill(); });
+  c.fillStyle = '#f4f6f8'; c.beginPath(); c.ellipse(0, .19*s, .07*s, .05*s, 0, 0, Math.PI*2); c.fill();
+  c.fillStyle = '#8d949c'; c.fillRect(-.02*s, -.3*s, .04*s, .12*s);
+  c.fillStyle = '#eef1f4'; rr(c, -.1*s, -.41*s, .2*s, .1*s, .02*s); c.fill();
+  c.fillStyle = '#11161c'; [-1, 1].forEach(sd => { c.beginPath(); c.arc(sd*.05*s, -.37*s, s*.022, 0, Math.PI*2); c.fill(); });
+  if (a.busy === 'analyze' || a.busy === 'drill') { const f = .5 + .5*Math.sin(t/40);
+    c.strokeStyle = `rgba(255,90,70,${.5 + f*.4})`; c.lineWidth = s*.02; c.beginPath(); c.moveTo(0, -.41*s); c.lineTo(0, -.8*s); c.stroke();
+    c.fillStyle = `rgba(255,220,180,${f})`; c.beginPath(); c.arc(0, -.8*s, s*.05*(1 + f), 0, Math.PI*2); c.fill(); }
+}
 function drawBuggy(c, r, a, t, s, lod){
   const col = MR.colorHex(r.color), ys = [-.28, 0, .28];
   c.strokeStyle = '#2c3035'; c.lineWidth = s*.045; c.lineCap = 'round';
@@ -560,7 +589,7 @@ R.drawPreview = (cv, r, moonPic) => {
   c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
   const s = cv.width*.62; c.save(); c.translate(cv.width/2, cv.height/2);
   const moon = moonPic != null ? moonPic : R.view && MR.MAPS[R.view.map].airless;
-  if (r.job === 'heli') drawHeli(c, r, {}, performance.now(), s, 2); else if (r.job === 'buggy') drawBuggy(c, r, {}, 0, s, 2); else if (r.job === 'lab') drawLab(c, r, s, 2); else if (moon) drawLRV(c, r, {}, 0, s, 2); else { c.save(); c.translate(s*.05, s*.06); roverShadow(c, r, s); c.restore(); drawGroundRover(c, r, {}, 0, s, 2); mastShadow(c, r, s, .16*s, .2*s); }
+  if (r.job === 'heli') drawHeli(c, r, {}, performance.now(), s, 2); else if (r.job === 'buggy') drawBuggy(c, r, {}, 0, s, 2); else if (r.job === 'lab') drawLab(c, r, s, 2); else if (moon) drawLRV(c, r, {}, 0, s, 2); else if (r.zh) drawZhurong(c, r, {}, 0, s, 2); else { c.save(); c.translate(s*.05, s*.06); roverShadow(c, r, s); c.restore(); drawGroundRover(c, r, {}, 0, s, 2); mastShadow(c, r, s, .16*s, .2*s); }
   if ((r.dust || 0) > 10) { c.fillStyle = `rgba(200,140,90,${Math.min(.5, r.dust/200)})`; c.beginPath(); c.arc(0, 0, s*.45, 0, Math.PI*2); c.fill(); }
   c.restore();
 };
@@ -586,7 +615,7 @@ function drawRover(c, r, a, t, ts, ghost){
   c.rotate(a.ang*Math.PI/180);
   if (a.busy || a.wob > 0) c.translate((Math.random()-.5)*s*.03, (Math.random()-.5)*s*.03);
   const moon = R.view && MR.MAPS[R.view.map].airless;
-  if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod); else if (moon) drawLRV(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
+  if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod); else if (moon) drawLRV(c, r, a, t, s, lod); else if (R.view && R.view.map === 'utopia') drawZhurong(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
   if (perse && lod >= 1) { const an = -a.ang*Math.PI/180, ox = .2*s, oy = .25*s; mastShadow(c, r, s, ox*Math.cos(an) - oy*Math.sin(an), ox*Math.sin(an) + oy*Math.cos(an)); }
   c.restore();
 }

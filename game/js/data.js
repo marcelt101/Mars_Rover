@@ -131,17 +131,17 @@ MR.RARITY = {
 };
 
 MR.CARDS = {
-  basalt:    {name:'Basalt', kid:'Rock', rar:'C', color:'#7a645a', pts:5, maps:['jezero','gusev','meridiani','gale'],
+  basalt:    {name:'Basalt', kid:'Rock', rar:'C', color:'#7a645a', pts:5, maps:['jezero','gusev','meridiani','gale','utopia'],
     fact:'Dark volcanic rock, the most common rock on Mars. Lava flows covered much of the planet billions of years ago.'},
-  olivine:   {name:'Olivine', kid:'Green crystal', rar:'U', color:'#9cc35a', pts:30, maps:['jezero','gusev','gale'],
+  olivine:   {name:'Olivine', kid:'Green crystal', rar:'U', color:'#9cc35a', pts:30, maps:['jezero','gusev','gale','utopia'],
     fact:'A green volcanic crystal. It breaks down quickly in water, so finding lots of it tells scientists the rock stayed dry for a long time.'},
   clay:      {name:'Clay', kid:'Mud rock', rar:'U', color:'#5fb7a8', pts:30, maps:['jezero','meridiani','gale'],
     fact:"Clay forms when water soaks rock for a long time. Jezero's delta is full of it, which is why Perseverance landed there."},
-  salts:     {name:'Sulfate salts', kid:'Water salt', rar:'U', color:'#7fb2ff', pts:40, maps:['jezero','gusev','meridiani','gale'],
+  salts:     {name:'Sulfate salts', kid:'Water salt', rar:'U', color:'#7fb2ff', pts:40, maps:['jezero','gusev','meridiani','gale','utopia'],
     fact:'Salts left behind when salty water dried up. Some hold water inside their crystals. Spirit dug some up by accident with a stuck wheel.'},
   carbonate: {name:'Carbonate', kid:'Lake rock', rar:'R', color:'#e8dab0', pts:50, maps:['jezero','gusev'],
     fact:'Carbonates form in water, often at the edges of lakes. On Earth they can lock away traces of tiny living things.'},
-  meteorite: {name:'Iron-nickel meteorite', kid:'Space metal', rar:'R', color:'#c2c9d1', pts:60, maps:['jezero','gusev','meridiani','gale'],
+  meteorite: {name:'Iron-nickel meteorite', kid:'Space metal', rar:'R', color:'#c2c9d1', pts:60, maps:['jezero','gusev','meridiani','gale','utopia'],
     fact:'A chunk of metal that fell from space. Rovers have found several on Mars. Future builders could use the metal.'},
   silica:    {name:'Silica', kid:'Glass rock', rar:'R', color:'#f4f1ea', pts:70, maps:['gusev'],
     fact:'Almost pure silica, like glass. On Earth it forms around hot springs, which are great homes for microbes. Spirit found it next to Home Plate.'},
@@ -196,6 +196,7 @@ MR.PATCHES = [
   {id:'gusev', name:'Gusev Expedition', icon:'G', desc:'Complete a Gusev expedition', test:s => (s.exp.gusev||0) >= 1},
   {id:'meridiani', name:'Meridiani Expedition', icon:'M', desc:'Complete a Meridiani expedition', test:s => (s.exp.meridiani||0) >= 1},
   {id:'gale', name:'Gale Expedition', icon:'⛰', desc:'Complete a Gale expedition', test:s => (s.exp.gale||0) >= 1},
+  ...((MR.PREVIEW || []).includes('zhurong') ? [{id:'utopia', name:'Utopia Expedition', icon:'☀', desc:'Complete a Utopia Planitia expedition', test:s => (s.exp.utopia||0) >= 1}] : []),
   {id:'moonwalker', name:'Moonwalker', icon:'☾', desc:'Complete an expedition on the Moon', test:s => (s.exp.moon||0) >= 1},
   {id:'genesis', name:'Genesis', icon:'◇', desc:'Find the Genesis Rock', test:s => s.genesis >= 1},
   {id:'full_crew', name:'Full Crew', icon:'⁂', desc:'Play a team game with 3 or more players', test:s => s.crew3 >= 1},
@@ -331,8 +332,17 @@ MR.MAPS.gale = {
   regions:['Aeolis Palus','Mudstone','Bagnold Dunes','Plains','Yellowknife Bay','Crater wall','Mount Sharp slopes','Cliffs','Layered rock','Crater wall'],
   par:38, parCadet:14,
 };
+MR.MAPS.utopia = {
+  name:'Utopia Planitia', rover:'Zhurong', year:'2021–2022', unlock:'gale',
+  blurb:'A vast northern plain, maybe the floor of an ancient ocean. China\'s first Mars rover, Zhurong, explored it in 2021.',
+  station:{x:24, y:9}, startDir:2,
+  labels:[{t:'ZHURONG LANDING SITE', x:24, y:6.6},{t:'TROUGHS', x:47, y:9},{t:'PITTED CONES', x:9, y:24.6},{t:'DUNE FIELD', x:30, y:23.6},{t:'ANCIENT SHORELINE?', x:34, y:38.2},{t:'HIGHLANDS', x:52, y:42.6},{t:'VIKING 2: FAR TO THE NORTH-EAST', x:50, y:1.4}],
+  regions:['Utopia plains','Crusty ground','Dune field','Plains','Troughs','Crater rim','Pitted cones','Cliffs','Ancient shoreline','Highlands'],
+  par:40, parCadet:14,
+};
 MR.MAPS.jezero.regions.push('Crater rim'); MR.MAPS.gusev.regions.push('Crater rim');
 MR.MAP_ORDER = ['jezero','gusev','moon','meridiani','gale'];
+if ((MR.PREVIEW || []).includes('zhurong')) MR.MAP_ORDER.push('utopia');   /* batch 7, waiting for approval */
 MR.parOf = st => st.day && MR.missionOf && MR.missionOf(st.day) ? MR.missionOf(st.day).par : st.goals.some(g => g.kind === 'treasure') ? MR.MAPS[st.map].parCadet : MR.MAPS[st.map].par;
 MR.cadetGoals = n => [{t:`Find ${3+2*n} treasures`, kind:'treasure', of:3+2*n}];
 

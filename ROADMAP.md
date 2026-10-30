@@ -3,6 +3,9 @@
 Order agreed with the user. Real missions only; future missions are labeled "as NASA plans it".
 
 ## Batch 7: Utopia Planitia, Mars (China's Zhurong rover, 2021)
+**Status:** built behind `?preview=zhurong`, waiting for approval. Going live means removing the preview check in
+`data.js` (map order and patch), `ui.js` (Zhurong button) and raising `MR.VERSION`, so older devices can't join a
+Utopia game.
 - A new Mars map in the same style as the others. It unlocks after Gale.
 - Four campaigns from the real mission:
   1. Landing and the lander "selfie": Zhurong dropped a small camera to photograph itself next to its lander.
