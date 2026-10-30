@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Venera Descent Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+<!-- Batch 8 test: the Venera 13 descent (1982), about one hour sped up to about 25 seconds. Not linked from the
+     game yet; open game/venera-test.html. Russian first, English under it. -->
+<style>
+:root{--bg:#0e1319;--fg:#e6ecf1;--muted:#a9b6c2;--amber:#ffcf6b;--red:#c8242a;--mono:'IBM Plex Mono',ui-monospace,monospace;
+  --body:'IBM Plex Sans',system-ui,sans-serif;--display:'Chakra Petch','IBM Plex Sans',system-ui,sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);min-height:100vh}
+body{display:grid;place-items:center;overflow-x:hidden}
+#wrap{position:relative;width:min(100vw,150vh);aspect-ratio:3/2;max-height:100vh;container-type:inline-size;overflow:hidden;background:#000}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;left:1.6cqw;top:1.6cqw;display:grid;grid-template-columns:repeat(4,auto);gap:.8cqw;pointer-events:none}
+.cell{background:rgba(10,8,6,.62);border:1px solid rgba(255,207,107,.35);border-radius:.8cqw;padding:.6cqw 1cqw;min-width:11cqw}
+.ru{font-family:var(--mono);font-weight:700;font-size:1.25cqw;letter-spacing:.06em;color:var(--amber)}
+.en{font-size:1.1cqw;color:var(--muted)}
+.val{font-family:var(--mono);font-weight:500;font-size:2.5cqw;line-height:1.15;white-space:nowrap}
+.clock{position:absolute;right:1.6cqw;top:1.6cqw;text-align:right;background:rgba(10,8,6,.62);border:1px solid rgba(255,207,107,.35);border-radius:.8cqw;padding:.6cqw 1cqw;pointer-events:none}
+.phase{position:absolute;left:50%;transform:translateX(-50%);bottom:10.5cqw;text-align:center;white-space:nowrap;background:rgba(10,8,6,.55);border-radius:1cqw;padding:.5cqw 2cqw;pointer-events:none;transition:opacity .4s}
+.phase .ru{font-size:2.9cqw;color:#fff;text-shadow:0 0 1cqw rgba(0,0,0,.8)}
+.phase .en{font-size:1.8cqw;color:#ffe6b0;text-shadow:0 0 .8cqw rgba(0,0,0,.9)}
+.cap{position:absolute;left:12cqw;right:12cqw;bottom:2cqw;text-align:center;font-size:1.9cqw;line-height:1.35;background:rgba(10,8,6,.66);border-radius:1cqw;padding:.9cqw 1.6cqw;pointer-events:none}
+.cap:empty{display:none}
+.start{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:1.4cqw;background:radial-gradient(circle at 50% 45%,rgba(60,40,20,.35),rgba(0,0,0,.85));text-align:center}
+.start h1{margin:0;font-family:var(--mono);font-weight:700;font-size:4.4cqw;letter-spacing:.08em;color:var(--amber)}
+.start p{margin:0;font-size:1.9cqw;color:var(--muted);max-width:60cqw}
+.btn{font-family:var(--mono);font-weight:700;font-size:2.4cqw;letter-spacing:.08em;color:#1a0f05;background:var(--amber);border:0;border-radius:1cqw;padding:1.2cqw 4cqw;cursor:pointer;line-height:1.2}
+.btn small{display:block;font-family:var(--body);font-weight:600;font-size:1.4cqw;letter-spacing:0}
+.mute{position:absolute;right:1.6cqw;bottom:1.6cqw;font-size:1.4cqw;z-index:2;background:rgba(10,8,6,.62);color:var(--fg);border:1px solid rgba(255,207,107,.35);border-radius:.8cqw;padding:.5cqw 1cqw;cursor:pointer}
+.hidden{display:none!important}
+@media (max-aspect-ratio:1/1){ /* phones held upright: a tall scene and bigger text */
+  #wrap{width:min(100vw,66.67vh);aspect-ratio:2/3}
+  .hud{grid-template-columns:repeat(2,1fr);right:2cqw} .cell{min-width:0} .ru{font-size:3.4cqw} .en{font-size:3cqw} .val{font-size:6.4cqw}
+  .clock{display:none} .phase{bottom:33cqw} .phase .ru{font-size:6.4cqw} .phase .en{font-size:4.4cqw} .cap{font-size:4.2cqw;left:3cqw;right:3cqw;bottom:11cqw}
+  .start h1{font-size:6.5cqw} .start p{font-size:3.2cqw;max-width:88cqw} .btn{font-size:4cqw} .btn small{font-size:2.6cqw} .mute{font-size:2.6cqw}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv" width="960" height="640"></canvas>
+  <div class="hud" id="hud">
+    <div class="cell"><div class="ru">ВЫСОТА</div><div class="val" id="vAlt">–</div><div class="en">Altitude</div></div>
+    <div class="cell"><div class="ru">СКОРОСТЬ</div><div class="val" id="vSpd">–</div><div class="en">Speed</div></div>
+    <div class="cell"><div class="ru">ТЕМПЕРАТУРА</div><div class="val" id="vTmp">–</div><div class="en">Temperature outside</div></div>
+    <div class="cell"><div class="ru">ДАВЛЕНИЕ</div><div class="val" id="vPrs">–</div><div class="en">Air pressure (Earth = 1)</div></div>
+  </div>
+  <div class="clock"><div class="ru">ЦУП · Т+</div><div class="val" id="vClk">00:00:00</div><div class="en">Mission control · sped up</div>
+    <div class="ru" style="margin-top:.5cqw">ВЕТЕР</div><div class="val" id="vWnd" style="font-size:1.8cqw">–</div><div class="en">Wind</div></div>
+  <div class="phase" id="phase"><div class="ru" id="phRu"></div><div class="en" id="phEn"></div></div>
+  <div class="cap" id="cap"></div>
+  <button class="mute" id="mute">🔊 Sound on</button>
+  <div class="start" id="start">
+    <h1>ВЕНЕРА-13 · СПУСК</h1>
+    <p>Descent to Venus, 1 March 1982. About one hour of falling, sped up to 25 seconds. Sound on!</p>
+    <button class="btn" id="go">ПУСК<small>Launch</small></button>
+  </div>
+  <div class="start hidden" id="end">
+    <h1 style="font-size:3.2cqw">ВЕНЕРА-13 ПРОРАБОТАЛА 127 МИНУТ</h1>
+    <p>Venera 13 kept working on the surface for 127 minutes before the heat won. It sent the first color pictures and the first sounds from another planet.</p>
+    <button class="btn" id="again">ЕЩЁ РАЗ<small>Watch again</small></button>
+  </div>
+</div>
+<script>
+(function () {
+const cv = document.getElementById('cv'), cx = cv.getContext('2d'), TALL = matchMedia('(max-aspect-ratio:1/1)').matches;
+const W = TALL ? 640 : 960, H = TALL ? 960 : 640; cv.width = W; cv.height = H;
+const $ = id => document.getElementById(id);
+const lerp = (a, b, k) => a + (b - a) * k, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = k => k * k * (3 - 2 * k);
+/* Venus air by height (km): temperature °C and pressure in Earth atmospheres (Venus International Reference
+   Atmosphere, rounded; ground values are the ones Venera 13 measured: 457 °C, 89 atm). Wind in m/s. */
+const AIR = [[125,-110,0],[100,-100,0.00003],[80,-77,0.005],[70,-43,0.036],[65,-30,0.1],[60,-10,0.24],[55,27,0.53],
+  [50,75,1.07],[45,112,2.0],[40,143,3.5],[30,222,9.9],[20,298,22.5],[10,385,47],[0,457,89]];
+const WIND = [[125,100],[70,100],[60,80],[50,60],[40,45],[30,30],[20,15],[10,5],[0,1]];
+function table(t, a, col) {
+  for (let i = 0; i < t.length - 1; i++) if (a <= t[i][0] && a >= t[i + 1][0]) return lerp(t[i + 1][col], t[i][col], (a - t[i + 1][0]) / (t[i][0] - t[i + 1][0]));
+  return a > t[0][0] ? t[0][col] : t[t.length - 1][col];
+}
+/* Timeline (seconds of the show). Real times: entry, parachute after a few minutes, parachute dropped at 47 km,
+   then about 47 minutes of falling under the brake disc. */
+const T = {chute:6, drop:12, land:21.5, caps:23, pic:24.6, end:31};
+function state(t) {
+  let alt, spd, clock;
+  if (t < T.chute) { const k = t / T.chute; alt = lerp(125, 63, ease(k)); spd = 11200 * Math.pow(250 / 11200, ease(k)); clock = k * 180; }
+  else if (t < T.drop) { const k = (t - T.chute) / (T.drop - T.chute); alt = lerp(63, 47, k); spd = lerp(250, 30, Math.min(1, k * 4)); clock = 180 + k * 480; }
+  else if (t < T.land) { const k = (t - T.drop) / (T.land - T.drop); alt = 47 * Math.pow(1 - k, 1.35); spd = k < .12 ? lerp(30, 50, k / .12) : lerp(50, 7.5, Math.pow((k - .12) / .88, .6)); clock = 660 + k * 2820; }
+  else { alt = 0; spd = 0; clock = 3480 + (t - T.land) * 6; }
+  return {alt, spd, clock, tmp: table(AIR, alt, 1), prs: table(AIR, alt, 2), wind: table(WIND, alt, 1)};
+}
+const ru = (v, d) => v.toFixed(d).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const PHASES = [
+  [0, 'ВХОД В АТМОСФЕРУ', 'Entering the air', 'The lander hits the air of Venus at 11 kilometers every second. Its heat shield glows like a meteor.'],
+  [T.chute, 'ПАРАШЮТ', 'Parachute open', 'The shell splits open and the parachute pulls out the lander. All around: clouds made of droplets of acid.'],
+  [8.6, 'МОЛНИЯ?', 'Lightning?', 'A crackle on the radio! Venera carried a lightning detector, and it heard bursts like these in the clouds.'],
+  [T.drop, 'ПАРАШЮТ СБРОШЕН', 'Parachute dropped', 'The air down here is so thick that the parachute isn\'t needed. The flat metal disc on top is enough to slow the lander.'],
+  [14.2, 'ПОД ОБЛАКАМИ', 'Below the clouds', 'Clear air, but orange and dim, like a dusty sunset. It gets hotter and the air presses harder every second.'],
+  [T.land, 'ПОСАДКА', 'Touchdown', 'Landed at about 8 meters a second, onto a soft ring that squashes. Outside it is 457 °C: hot enough to melt lead.'],
+  [T.caps, 'КРЫШКИ КАМЕР СБРОШЕНЫ', 'Lens caps off', 'Pop! The covers fly off the two cameras. Now the clock is ticking: the heat is getting in.'],
+  [T.pic, 'ПЕРЕДАЧА ДАННЫХ', 'Data transmission', 'The picture comes to Earth one line at a time, sent up to the carrier spacecraft flying past Venus.'],
+];
+/* ---------- sound (Web Audio, made up on the spot: no sound files) ---------- */
+let ac = null, muted = false, nodes = null;
+function audio() {
+  if (ac) return; try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  const len = ac.sampleRate * 2, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const master = ac.createGain(); master.connect(ac.destination);
+  const loop = (type, freq, q) => { const s = ac.createBufferSource(); s.buffer = buf; s.loop = true; const f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; const g = ac.createGain(); g.gain.value = 0; s.connect(f); f.connect(g); g.connect(master); s.start(); return {g, f}; };
+  nodes = {master, buf, rumble: loop('lowpass', 140, 0.8), wind: loop('bandpass', 500, 0.7)};
+}
+function blip(freq, dur, vol, type) {
+  if (!ac || muted) return; const o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur); o.connect(g); g.connect(nodes.master); o.start(); o.stop(ac.currentTime + dur);
+}
+function burst(freq, dur, vol, type) {
+  if (!ac || muted) return; const s = ac.createBufferSource(); s.buffer = nodes.buf; const f = ac.createBiquadFilter(); f.type = type || 'lowpass'; f.frequency.value = freq;
+  const g = ac.createGain(); g.gain.setValueAtTime(vol, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+  s.connect(f); f.connect(g); g.connect(nodes.master); s.start(); s.stop(ac.currentTime + dur);
+}
+function sound(t, s) {
+  if (!nodes) return; const now = ac.currentTime;
+  const rum = t < T.chute ? 0.9 * Math.sin(Math.PI * Math.min(1, t / T.chute * 1.15)) + .1 : t < T.land ? .12 : 0;
+  const wnd = t < T.chute ? .1 : t < T.land ? .18 + .14 * (1 - s.alt / 63) : t < T.land + 1.5 ? .05 : 0;
+  nodes.rumble.g.gain.setTargetAtTime(muted ? 0 : rum, now, .08); nodes.wind.g.gain.setTargetAtTime(muted ? 0 : wnd, now, .2);
+  nodes.wind.f.frequency.setTargetAtTime(t < T.drop ? 700 : 380, now, .5);
+}
+$('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? '🔇 Sound off' : '🔊 Sound on'; if (ac) nodes.master.gain.value = muted ? 0 : 1; };
+/* ---------- scenery ---------- */
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const stars = Array.from({length: 120}, () => [rnd() * W, rnd() * H, rnd() * 1.4 + .3]);
+const wisps = Array.from({length: 46}, () => ({x: rnd() * W, y: rnd() * (H + 300), w: 120 + rnd() * 260, h: 18 + rnd() * 40, a: .25 + rnd() * .5}));
+const motes = Array.from({length: 70}, () => ({x: rnd() * W, y: rnd() * H, r: .8 + rnd() * 1.8}));
+const SKY = [[125,'#04050a','#120d0a'],[90,'#07070c','#1e160d'],[70,'#2a2214','#56482a'],[64,'#d9cc96','#c9b97f'],[56,'#ecdfa8','#dccb8c'],
+  [49,'#e0c27a','#cfa35c'],[45,'#c98a45','#b06d33'],[30,'#b06a33','#8f5226'],[10,'#965226','#7a401d'],[0,'#8a4a22','#6a3518']];
+function hex(c) { return [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)); }
+function mix(a, b, k) { const A = hex(a), B = hex(b); return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], k))).join(',')})`; }
+function sky(alt) {
+  for (let i = 0; i < SKY.length - 1; i++) if (alt <= SKY[i][0] && alt >= SKY[i + 1][0]) { const k = (SKY[i][0] - alt) / (SKY[i][0] - SKY[i + 1][0]); return [mix(SKY[i][1], SKY[i + 1][1], k), mix(SKY[i][2], SKY[i + 1][2], k)]; }
+  return [SKY[SKY.length - 1][1], SKY[SKY.length - 1][2]];
+}
+/* the ground: flat cracked rock plates, as in the Venera 13 pictures */
+const plates = Array.from({length: 26}, () => ({x: rnd() * W * 1.4 - W * .2, y: rnd(), w: 60 + rnd() * 160, s: rnd()}));
+function ground(gy, haze) {
+  const g = cx.createLinearGradient(0, gy, 0, H); g.addColorStop(0, '#7a4521'); g.addColorStop(1, '#4e2a12');
+  cx.fillStyle = g; cx.fillRect(0, gy, W, H - gy);
+  for (const p of plates) {
+    const y = gy + 6 + p.y * (H - gy), sc = .4 + (y - gy) / Math.max(1, H - gy);
+    cx.fillStyle = p.s > .5 ? 'rgba(40,20,8,.45)' : 'rgba(150,90,45,.35)';
+    cx.beginPath(); cx.ellipse(p.x, y, p.w * sc, 5 * sc + 2, 0, 0, 7); cx.fill();
+  }
+  if (haze > 0) { cx.fillStyle = `rgba(176,108,52,${haze})`; cx.fillRect(0, gy, W, H - gy); }
+}
+/* the lander: pressure ball with "СССР", landing ring with teeth below, brake disc and antenna on top */
+function lander(x, y, s, caps, spin) {
+  cx.save(); cx.translate(x, y); cx.rotate(spin || 0); cx.scale(s, s);
+  cx.strokeStyle = '#5b5f63'; cx.lineWidth = 2.2;
+  for (const dx of [-26, -10, 10, 26]) { cx.beginPath(); cx.moveTo(dx * .7, 20); cx.lineTo(dx, 36); cx.stroke(); }
+  cx.fillStyle = '#7d8286'; cx.beginPath(); cx.ellipse(0, 40, 42, 10, 0, 0, 7); cx.fill();
+  cx.fillStyle = '#9da2a6'; cx.beginPath(); cx.ellipse(0, 37, 42, 8, 0, 0, 7); cx.fill();
+  cx.fillStyle = '#5d6266'; for (let i = -38; i <= 38; i += 7.6) { cx.beginPath(); cx.moveTo(i - 2.5, 46); cx.lineTo(i, 50); cx.lineTo(i + 2.5, 46); cx.fill(); }
+  const b = cx.createRadialGradient(-10, -12, 4, 0, 0, 32); b.addColorStop(0, '#f4f2ea'); b.addColorStop(.7, '#c7c8c2'); b.addColorStop(1, '#8e918e');
+  cx.fillStyle = b; cx.beginPath(); cx.arc(0, 0, 30, 0, 7); cx.fill();
+  cx.fillStyle = '#3e4a56'; cx.fillRect(-29.5, 12, 59, 4);
+  cx.fillStyle = '#b3171d'; cx.font = '700 13px "IBM Plex Sans",sans-serif'; cx.textAlign = 'center'; cx.fillText('СССР', 0, -1);
+  cx.fillStyle = '#1d2329'; cx.font = '700 6.3px "IBM Plex Sans",sans-serif'; cx.fillText('ВЕНЕРА-13', 0, 8.5);
+  for (const sx of [-15, 15]) { cx.fillStyle = '#2b2f33'; cx.beginPath(); cx.arc(sx, 23, 3.6, 0, 7); cx.fill();
+    if (caps) { cx.fillStyle = '#c9a23a'; cx.beginPath(); cx.arc(sx, 23, 4.2, Math.PI, 0); cx.fill(); } }
+  cx.fillStyle = '#6f7478'; cx.fillRect(-4, -36, 8, 8);
+  const dsk = cx.createLinearGradient(-64, 0, 64, 0); dsk.addColorStop(0, '#8d9296'); dsk.addColorStop(.45, '#e3e5e2'); dsk.addColorStop(1, '#7b8084');
+  cx.fillStyle = dsk; cx.beginPath(); cx.ellipse(0, -36, 64, 8, 0, 0, 7); cx.fill();
+  cx.fillStyle = '#5c6165'; cx.beginPath(); cx.ellipse(0, -34, 64, 5, 0, 0, Math.PI); cx.fill();
+  cx.fillStyle = '#c3c6c4'; cx.fillRect(-7, -66, 14, 28);
+  cx.strokeStyle = '#7b8084'; cx.lineWidth = 1.4; for (let i = 0; i < 6; i++) { cx.beginPath(); cx.moveTo(-7, -62 + i * 4.4); cx.lineTo(7, -64 + i * 4.4); cx.stroke(); }
+  cx.fillStyle = '#9da2a6'; cx.beginPath(); cx.ellipse(0, -66, 7, 2.5, 0, 0, 7); cx.fill();
+  cx.restore();
+}
+function shell(x, y, s, glow, split) {
+  cx.save(); cx.translate(x, y); cx.scale(s, s);
+  if (glow > 0) {
+    const tr = cx.createLinearGradient(0, 40, 0, -260); tr.addColorStop(0, `rgba(255,220,150,${.85 * glow})`); tr.addColorStop(.3, `rgba(255,120,40,${.5 * glow})`); tr.addColorStop(1, 'rgba(255,80,20,0)');
+    cx.fillStyle = tr; cx.beginPath(); cx.moveTo(-70, 10); cx.quadraticCurveTo(-30 - 20 * Math.random(), -160, 0, -280); cx.quadraticCurveTo(30 + 20 * Math.random(), -160, 70, 10); cx.fill();
+    const h = cx.createRadialGradient(0, 30, 10, 0, 30, 110); h.addColorStop(0, `rgba(255,250,220,${glow})`); h.addColorStop(.35, `rgba(255,160,60,${.7 * glow})`); h.addColorStop(1, 'rgba(255,90,20,0)');
+    cx.fillStyle = h; cx.beginPath(); cx.arc(0, 30, 110, 0, 7); cx.fill();
+  }
+  const top = -split * 140, bot = split * 120;
+  cx.globalAlpha = 1 - split * .8;
+  cx.fillStyle = '#4a4440'; cx.beginPath(); cx.arc(0, top, 58, Math.PI, 0); cx.fill();
+  cx.fillStyle = '#6a625b'; cx.beginPath(); cx.arc(0, top, 52, Math.PI, 0); cx.fill();
+  cx.fillStyle = glow > 0 ? mix('#3a2a20', '#ff9a40', glow * .8) : '#3a2a20'; cx.beginPath(); cx.arc(0, bot, 58, 0, Math.PI); cx.fill();
+  cx.globalAlpha = 1; cx.restore();
+}
+function chute(x, y, s, sway, up) {
+  cx.save(); cx.translate(x, y - up); cx.rotate(sway); cx.scale(s, s);
+  cx.strokeStyle = 'rgba(70,60,50,.8)'; cx.lineWidth = 1;
+  for (let i = -5; i <= 5; i++) { cx.beginPath(); cx.moveTo(i * 17, -160); cx.lineTo(0, up / s); cx.stroke(); }
+  const c = cx.createLinearGradient(-95, 0, 95, 0); c.addColorStop(0, '#d8d2c4'); c.addColorStop(.5, '#fbf7ee'); c.addColorStop(1, '#c9c1b1');
+  cx.fillStyle = c; cx.beginPath(); cx.moveTo(-95, -158); cx.quadraticCurveTo(0, -270, 95, -158); cx.quadraticCurveTo(0, -176, -95, -158); cx.fill();
+  cx.fillStyle = '#d4552a'; for (let i = -3; i <= 3; i += 2) { cx.beginPath(); cx.moveTo(i * 22, -163); cx.lineTo(i * 26 + 12, -228 + Math.abs(i) * 6); cx.lineTo(i * 26 + 26, -226 + Math.abs(i) * 6); cx.lineTo(i * 22 + 18, -164); cx.fill(); }
+  cx.restore();
+}
+/* ---------- the picture from the camera: a made-up fish-eye view in the style of the Venera 13 panoramas ---------- */
+const PW = 900, PH = 250, pic = document.createElement('canvas'); pic.width = PW; pic.height = PH;
+(function paint() {
+  const p = pic.getContext('2d'), hz = x => -60 + 190 * Math.pow((x - PW / 2) / (PW / 2), 2);
+  p.fillStyle = '#5a3416'; p.fillRect(0, 0, PW, PH);
+  for (let x = 0; x < PW; x++) { const h = hz(x); if (h > 0) { const g = p.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#d79a52'); g.addColorStop(1, '#f0c27e'); p.fillStyle = g; p.fillRect(x, 0, 1, h); } }
+  seed = 31;
+  for (let i = 0; i < 2600; i++) { const x = rnd() * PW, y = Math.max(0, hz(x)) + rnd() * PH; p.fillStyle = rnd() > .5 ? 'rgba(30,15,5,.35)' : 'rgba(140,85,40,.25)'; p.fillRect(x, y, 2, 1.5); }
+  /* flat rock plates: small and squashed near the horizon, big near the lander */
+  const plates = [];
+  for (let i = 0; i < 230; i++) { const x = rnd() * PW, h = Math.max(0, hz(x)), d = Math.pow(rnd(), .7); plates.push({x, y: h + 3 + d * (PH - h), d}); }
+  plates.sort((a, b) => a.y - b.y);
+  for (const q of plates) {
+    const rx = 6 + q.d * 55 * (.5 + rnd()), ry = 1.2 + q.d * 13 * (.4 + rnd()), n = 7, tilt = (q.x - PW / 2) / PW * .6;
+    const pts = Array.from({length: n}, (_, j) => { const a = j / n * Math.PI * 2, r = .75 + rnd() * .35; return [q.x + Math.cos(a + tilt) * rx * r, q.y + Math.sin(a) * ry * r]; });
+    const tone = 95 + rnd() * 55;
+    p.fillStyle = 'rgba(25,12,4,.6)'; p.beginPath(); pts.forEach(([x, y], j) => j ? p.lineTo(x + 1.5, y + 2) : p.moveTo(x + 1.5, y + 2)); p.fill();
+    p.fillStyle = `rgb(${tone + 30},${tone * .62 + 8},${tone * .3})`; p.beginPath(); pts.forEach(([x, y], j) => j ? p.lineTo(x, y) : p.moveTo(x, y)); p.fill();
+    p.strokeStyle = `rgba(230,170,100,${.25 + q.d * .25})`; p.lineWidth = 1; p.beginPath(); pts.slice(n / 2 | 0).forEach(([x, y], j) => j ? p.lineTo(x, y) : p.moveTo(x, y)); p.stroke();
+    if (q.d > .5 && rnd() > .5) { p.strokeStyle = 'rgba(30,15,5,.5)'; p.beginPath(); p.moveTo(q.x - rx * .5, q.y - ry * .2); p.lineTo(q.x + rx * .1, q.y + ry * .3); p.lineTo(q.x + rx * .4, q.y - ry * .1); p.stroke(); }
+  }
+  p.fillStyle = '#7e8387'; p.beginPath(); p.ellipse(PW / 2, PH + 70, 300, 115, 0, Math.PI, 0); p.fill();
+  p.fillStyle = '#a4a9ad'; p.beginPath(); p.ellipse(PW / 2, PH + 78, 288, 106, 0, Math.PI, 0); p.fill();
+  p.fillStyle = '#62676b'; for (let a = Math.PI * 1.06; a < Math.PI * 1.94; a += .055) { const x = PW / 2 + Math.cos(a) * 300, y = PH + 70 + Math.sin(a) * 115; p.beginPath(); p.moveTo(x - 6, y + 4); p.lineTo(x, y - 9); p.lineTo(x + 6, y + 4); p.fill(); }
+  const cols = ['#f2f2f2', '#d8c13a', '#3a8fd8', '#cf3b32', '#3faa52', '#222'];
+  cols.forEach((c, i) => { p.fillStyle = c; p.fillRect(PW / 2 + 130 + i * 15, PH - 46, 14, 14); });
+  p.fillStyle = '#2d2a26'; p.beginPath(); p.ellipse(PW / 2 - 210, PH - 48, 22, 9, -.2, Math.PI, 0); p.fill();
+  for (let y = 0; y < PH; y += 2) { p.fillStyle = `rgba(0,0,0,${.05 + Math.random() * .06})`; p.fillRect(0, y, PW, 1); }
+  const v = p.createRadialGradient(PW / 2, PH / 2, PH * .4, PW / 2, PH / 2, PW * .6); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
+  p.fillStyle = v; p.fillRect(0, 0, PW, PH);
+})();
+/* ---------- the show ---------- */
+let t0 = 0, last = 0, scroll = 0, running = false, phaseShown = -1, beeps = 0, flashT = -9, dust = [];
+const flashes = [8.6, 9.4, 10.8];
+function frame(now) {
+  if (!running) return;
+  const t = (now - t0) / 1000, dt = Math.min(.05, (now - last) / 1000); last = now;
+  const s = state(t);
+  /* background */
+  const [c1, c2] = sky(s.alt), g = cx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, c1); g.addColorStop(1, c2);
+  cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+  if (s.alt > 70) { cx.fillStyle = `rgba(255,255,255,${clamp((s.alt - 75) / 30, 0, 1) * .8})`; for (const [x, y, r] of stars) cx.fillRect(x, y, r, r); }
+  if (t < T.chute + .5) {
+    const top = lerp(H * .78, -260, ease(clamp(t / (T.chute - .4), 0, 1)));
+    const lg = cx.createLinearGradient(0, top - 60, 0, top + 300); lg.addColorStop(0, 'rgba(255,240,190,0)'); lg.addColorStop(.18, 'rgba(250,236,186,.95)'); lg.addColorStop(1, '#d9c88e');
+    cx.fillStyle = lg; cx.beginPath(); cx.ellipse(W / 2, top + 1500, 2300, 1500, 0, 0, 7); cx.fill();
+  }
+  /* clouds and haze stream past */
+  const vis = t < T.chute ? 900 : t < T.drop ? 260 : t < T.land ? 150 + s.spd * 2 : 0;
+  scroll += vis * dt;
+  const cloud = s.alt > 70 ? 0 : s.alt > 48 ? 1 : clamp((s.alt - 30) / 18, .15, 1) * .6;
+  if (cloud > 0 && t < T.land) for (const w of wisps) {
+    const y = H + 150 - ((w.y + scroll) % (H + 300));
+    const col = s.alt > 48 ? '255,248,214' : '214,150,82';
+    cx.fillStyle = `rgba(${col},${w.a * cloud * (t < T.chute ? .55 : 1)})`;
+    cx.beginPath(); cx.ellipse(w.x, y, w.w, t < T.chute ? w.h * 3 : w.h, 0, 0, 7); cx.fill();
+  }
+  if (t > T.drop) for (const m of motes) { m.x -= s.wind * dt * 3; m.y -= vis * dt * .8; if (m.x < 0) m.x += W; if (m.y < 0) m.y += H; cx.fillStyle = 'rgba(255,210,150,.35)'; cx.fillRect(m.x, m.y, m.r, m.r); }
+  /* lightning */
+  for (const f of flashes) if (t >= f && t - dt < f) { flashT = t; burst(2500, .35, .35, 'highpass'); }
+  if (t - flashT < .25) { cx.fillStyle = `rgba(255,255,240,${(1 - (t - flashT) / .25) * .6})`; cx.fillRect(0, 0, W, H); }
+  /* ground rises up at the end */
+  const LY = TALL ? 470 : 330, S = 1.55, landY = LY + 50 * S;
+  if (s.alt < 9) ground(lerp(H + 20, landY, ease(clamp((9 - s.alt) / 9, 0, 1))), clamp(s.alt / 9, 0, .6));
+  /* the lander */
+  const shake = t < T.chute ? 6 * Math.sin(Math.PI * clamp(t / T.chute, 0, 1)) : t > T.land && t < T.land + .35 ? 7 * (1 - (t - T.land) / .35) : 0;
+  const sx = W / 2 + (Math.random() - .5) * shake, sy = LY + (Math.random() - .5) * shake;
+  const sway = t > T.chute && t < T.drop ? Math.sin(t * 2.1) * .08 : t > T.drop && t < T.land ? Math.sin(t * 1.3) * .03 : 0;
+  if (t > T.chute - .1 && t < T.drop + 3) chute(sx, sy - 66 * S, .8, sway, t > T.drop ? (t - T.drop) * 260 : 0);
+  if (t < T.chute + 1.5) { if (t > T.chute) lander(sx, sy, S, true, sway); shell(sx, sy, S, t < T.chute ? clamp(Math.sin(Math.PI * t / T.chute) * 1.3, 0, 1) : 0, t > T.chute ? ease(clamp((t - T.chute) / 1.5, 0, 1)) : 0); }
+  else lander(sx, sy, S, t < T.caps, sway);
+  if (t > T.caps && t < T.caps + 1.6) for (const sd of [-1, 1]) { const k = t - T.caps; cx.fillStyle = '#c9a23a'; cx.beginPath(); cx.arc(sx + sd * (15 * S + k * 140), sy + 23 * S - k * 160 + k * k * 220, 7, 0, 7); cx.fill(); }
+  if (t > T.land && dust.length === 0) { dust = Array.from({length: 40}, () => ({a: Math.random() * Math.PI, v: 40 + Math.random() * 90})); burst(160, .9, .9); blip(70, .5, .5, 'sine'); }
+  if (t > T.land && t < T.land + 3) for (const d of dust) { const k = t - T.land; cx.fillStyle = `rgba(150,95,50,${.5 * (1 - k / 3)})`; cx.beginPath(); cx.arc(sx + Math.cos(d.a) * d.v * k * 1.4, landY - Math.sin(d.a) * d.v * k * .35, 6 + k * 10, 0, 7); cx.fill(); }
+  /* the picture arrives line by line */
+  if (t > T.pic) {
+    const k = clamp((t - T.pic - .4) / 4.2, 0, 1), dw = Math.min(PW, W - 40), dh = PH * dw / PW, px = (W - dw) / 2, py = TALL ? 300 : 180;
+    cx.fillStyle = 'rgba(8,6,4,.86)'; cx.fillRect(0, 0, W, H);
+    cx.strokeStyle = 'rgba(255,207,107,.6)'; cx.strokeRect(px - 6, py - 6, dw + 12, dh + 12);
+    const cols = Math.floor(k * PW); if (cols > 0) cx.drawImage(pic, 0, 0, cols, PH, px, py, cols * dw / PW, dh);
+    if (k < 1) { cx.fillStyle = 'rgba(255,230,170,.85)'; cx.fillRect(px + cols * dw / PW, py, 2, dh); }
+    cx.fillStyle = '#ffcf6b'; cx.font = '700 15px "IBM Plex Mono",monospace'; cx.textAlign = 'left';
+    cx.fillText(`ВЕНЕРА-13 · КАМЕРА 1 · СТРОКА ${Math.floor(k * 1000)} / 1000`, px, py + dh + 32);
+    cx.fillStyle = '#a9b6c2'; cx.font = '400 14px "IBM Plex Sans",sans-serif'; cx.fillText(`Camera 1 · line ${Math.floor(k * 1000)} of 1000` + (TALL ? '' : ' · drawn for this test, not the real photo'), px, py + dh + 54);
+    if (Math.floor(t * 8) !== beeps && k < 1) { beeps = Math.floor(t * 8); blip(1400 + (beeps % 3) * 120, .05, .05, 'square'); }
+  } else if (Math.floor(t) !== beeps) { beeps = Math.floor(t); blip(1200, .07, .06); }
+  /* numbers */
+  $('vAlt').textContent = ru(s.alt, s.alt < 10 ? 2 : 1) + ' км';
+  $('vSpd').textContent = ru(s.spd, s.spd < 100 ? 1 : 0) + ' м/с';
+  $('vTmp').textContent = (s.tmp < 0 ? '−' : '') + ru(Math.abs(s.tmp), 0) + ' °C';
+  $('vPrs').textContent = ru(s.prs, s.prs < 1 ? 2 : s.prs < 10 ? 1 : 0) + ' атм';
+  const c = Math.floor(s.clock); $('vClk').textContent = [c / 3600, c / 60 % 60, c % 60].map(v => String(Math.floor(v)).padStart(2, '0')).join(':');
+  $('vWnd').textContent = t < T.land ? ru(s.wind, 0) + ' м/с' : '1 м/с';
+  let ph = 0; PHASES.forEach((p, i) => { if (t >= p[0]) ph = i; });
+  if (ph !== phaseShown) { phaseShown = ph; $('phRu').textContent = PHASES[ph][1]; $('phEn').textContent = PHASES[ph][2]; $('cap').textContent = PHASES[ph][3];
+    if (ph === 1) burst(900, .6, .5, 'bandpass'); if (ph === 3) burst(1200, .3, .3, 'highpass'); if (ph === 6) { blip(900, .08, .2, 'triangle'); setTimeout(() => blip(1100, .08, .2, 'triangle'), 90); } }
+  $('phase').style.opacity = t > T.pic ? 0 : 1; $('phase').style.top = '';
+  sound(t, s);
+  if (t > T.end) { running = false; if (nodes) { nodes.rumble.g.gain.value = 0; nodes.wind.g.gain.value = 0; } $('end').classList.remove('hidden'); return; }
+  requestAnimationFrame(frame);
+}
+function go() {
+  audio(); if (ac && ac.state === 'suspended') ac.resume();
+  $('start').classList.add('hidden'); $('end').classList.add('hidden');
+  scroll = 0; phaseShown = -1; beeps = 0; flashT = -9; dust = []; running = true; t0 = last = performance.now(); requestAnimationFrame(frame);
+}
+$('go').onclick = go; $('again').onclick = go;
+/* ?t=12 jumps to a moment (for screenshots) */
+const jump = parseFloat(new URLSearchParams(location.search).get('t'));
+if (jump >= 0) { $('start').classList.add('hidden'); running = true; t0 = performance.now() - jump * 1000; last = performance.now() - 16; requestAnimationFrame(frame); }
+else { cx.fillStyle = '#05060c'; cx.fillRect(0, 0, W, H); for (const [x, y, r] of stars) { cx.fillStyle = 'rgba(255,255,255,.7)'; cx.fillRect(x, y, r, r); } shell(W / 2, TALL ? 470 : 330, 1.55, 0, 0); }
+})();
+</script>
+</body>
+</html>
