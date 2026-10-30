@@ -2,6 +2,9 @@
 
 Order agreed with the user. Real missions only; future missions are labeled "as NASA plans it".
 
+**Current focus (user's decision): quality over size.** No new maps or worlds for now. Polish the six maps and
+their campaigns that already exist, based on play-testing. Venera and Europa wait.
+
 ## Batch 7: Utopia Planitia, Mars (China's Zhurong rover, 2021)
 **Status:** approved and live for everyone (game version 5, so older devices can't join a Utopia game).
 - A new Mars map in the same style as the others. It unlocks after Gale.
