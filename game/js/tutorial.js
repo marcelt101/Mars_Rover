@@ -23,7 +23,7 @@ const STEPS = {
   cadet:[
     {text:'This bar shows your mission. Let\'s find a sparkly gem!', target:'#missionBar', next:true},
     {text:'Tap the ↑ arrow 3 times.', target:'.cbtn.up', done:() => api().plan().filter(c => c.type === 'forward').length >= 3},
-    {text:'Now tap the dig button ⛏.', target:'.cbtn.dig', done:() => planHas('drill')},
+    {get text(){ return MR.heliCam(api().myRover()) ? 'Now tap the camera button 📷.' : 'Now tap the dig button ⛏.'; }, target:'.cbtn.dig', done:() => planHas('drill')},
     {text:'Press GO!', target:'#goBtn', done:running},
     {text:'Watch your rover drive to the sparkly gem…', target:'#mapbox', done:solAtLeast(2)},
     {text:'You found treasure! Tap Inventory to see it.', target:'#invBtn', done:() => Date.now() - UI.invOpenedAt < 4000},
@@ -64,7 +64,7 @@ const STEPS = {
 let T = null, timer = null, ring = null;
 const say = text => {
   if (!T || T.role !== 'cadet' || !MR.Store.settings.sound || !window.speechSynthesis) return;
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[↑⛏…]/g, '')); u.rate = .92; speechSynthesis.speak(u); } catch (e) {}
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[↑⛏📷…]/g, '')); u.rate = .92; speechSynthesis.speak(u); } catch (e) {}
 };
 function show(){
   const s = T.steps[T.i], el = s.target ? document.querySelector(s.target) : null;

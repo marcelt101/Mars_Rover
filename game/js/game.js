@@ -404,6 +404,7 @@ function renderGame(){
   if (!G.state) return;
   const r = myRover(), role = r ? r.role : 'explorer', cadet = role === 'cadet', code = isCode(r);
   $('cadetPanel').hidden = !cadet; $('planPanel').hidden = cadet; document.querySelector('.cbtn.dn').hidden = !MR.cmdsFor('cadet').includes('back');
+  if (cadet) { const db = document.querySelector('.cbtn.dig'), cam = MR.heliCam(r); db.firstChild.textContent = cam ? '📷' : '⛏'; db.setAttribute('aria-label', cam ? 'Take a picture of treasure (Space)' : 'Dig for treasure (Space)'); }
   $('tabs').hidden = code; $('editor').hidden = !code; $('prog').hidden = code || G.showCode; $('code').hidden = code || !G.showCode;
   $('planTitle').textContent = code ? "Today's program" : "Today's plan";
   $('howList').innerHTML = MR.HOW[role].map(h => `<li>${esc(h)}</li>`).join('');
@@ -842,7 +843,7 @@ while rover.sense_ahead() == "clear":
     if rover.signal_here():
         check()</pre>`);
 }
-const PIC = {forward:'↑', back:'↓', left:'↶', right:'↷', drill:'⛏'};
+const PIC = {forward:'↑', back:'↓', left:'↶', right:'↷', drill:'⛏'}, picOf = (t, r) => t === 'drill' && MR.heliCam(r) ? '📷' : PIC[t];
 const FACE = ['north ↑', 'east →', 'south ↓', 'west ←'];
 /* A plain sentence for each block, so a plan reads like instructions. */
 function cmdText(c){
@@ -903,7 +904,7 @@ function renderPlan(){
   const r = myRover(); if (!r) return;
   if (r.role === 'cadet') {
     const n = maxPlan();
-    $('seq').innerHTML = G.plan.map((c, i) => `<button class="pic ${c.state||''}" data-i="${i}" aria-label="Remove this step">${PIC[c.type]}</button>`).join('')
+    $('seq').innerHTML = G.plan.map((c, i) => `<button class="pic ${c.state||''}" data-i="${i}" aria-label="Remove this step">${picOf(c.type, r)}</button>`).join('')
       + [...Array(Math.max(0, n - G.plan.length))].map(() => `<span class="pic slot"></span>`).join('');
     $('cadetCount').textContent = `${G.plan.length} / ${n}`;
     return;
@@ -1139,11 +1140,17 @@ async function playEvent(ev){
     case 'free': r.stuck = false; break;
     case 'scan': R.addFx({type:'ring', x:r.x, y:r.y, dur:1400, r:ev.rad + .5}); if (mine) MR.sfx.scan(); await wait(950); seen(ev.seen); ev.sigs.forEach(i => W.sig[i] = 1); ev.traps.forEach(i => W.trapSeen[i] = 1); r.bat = ev.bat; break;
     case 'analyze': R.addFx({type:'beam', x:r.x, y:r.y, dur:1000}); await wait(1000); ev.cells.forEach(c => { W.sig[c.i] = 1; W.known[c.i] = 1; }); r.bat = ev.bat; break;
+    case 'snap': { const [x, y] = cell(ev.i); R.addFx({type:'ring', x, y, dur:700, r:1.4}); MR.sfx.click(); await wait(700);
+      (st.snaps = st.snaps || {})[ev.i] = ev.by; W.known[ev.i] = 1; st.team.treasures++;
+      if (mine && !G.replaying) { const card = MR.CARDS[ev.res], img = R.snapshot(r.pid, `AIR PHOTO · ${MR.MAPS[st.map].name.toUpperCase()} · SOL ${st.sol} · ${card.kid.toUpperCase()}`), p = me();
+        if (img && p) { const ph = MR.Photos.add({data:img, map:st.map, sol:st.sol, place:card.kid, rover:r.name}); MR.Notebook.add(p, {kind:'photo', text:`Air photo of ${card.kid}`, map:st.map, sol:st.sol, photo:ph && ph.id}); }
+        R.addFx({type:'confetti', x:x + .5, y:y + .5, dur:1200, parts:MR.confetti()}); MR.sfx.good(); }
+      break; }
     case 'drill': { const [x, y] = cell(ev.i); a.busy = 'drill'; R.addFx({type:'dust', x, y, dur:1300, parts:MR.dustParts()}); await wait(ev.treasure ? 1000 : 1300); a.busy = null;
       W.drilled[ev.i] = 1; W.known[ev.i] = 1; W.sig[ev.i] = 1; if (ev.tubes) r.tubes = ev.tubes; if (ev.bat != null) r.bat = ev.bat;
       if (ev.treasure || ev.shiny) R.addFx({type:'confetti', x, y, dur:1400, parts:MR.confetti()});
       if (mine && ev.res !== 'basalt') MR.music.find();
-      if (ev.treasure) st.team.treasures++;
+      if (ev.treasure && !ev.snapped) st.team.treasures++;
       if (mine) MR.sfx.good(); break; }
     case 'nothing': if (ev.dust) R.addFx({type:'dust', x:r.x, y:r.y, dur:600, parts:MR.dustParts()}); if (ev.bat != null) r.bat = ev.bat; await wait(300); break;
     case 'dig': if (ev.i != null) { const [x, y] = cell(ev.i); R.addFx({type:'dust', x, y, dur:1100, parts:MR.dustParts()}); await wait(1000);
@@ -1229,7 +1236,7 @@ async function playSol(timeline, newState){
   }
   G.planInfo = null;
   const mineEv = timeline.flat().filter(e => e.pid === G.myPid);
-  const found = mineEv.some(e => e.t === 'drill' || e.t === 'artifact' || (e.t === 'scan' && e.sigs.length) || (e.t === 'analyze' && e.cells.length) || (e.t === 'dock' && e.n) || (e.t === 'move' && e.sigs && e.sigs.length));
+  const found = mineEv.some(e => e.t === 'drill' || e.t === 'snap' || e.t === 'artifact' || (e.t === 'scan' && e.sigs.length) || (e.t === 'analyze' && e.cells.length) || (e.t === 'dock' && e.n) || (e.t === 'move' && e.sigs && e.sigs.length));
   G.dull = found ? 0 : (G.dull || 0) + 1;
   if (won && !newState.day) {
     const next = MR.MAP_ORDER.filter(k => MR.MAPS[k].unlock === newState.map);
@@ -1273,7 +1280,7 @@ function codeReview(mine, info, st){
 function renderSolCard(mine, st, code){
   const r = st.rovers.find(x => x.pid === G.myPid); if (!r) { $('solCard').innerHTML = ''; return; }
   const sq = mine.filter(e => e.t === 'move').length, sigs = mine.reduce((n, e) => n + (e.t === 'scan' ? e.sigs.length : e.t === 'move' && e.sigs ? e.sigs.length : 0), 0);
-  const samples = mine.filter(e => e.t === 'drill').length, delivered = mine.reduce((n, e) => n + (e.t === 'dock' ? e.n : 0), 0);
+  const samples = mine.filter(e => e.t === 'drill' || e.t === 'snap').length, delivered = mine.reduce((n, e) => n + (e.t === 'dock' ? e.n : 0), 0);
   const bits = [`${sq} square${sq === 1 ? '' : 's'}`];
   if (sigs) bits.push(`${sigs} signal${sigs === 1 ? '' : 's'} found`);
   if (samples) bits.push(`${samples} ${r.role === 'cadet' ? 'treasure' : 'sample'}${samples === 1 ? '' : 's'}`);

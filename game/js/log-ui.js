@@ -118,7 +118,8 @@ L.notebookHtml = p => {
 };
 L.photosHtml = () => {
   const list = MR.Photos.list().slice().reverse();
-  return `<p class="muted" style="margin:0">Your Navcam photos (the newest 40 are kept on this device). Add Photo to a plan to take one.</p>
+  const cur = MR.Store.current(), kid = (MR.PREVIEW || []).includes('helicam') && cur && cur.role === 'cadet';
+  return `<p class="muted" style="margin:0">${kid ? 'Your pictures from the helicopter. Fly over a sparkly gem and tap the camera to take one.' : 'Your Navcam photos (the newest 40 are kept on this device). Add Photo to a plan to take one.'}</p>
     <div class="album">${list.length ? list.map(ph => `<figure data-ph="${ph.id}"><img src="${ph.data}" alt="${esc(ph.place || '')}"><figcaption>${esc(ph.place || '')} · sol ${ph.sol}<br><small>${esc(MR.MAPS[ph.map] ? MR.MAPS[ph.map].name : '')}</small></figcaption><button class="mini-b" data-phdel="${ph.id}" aria-label="Delete photo">×</button></figure>`).join('') : '<p class="muted">No photos yet.</p>'}</div>`;
 };
 L.wireInventory = (p, refresh) => {

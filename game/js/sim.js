@@ -268,14 +268,19 @@ function act(st, r, a, E){
     case 'drill': {
       if (cadet) {
         const opts = [[0,0]].concat(MR.cadetMagnet(r.rank) ? [[1,0],[-1,0],[0,1],[0,-1]] : []);
+        /* The helicopter has no drill (like Ingenuity): it photographs gems from the air and marks them for the diggers. */
+        const cam = MR.heliCam(r), snaps = st.snaps || {};
         let i = -1;
         for (const [dx,dy] of opts) { const x = r.x+dx, y = r.y+dy; if (!MR.inb(x,y)) continue; const j = y*MW+x;
-          if (W.res[j] && !W.drilled[j] && !MR.CARDS[W.res[j]].artifact && W.sig[j] && W.seen[j]) { i = j; break; } }
-        if (i < 0) { E({t:'nothing', msg:{k:'info', text:`${nm} dug a hole. Nothing here. Look for a sparkly gem!`}}); return true; }
-        const id = W.res[i], shiny = rnd(st) < .1;
-        W.drilled[i] = 1; W.known[i] = 1; st.team.col[id] = (st.team.col[id]||0) + 1; st.team.treasures++; st.team.score += MR.CARDS[id].pts;
+          if (W.res[j] && !W.drilled[j] && !MR.CARDS[W.res[j]].artifact && W.sig[j] && W.seen[j] && !(cam && snaps[j])) { i = j; break; } }
+        if (i < 0) { E({t:'nothing', msg:{k:'info', text:cam ? `${nm} took a picture. No new treasure here. Fly over a sparkly gem!` : `${nm} dug a hole. Nothing here. Look for a sparkly gem!`}}); return true; }
+        const id = W.res[i];
+        if (cam) { (st.snaps = snaps)[i] = nm; W.known[i] = 1; st.team.treasures++; st.team.score += MR.CARDS[id].pts;
+          E({t:'snap', i, res:id, by:nm, msg:{k:'good', text:`${nm} took a picture of treasure from the air: ${MR.CARDS[id].kid}! It is marked on the map for the diggers.`}}); return true; }
+        const shiny = rnd(st) < .1, snapBy = snaps[i];
+        W.drilled[i] = 1; W.known[i] = 1; st.team.col[id] = (st.team.col[id]||0) + 1; if (!snapBy) st.team.treasures++; st.team.score += MR.CARDS[id].pts;
         const site = (st.sites || {})[i];
-        E({t:'drill', i, res:id, shiny, treasure:true, by:site && site.by, site:site && site.name, msg:{k:'good', text:`${nm} found treasure: ${MR.CARDS[id].kid}${shiny ? ' (shiny!)' : ''}!`}});
+        E({t:'drill', i, res:id, shiny, treasure:true, snapped:!!snapBy, by:site && site.by, site:site && site.name, msg:{k:'good', text:snapBy ? `${nm} dug up the treasure ${snapBy} found from the air: ${MR.CARDS[id].kid}${shiny ? ' (shiny!)' : ''}!` : `${nm} found treasure: ${MR.CARDS[id].kid}${shiny ? ' (shiny!)' : ''}!`}});
         return true;
       }
       const i = r.y*MW+r.x, id = W.res[i];

@@ -235,6 +235,13 @@ function drawArtifact(c, id, cx, cy, ts, done){
     c.strokeStyle='#0e1319'; c.lineWidth=ts*.04; c.beginPath(); c.moveTo(cx+ts*.26,cy-ts*.32); c.lineTo(cx+ts*.31,cy-ts*.27); c.lineTo(cx+ts*.39,cy-ts*.37); c.stroke(); }
   else if (ts >= 20) { const p = .5+.5*Math.sin(performance.now()/300); c.strokeStyle=`rgba(255,154,77,${.5+.5*p})`; c.lineWidth=ts*.05; c.beginPath(); c.arc(cx,cy,ts*.48,0,Math.PI*2); c.stroke(); }
 }
+/* A gem the helicopter photographed: a small camera flag, so the diggers know where to go. */
+function drawSnap(c, i, ts){
+  const x = i % MW, y = (i/MW)|0, X = (x - R.cam.x + .2)*ts, Y = (y - R.cam.y + .62)*ts;
+  c.save(); c.strokeStyle = '#e6ecf1'; c.lineWidth = Math.max(1, ts*.035); c.beginPath(); c.moveTo(X, Y); c.lineTo(X, Y - ts*.55); c.stroke();
+  c.fillStyle = '#f0bf5a'; c.fillRect(X, Y - ts*.55, ts*.34, ts*.24); c.fillStyle = '#1d232b'; c.beginPath(); c.arc(X + ts*.17, Y - ts*.43, ts*.07, 0, 7); c.fill();
+  c.restore();
+}
 function drawFlag(c, i, site, ts){
   const W = R.view.world, x = i % MW, y = (i/MW)|0, X = (x - R.cam.x + .82)*ts, Y = (y - R.cam.y + .62)*ts;
   const finder = R.view.rovers.find(q => q.pid === site.by), col = finder ? MR.colorHex(finder.color) : '#c3ced8';
@@ -702,7 +709,7 @@ R.frame = t => {
     const i = y*MW+x; if (!W.seen[i]) continue;
     if (W.obs[i] === 'R' && W.rocks[i]) W.rocks[i].forEach(s => drawRock(c, (x-cam.x+s.x)*ts, (y-cam.y+s.y)*ts, s.rad*ts, s.pts, s.shade));
     if (W.trapSeen[i]) drawTrap(c, i, ts);
-    if (W.res[i]) { drawMarker(c, i, t, ts); const site = R.view.sites && R.view.sites[i]; if (site && W.sig[i] && !W.drilled[i] && !W.kid[i]) drawFlag(c, i, site, ts); }
+    if (W.res[i]) { drawMarker(c, i, t, ts); const site = R.view.sites && R.view.sites[i]; if (site && W.sig[i] && !W.drilled[i] && !W.kid[i]) drawFlag(c, i, site, ts); if (R.view.snaps && R.view.snaps[i] && !W.drilled[i]) drawSnap(c, i, ts); }
   }
   // drafts of teammates (dashed) and my own path (footprints)
   Object.entries(R.drafts).forEach(([pid, path]) => {

@@ -48,7 +48,7 @@ MR.ROLES = {
 
 MR.JOBS = {
   buggy:     {label:'Buggy', roles:['cadet'], desc:'A tough little rover like Sojourner, the first rover on Mars. It digs up treasure and never gets stuck.'},
-  heli:      {label:'Helicopter', roles:['cadet'], desc:'Flies over rocks and spots treasure for the team, like Ingenuity.'},
+  heli:      {label:'Helicopter', roles:['cadet'], get desc(){ return (MR.PREVIEW || []).includes('helicam') ? 'Flies over rocks and takes pictures of treasure, like Ingenuity.' : 'Flies over rocks and spots treasure for the team, like Ingenuity.'; }},
   scout:     {label:'Scout', roles:['explorer','specialist'], desc:'Sees 1 square farther and scans 6 squares wide. Flags finds for the team. In team games it carries 2 fewer tubes.'},
   science:   {label:'Science', roles:['explorer','specialist'], desc:'Analyze identifies every signal within 2 squares.'},
   hauler:    {label:'Hauler', roles:['explorer','specialist'], desc:'Carries 4 extra sample tubes.'},
@@ -119,6 +119,8 @@ MR.UPGRADES = {
   garage:      {name:'Garage', icon:'⌂', cost:{bricks:3, metal:1}, desc:'Wheels and solar panels wear half as fast.'},
   greenhouse:  {name:'Greenhouse', icon:'❦', cost:{water:3, bricks:2}, desc:'Everyone earns 10% more XP.'},
 };
+/* Waiting for approval: the Cadet helicopter takes pictures instead of digging (?preview=helicam). */
+MR.heliCam = r => !!r && r.job === 'heli' && (MR.PREVIEW || []).includes('helicam');
 MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','drill'].concat((MR.PREVIEW || []).includes('cadetback') ? ['back'] : []) : job === 'lab' ? Object.keys(MR.CMDS).filter(k => MR.CMDS[k].lab)
   : Object.keys(MR.CMDS).filter(k => !MR.CMDS[k].jobs || MR.CMDS[k].jobs.includes(job));
 
