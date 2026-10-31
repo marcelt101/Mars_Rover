@@ -264,8 +264,8 @@ details.how ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:colu
 .seq .pic.active{border-color:var(--signal);transform:scale(1.1)}
 .seq .pic.done{opacity:.45}
 .seq .pic.skipped{opacity:.25}
-.cadet{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr);grid-template-areas:". up . dig" "lf . rt dig";gap:8px}
-.cadet .up{grid-area:up} .cadet .lf{grid-area:lf} .cadet .rt{grid-area:rt} .cadet .dig{grid-area:dig;aspect-ratio:auto;max-height:none}
+.cadet{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr);grid-template-areas:". up . dig" "lf dn rt dig";gap:8px}
+.cadet .up{grid-area:up} .cadet .dn{grid-area:dn} .cadet .lf{grid-area:lf} .cadet .rt{grid-area:rt} .cadet .dig{grid-area:dig;aspect-ratio:auto;max-height:none}
 .cbtn{position:relative}
 .cbtn .key{position:absolute;right:7px;bottom:5px;font-family:var(--mono);font-size:10px;color:var(--muted)}
 .cbtn{aspect-ratio:1;max-height:96px;border-radius:16px;border:2px solid var(--line);background:var(--raise);cursor:pointer;display:grid;place-items:center;font-size:38px;line-height:1}

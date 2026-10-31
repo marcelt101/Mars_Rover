@@ -119,7 +119,7 @@ MR.UPGRADES = {
   garage:      {name:'Garage', icon:'⌂', cost:{bricks:3, metal:1}, desc:'Wheels and solar panels wear half as fast.'},
   greenhouse:  {name:'Greenhouse', icon:'❦', cost:{water:3, bricks:2}, desc:'Everyone earns 10% more XP.'},
 };
-MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','drill'] : job === 'lab' ? Object.keys(MR.CMDS).filter(k => MR.CMDS[k].lab)
+MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','drill'].concat((MR.PREVIEW || []).includes('cadetback') ? ['back'] : []) : job === 'lab' ? Object.keys(MR.CMDS).filter(k => MR.CMDS[k].lab)
   : Object.keys(MR.CMDS).filter(k => !MR.CMDS[k].jobs || MR.CMDS[k].jobs.includes(job));
 
 MR.RARITY = {

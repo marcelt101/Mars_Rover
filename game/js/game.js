@@ -403,7 +403,7 @@ function setGameState(st){
 function renderGame(){
   if (!G.state) return;
   const r = myRover(), role = r ? r.role : 'explorer', cadet = role === 'cadet', code = isCode(r);
-  $('cadetPanel').hidden = !cadet; $('planPanel').hidden = cadet;
+  $('cadetPanel').hidden = !cadet; $('planPanel').hidden = cadet; document.querySelector('.cbtn.dn').hidden = !MR.cmdsFor('cadet').includes('back');
   $('tabs').hidden = code; $('editor').hidden = !code; $('prog').hidden = code || G.showCode; $('code').hidden = code || !G.showCode;
   $('planTitle').textContent = code ? "Today's program" : "Today's plan";
   $('howList').innerHTML = MR.HOW[role].map(h => `<li>${esc(h)}</li>`).join('');
@@ -842,7 +842,7 @@ while rover.sense_ahead() == "clear":
     if rover.signal_here():
         check()</pre>`);
 }
-const PIC = {forward:'↑', left:'↶', right:'↷', drill:'⛏'};
+const PIC = {forward:'↑', back:'↓', left:'↶', right:'↷', drill:'⛏'};
 const FACE = ['north ↑', 'east →', 'south ↓', 'west ←'];
 /* A plain sentence for each block, so a plan reads like instructions. */
 function cmdText(c){
