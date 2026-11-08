@@ -64,6 +64,9 @@ const css = document.createElement('style'); css.textContent = `
 #doc .dname{font:700 14px 'Chakra Petch',sans-serif;color:var(--gold,#f0bf5a);letter-spacing:.05em}
 #doc .dname small{font:400 11px 'IBM Plex Sans',sans-serif;color:var(--muted,#9fb0c0);letter-spacing:0;margin-left:6px}
 #doc .dtext{flex:1;font-size:16px;line-height:1.4;margin:4px 0 6px;min-height:46px}
+@keyframes dfoc{0%,100%{box-shadow:0 0 0 3px rgba(240,191,90,.95),0 0 18px 6px rgba(240,191,90,.55)}50%{box-shadow:0 0 0 6px rgba(240,191,90,.5),0 0 28px 12px rgba(240,191,90,.3)}}
+.docfocus{animation:dfoc 1s ease-in-out infinite!important;border-radius:12px;position:relative;z-index:3}
+#lknob.docfocus,#shoot.docfocus{border-radius:50%}
 #doc .dbtns{display:flex;gap:6px;justify-content:flex-end}
 #doc .dbtns button{font:600 13px 'Chakra Petch',sans-serif;background:rgba(255,255,255,.08);color:var(--fg,#e6ecf1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:4px 10px;cursor:pointer}
 #doc #dNext{background:var(--gold,#f0bf5a);color:#140c02;border-color:var(--gold,#f0bf5a)}
@@ -104,10 +107,14 @@ const chime = () => { tone(659.3, 0, .32, .07, 'triangle'); tone(987.8, .12, .45
 let bn = 0; const SCALE = [523.3, 587.3, 659.3, 784, 880, 1046.5];   // a happy pentatonic scale (C D E G A C), so blips never sound wrong
 const blip = (ch, mood) => { const lift = mood === 'wow' ? 1 : mood === 'worried' ? -1 : 0, i = Math.max(0, Math.min(SCALE.length - 1, (ch.toLowerCase().charCodeAt(0) * 7 + bn++) % 5 + lift));
   tone(SCALE[i] * (mood === 'worried' ? .75 : 1), 0, .07, .035, 'sine'); };
+/* A line can point at a control (focus: a CSS selector): it glows until the next line, or for 12 seconds. */
+let focusT = null;
+const unfocus = () => { clearTimeout(focusT); document.querySelectorAll('.docfocus').forEach(el => el.classList.remove('docfocus')); };
+const focusOn = sel => { unfocus(); if (!sel) return; document.querySelectorAll(sel).forEach(el => el.classList.add('docfocus')); focusT = setTimeout(unfocus, 12000); };
 function next(){
   if (typing || startT) { stopTyping(); $('dText').textContent = full; talking = false; return; }   // a tap shows the whole message at once
   if (!queue.length) { busy = false; box.classList.add('small'); talking = false; const f = onDone; onDone = null; if (f) f(); return; }
-  const m = queue.shift(); busy = true; full = m.text; mood = m.mood || 'happy'; box.classList.remove('hidden', 'small');
+  const m = queue.shift(); busy = true; full = m.text; mood = m.mood || 'happy'; box.classList.remove('hidden', 'small'); focusOn(m.focus);
   $('dNext').textContent = queue.length ? 'Next ▸' : 'OK ✓';
   chime(); talking = false; let i = 0, n = 0; $('dText').textContent = '';
   startT = setTimeout(() => { startT = null; talking = true;
@@ -125,7 +132,7 @@ root.DOC = {
   /* Say one or more lines. A new say() replaces whatever was waiting, so the newest news always wins. */
   say(lines, opts = {}){ const arr = (Array.isArray(lines) ? lines : [lines]).map(l => typeof l === 'string' ? {text:l, mood:opts.mood} : l);
     queue.length = 0; queue.push(...arr); onDone = opts.done || null; stopTyping(); next(); },
-  hide(){ queue.length = 0; stopTyping(); talking = false; box.classList.add('hidden'); },
+  hide(){ queue.length = 0; stopTyping(); unfocus(); talking = false; box.classList.add('hidden'); },
   get busy(){ return busy; },
   get sound(){ return soundOn; },
   set sound(v){ soundOn = !!v; try { localStorage.setItem('webb.voice', soundOn ? 'on' : 'off'); } catch (er) {} setVoiceBtn(); if (soundOn) chime(); },

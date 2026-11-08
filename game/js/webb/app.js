@@ -112,7 +112,7 @@ function startSession(si){
   acad = {s:si, i:cur, hints:0, wrong:new Set(), said:{}};
   if (cur > 0) { week = W.WEEKS.find(w => w.id === S.week); sunMs = week.date; docMet = true; startSteer(); DOC.say([{text:`Welcome back, ${W.RANKS[rankNow()].name}! Let's keep going.`, mood:'wow'}, {text:acadAsk(), mood:'think'}]); return; }
   week = W.WEEKS.find(w => w.id === S.week); sunMs = week.date; docMet = true;
-  startSteer(); DOC.say([...S.intro.map((text, i) => ({text:hi(text), mood:i === 0 ? 'wow' : 'happy'})), {text:acadAsk(), mood:'think'}]);
+  startSteer(); DOC.say([...S.intro.map((text, i) => ({text:hi(text), mood:i === 0 ? 'wow' : 'happy', focus:/gauge/.test(text) ? '#read' : null})), {text:acadAsk(), mood:'think'}, ...(S.clue ? [] : [arrowsLine()].filter(Boolean))]);
 }
 const acadT = () => acad && W.byId(W.ACADEMY[acad.s].ids[acad.i]);
 const acadAsk = () => { const S = W.ACADEMY[acad.s], t = acadT(), who = W.RANKS[rankNow()].name;
@@ -264,7 +264,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=19'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=20'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -426,7 +426,7 @@ $('sys').onclick = () => { if (screen === 'run') { paused = true; openHow(() => 
 /* ================= hand steering ================= */
 let keys = {x:0, y:0}, vra = 0, vdec = 0, held = 0, step = {x:0, y:0}, fine = false, warnT = -1e9;
 /* Dr. Orbit's lines */
-let docMet = false, readyOnce = false, docWarnT = -1e9;
+let docMet = false, readyOnce = false, zoomSaid = false, docWarnT = -1e9;
 const docLine = t => `Can you find ${t.name} for me? ${t.kind}, ${t.far} away. ${t.kid}`;
 const docTarget = () => DOC.say({text:docLine(steer)});
 function startSteer(){
@@ -435,11 +435,11 @@ function startSteer(){
   const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 60; view.upv = null; vra = vdec = 0;
   $('card').innerHTML = `<h3>Find: <select id="tsel">${vis.map(t => `<option value="${t.id}" ${t === steer ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></h3>
     <p>${esc(fmtDate(week.date))}. Follow the gold arrow, zoom in, then take the picture.</p><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Weeks</button><button class="btn small" id="sAlb">📔 Album</button></div>`;
-  readyOnce = false;
+  readyOnce = false; zoomSaid = false;
   if (acad) { acadCard(); show('card', 'read', 'console', 'mini'); return; }
-  $('tsel').onchange = e => { steer = W.byId(e.target.value); docTarget(); readyOnce = false; };
+  $('tsel').onchange = e => { steer = W.byId(e.target.value); docTarget(); readyOnce = false; zoomSaid = false; };
   if (!docMet) { docMet = true; DOC.say([{text:hi(`Hello, cadet! I'm Dr. Orbit, Webb's one-man science team. I need your help to find things in space!`), mood:'wow'}, {text:docLine(steer)},
-    {text:`Follow the gold arrow. And keep the Sun angle in the green, or the Sun would shine on Webb's mirror!`, mood:'think'}]); }
+    ...[arrowsLine()].filter(Boolean), {text:`Keep the Sun angle in the green, or the Sun would shine on Webb's mirror!`, mood:'think', focus:'#read'}]); }
   else docTarget();
   $('sBack').onclick = weeks; $('sAlb').onclick = () => openAlbum(startSteer);
   show('card', 'read', 'console', 'mini');
@@ -478,20 +478,26 @@ function steerStep(dt, t){
   if (acad && centered && aim !== steer && !acad.wrong.has(aim.id)) { acad.wrong.add(aim.id);
     DOC.say({text:`That's ${aim.name}: ${aim.kind.toLowerCase()}. Beautiful, but not the one I mean! Remember: ${steer.clue[0]}`, mood:'think'}); }
   if (acad && !clueMode()) acadGuide(tsep, near, zoomed, ready);
+  if (near && !zoomed && !zoomSaid && !DOC.pending) { zoomSaid = true; if (tipOnce('zoom')) DOC.say({text:'Great! Now use the red knob on the ZOOM lever: pull it up to zoom in on the spot!', mood:'wow', focus:'#lknob'}); }
   const tip = ready ? '' : (!aim || asep > view.fov * .14) ? (clueMode() ? (acad.hints > 2 ? '<b>Step 1 of 3:</b> follow the gold arrow' : '<b>Step 1 of 3:</b> find a gold <b>?</b> that matches the clue') : '<b>Step 1 of 3:</b> follow the gold arrow to the target') :
     (clueMode() && acad.wrong.has(aim.id)) ? 'Not this one: look for another gold <b>?</b>' :
-    !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> pull the <b>ZOOM</b> lever up' : '';
+    !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> pull the red <b>ZOOM</b> knob up' : '';
   $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('lever').classList.toggle('pulse', near && !zoomed);
   dash(t, a1 > 0 || t - warnT < 600, !!aim && asep < view.fov * .14, centered, ready);
-  if (ready && !readyOnce) { readyOnce = true; DOC.say({text:clueMode() ? `Yes! You found it: ${steer.name}! Press the big red button!` : `Perfect! ${steer.name} is right in the middle. Press the big red button!`, mood:'wow'}); }
+  if (ready && !readyOnce) { readyOnce = true; const show = tipOnce('shoot');
+    DOC.say({text:(clueMode() ? `Yes! You found it: ${steer.name}!` : `Perfect! ${steer.name} is right in the middle.`) + (show ? ' Now press the big red TAKE PICTURE button!' : ' Take the picture!'), mood:'wow', focus:show ? '#shoot' : null}); }
   $('shoot').disabled = !ready; $('shoot').classList.toggle('armed', ready); $('warn').classList.toggle('hidden', t - warnT > 2500);
   drawGauge(tsep);
 }
+/* The first two times a control is needed, Dr. Orbit names it and it glows on the dashboard. Saved per player. */
+const tipsSeen = W.load('tips', {});
+const tipOnce = k => (tipsSeen[k] || 0) < 2 ? (tipsSeen[k] = (tipsSeen[k] || 0) + 1, W.save('tips', tipsSeen), true) : false;
+const arrowsLine = () => tipOnce('arrows') ? {text:'Use the arrow buttons on the dashboard to turn Webb. Follow the gold arrow on the screen!', focus:'#pad8'} : null;
 /* Training day: Dr. Orbit explains each step the first time it comes up. */
 function acadGuide(tsep, near, zoomed, ready){ const sd = acad.said, once = (k, text, mood) => { if (!sd[k] && !DOC.busy) { sd[k] = 1; DOC.say({text, mood}); } };
   if (acad.i > 0) return;   // he explains it all on the first target only
   if (tsep < view.fov * .45 && !near) once('see', 'There it is, inside the gold circle! Steer toward the middle, then let go of the arrows: Webb\'s fine steering mirror centers it for you.');
-  else if (near && !zoomed) once('zoom', 'Great! Now grab the red ZOOM lever and pull it up, so the picture fills the screen.', 'wow'); }
+}
 /* Dashboard lamps, the zoom readout and Webb's six reaction wheels (they spin faster when you turn). */
 let wheelA = 0;
 function dash(t, sunBad, onT, zoomedIn, ready){
