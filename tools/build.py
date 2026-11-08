@@ -23,8 +23,10 @@ def build_name():
 def build(edition, name):
     out = os.path.join(DIST, edition)
     shutil.rmtree(out, ignore_errors=True)
-    # The Webb mission is still being built: its test page and pictures are not shipped yet.
-    shutil.copytree(SRC, out, ignore=shutil.ignore_patterns('webb-test.html', 'webb'))
+    # The James Webb mission ships once MR.WEBB_ON is true in js/edition.js; webb-test.html (an old link) never does.
+    webb_on = re.search(r"MR\.WEBB_ON = true;", open(os.path.join(SRC, 'js', 'edition.js'), encoding='utf-8').read()) is not None
+    skip = ['webb-test.html'] + ([] if webb_on and edition != 'itch-demo' else ['webb', 'webb.html'])   # the demo lists Webb (with its picture) as full game only
+    shutil.copytree(SRC, out, ignore=shutil.ignore_patterns(*skip))
     path = os.path.join(out, 'js', 'edition.js')
     js = open(path, encoding='utf-8').read()
     js, n1 = re.subn(r"MR\.EDITION = '[^']*';", f"MR.EDITION = '{edition}';", js)

@@ -220,3 +220,4 @@ body.onsplash{overflow:hidden}
 @media (max-aspect-ratio:1/1){
   .splash{background:linear-gradient(180deg,#0b0f15 12vh,rgba(11,15,21,0) calc(12vh + 14vw),rgba(7,10,16,0) calc(12vh + 74vw),#0b0f15 calc(12vh + 92vw)),url(img/title.jpg) center 12vh/160% auto no-repeat,#0b0f15;justify-content:flex-end}
 }
+

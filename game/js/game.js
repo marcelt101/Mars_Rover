@@ -349,14 +349,24 @@ function renderLobby(){
   if (mine) $('jobPick').innerHTML = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(mine.role) && !(k === 'lab' && G.mode === 'solo')).map(([k, j]) => `<div class="jobw"><button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(airless && k === 'heli' ? 'There is no air on the Moon, so helicopters can not fly there. On this map you drive the Buggy.' : j.desc)}</small></button><button class="jinfo" data-info="${k}" aria-label="About the ${j.label} rover" title="About this rover">i</button></div>`).join('');
   const unlocked = G.mode === 'client' ? G.lobby.unlocked : MR.Store.unlocked();
   if (G.mode !== 'client') G.lobby.unlocked = unlocked;
+  if (G.lobby.map === 'webb' && (G.mode !== 'solo' || !MR.webbOpen(unlocked))) G.lobby.map = 'jezero';   // Webb is a solo level
   $('mapPick').innerHTML = MR.MAP_ORDER.map(k => { const m = MR.MAPS[k], open = unlocked.includes(k);
-    return `<button class="mapcard" data-map="${k}" aria-pressed="${k === G.lobby.map}" ${open && G.mode !== 'client' ? '' : 'disabled'}><b>${m.name}</b><small>${m.rover} · ${m.year}</small><p>${open ? esc(m.blurb) : !MR.edMapOk(k) ? 'In the full game.' : `Locked. Finish a ${MR.MAPS[m.unlock].name} expedition to unlock.`}</p></button>`; }).join('');
+    return `<button class="mapcard" data-map="${k}" aria-pressed="${k === G.lobby.map}" ${open && G.mode !== 'client' ? '' : 'disabled'}><b>${m.name}</b><small>${m.rover} · ${m.year}</small><p>${open ? esc(m.blurb) : !MR.edMapOk(k) ? 'In the full game.' : `Locked. Finish a ${MR.MAPS[m.unlock].name} expedition to unlock.`}</p></button>` + (k === MR.WEBB_LEVEL.after ? webbCard(unlocked) : ''); }).join('');
   const dm = G.lobby.day && MR.missionOf(G.lobby.day);
   $('mapNote').textContent = dm ? `Mission Log, day ${dm.day}: ${dm.title} (${MR.MAPS[dm.map].name}).` : G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
   if (G.resume || dm) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);
   $('startBtn').hidden = G.mode === 'client';
-  $('startBtn').textContent = G.resume ? 'Continue expedition' : 'Start expedition';
+  $('startBtn').textContent = G.resume ? 'Continue expedition' : G.lobby.map === 'webb' ? '🔭 Launch the Webb mission' : 'Start expedition';
+  $('jobPick').closest('.panel').hidden = G.lobby.map === 'webb';   // no rover to pick: you fly the telescope
   $('lobbyWait').textContent = G.mode === 'client' ? 'Waiting for the host to start…' : (host && players.length < 2 ? 'Waiting for players to join (you can also start alone).' : '');
+}
+/* The James Webb Space Telescope: one more level in the same game, after the Moon. It's a different activity
+   (fly a telescope instead of a rover), so it opens its own screen, and comes back here. Solo for now. */
+function webbCard(unlocked){
+  if (!MR.webbOn()) return '';
+  const W = MR.WEBB_LEVEL, ok = MR.edMapOk('webb'), open = ok && MR.webbOpen(unlocked), solo = G.mode === 'solo';
+  return `<button class="mapcard webbcard" data-map="webb" aria-pressed="${G.lobby.map === 'webb'}" ${open && solo ? '' : 'disabled'}><b>${W.name}</b><small>${W.rover} · ${W.year}</small><p>${
+    !ok ? 'In the full game.' : !open ? `Locked. Finish a ${MR.MAPS[W.after].name} expedition to unlock.` : !solo ? 'A solo level for now: pick it from Play solo.' : esc(W.blurb)}</p></button>`;
 }
 function renderNet(){
   const t = G.mode === 'host' ? `Hosting · ${G.lobby.players.filter(x => x.connected).length} connected` : G.mode === 'client' ? (G.lastPing != null ? `Connected · ${G.lastPing} ms` : 'Connecting…') : 'Solo';
@@ -371,6 +381,7 @@ $('jobPick').onclick = e => { const inf = e.target.closest('.jinfo'); if (inf) {
 $('mapPick').onclick = e => { const b = e.target.closest('.mapcard'); if (!b || b.disabled || G.mode === 'client') return; G.lobby.map = b.dataset.map; broadcast(lobbyMsg()); renderLobby(); MR.sfx.click(); };
 $('startBtn').onclick = () => {
   if (G.mode === 'client') return;
+  if (G.lobby.map === 'webb') { MR.sfx && MR.sfx.click(); const slot = new URLSearchParams(location.search).get('slot'); location.href = 'webb.html' + (slot ? '?slot=' + encodeURIComponent(slot) : ''); return; }
   const players = G.lobby.players.filter(x => x.connected), ex = G.resume;
   let st;
   if (ex) { st = MR.stateFromWire(ex.state); players.forEach(p => { if (!st.rovers.some(r => r.pid === p.pid)) MR.addRover(st, p); }); }

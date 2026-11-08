@@ -15,6 +15,9 @@ MR.EDITIONS = {
   desktop:     {label:'Desktop', maps:null, logDays:30, oldVersions:false, qr:true},
 };
 MR.ED = MR.EDITIONS[MR.EDITION] || MR.EDITIONS.web;
+/* The James Webb level (webb.html): true lists it among the levels (after the Moon) and ships it in the builds.
+   Until then ?preview=webb shows the button on this device. */
+MR.WEBB_ON = false;
 /* Features waiting for approval: ?preview=a,b turns them on, ?preview=off turns them off (remembered on this device). */
 try { const q = new URLSearchParams(location.search).get('preview'); if (q != null) localStorage.setItem('mr2.preview', q === 'off' ? '' : q);
   MR.PREVIEW = (localStorage.getItem('mr2.preview') || '').split(',').filter(Boolean); } catch (e) { MR.PREVIEW = []; }
@@ -22,6 +25,6 @@ try { const q = new URLSearchParams(location.search).get('preview'); if (q != nu
 /* Bug reports go to a Google Form: formUrl ends in /formResponse, fields are its entry ids. Without them the
    report can be copied and emailed instead. */
 MR.REPORT = {formUrl:null, fields:null, email:null};
-MR.edMapOk = m => !MR.ED.maps || MR.ED.maps.includes(m);
+MR.edMapOk = m => !MR.ED.maps || MR.ED.maps.includes(m);   // 'webb' counts as a map here, so the free demo shows it as full game only
 MR.edDayOk = d => d <= MR.ED.logDays;
 })();

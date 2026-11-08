@@ -385,6 +385,12 @@ MR.MAPS.utopia = {
 };
 MR.MAPS.jezero.regions.push('Crater rim'); MR.MAPS.gusev.regions.push('Crater rim');
 MR.MAP_ORDER = ['jezero','gusev','moon','meridiani','gale','utopia'];
+/* The James Webb Space Telescope level (webb.html): listed after the Moon and opened by finishing a Moon expedition,
+   like the maps. It is not in MR.MAPS, because you fly a telescope there, not a rover. */
+MR.WEBB_LEVEL = {name:'James Webb Space Telescope', rover:'Webb telescope', year:'2021–today', after:'moon',
+  blurb:'Leave the planets behind! Fly NASA\'s James Webb Space Telescope with Dr. Orbit and photograph real galaxies, star nurseries and black holes.'};
+MR.webbOn = () => !!(MR.WEBB_ON || (MR.PREVIEW && MR.PREVIEW.includes('webb')));
+MR.webbOpen = unlocked => (unlocked || []).includes(MR.MAP_ORDER[MR.MAP_ORDER.indexOf(MR.WEBB_LEVEL.after) + 1]) || !!(MR.Store && MR.Store.team && MR.Store.team.allMaps);
 MR.parOf = st => st.day && MR.missionOf && MR.missionOf(st.day) ? MR.missionOf(st.day).par : st.goals.some(g => g.kind === 'treasure') ? MR.MAPS[st.map].parCadet : MR.MAPS[st.map].par;
 MR.cadetGoals = n => [{t:`Find ${3+2*n} treasures`, kind:'treasure', of:3+2*n}];
 

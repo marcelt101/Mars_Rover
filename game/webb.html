@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>James Webb Telescope · Crater Crew</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<!-- Webb mission test (not linked from the game, not in the itch.io builds). The real sky (NASA SVS Deep Star Maps
+     2020) in WebGL; plan a week of real observations with cards (like NASA's APT forms) or JavaScript (like Webb's
+     real onboard scripts), or steer by hand; watch Webb's systems run the plan; real Webb pictures go to an album.
+     Code: js/webb/data.js (targets), model.js (Webb's rules), worker.js (runs kids' scripts safely), app.js. -->
+<style>
+:root{--fg:#e6ecf1;--muted:#9fb0c0;--gold:#f0bf5a;--teal:#58cfbe;--warn:#ff9a5a;--bad:#ff7b6c;--panel:rgba(6,10,16,.82);--line:rgba(88,207,190,.3)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;color:var(--fg);font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden}
+canvas.full{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hud{pointer-events:none}
+.panel{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.mono{font-family:'IBM Plex Mono',monospace}
+h1,h2,h3{font-family:'Chakra Petch',sans-serif;margin:0}
+.btn{font:700 15px 'Chakra Petch',sans-serif;letter-spacing:.05em;background:rgba(20,28,38,.9);color:var(--fg);border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:9px 14px;cursor:pointer}
+.btn:hover{border-color:var(--teal)}
+.btn.gold{background:var(--gold);color:#140c02;border-color:var(--gold)}
+.btn.small{font-size:13px;padding:6px 10px}
+.btn:disabled{opacity:.45;cursor:default}
+.hidden{display:none!important}
+/* title */
+#title{position:fixed;left:0;right:0;bottom:0;display:grid;place-items:center;gap:12px;text-align:center;padding:60px 16px 6vh;background:linear-gradient(transparent,rgba(0,0,0,.82) 45%)}
+#webb{position:fixed;left:50%;top:38%;width:min(62vw,64vh,820px);transform:translate(-50%,-50%);filter:drop-shadow(0 20px 40px rgba(0,0,0,.6));pointer-events:none;transition:opacity .8s}
+#title h1{font-size:clamp(28px,5vw,54px);letter-spacing:.06em;text-shadow:0 2px 18px rgba(0,0,0,.9)}
+#title p{margin:0;color:var(--muted);max-width:60ch;text-shadow:0 1px 8px #000}
+#title .btn{font-size:18px;padding:12px 28px}
+/* Webb Academy */
+.acad{background:linear-gradient(135deg,rgba(240,191,90,.14),rgba(88,207,190,.08));border:2px solid rgba(240,191,90,.55);border-radius:14px;padding:12px 14px;margin-bottom:14px}
+.acadHead b{font:700 20px 'Chakra Petch',sans-serif;color:var(--gold)}.acadHead small{color:var(--muted);margin-left:8px}
+.acadDots{display:flex;align-items:center;margin:10px 0}
+.acadDots span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;border:2px solid rgba(255,255,255,.2);color:var(--muted);flex:none}
+.acadDots span.ok{background:#3fae7a;border-color:#3fae7a;color:#fff}.acadDots span.cur{border-color:var(--gold);color:var(--gold);box-shadow:0 0 0 4px rgba(240,191,90,.18)}
+.acadDots i{flex:1;height:2px;background:rgba(255,255,255,.15);margin:0 4px}
+.acadNow{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.acadNow b{display:block;font-size:16px}.acadNow small{color:var(--muted);font-size:13px}
+.acadAgain{margin-top:8px;font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.acadRank{margin-top:6px;font-size:14px;color:var(--muted)}.acadRank b{color:var(--fg)}
+.acadBadges{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.acadBadges div{display:flex;flex-direction:column;align-items:center;width:92px;text-align:center}
+.acadBadges small{font-size:10.5px;line-height:1.2;color:var(--muted);margin-top:2px}
+.bsvg{overflow:visible}.bsvg.off{opacity:.75}
+.bsvg .glint{animation:gl 3.2s ease-in-out infinite}
+@keyframes gl{0%,55%{transform:skewX(-20deg) translateX(0)}100%{transform:skewX(-20deg) translateX(220px)}}
+.acadBadges div:hover .bsvg{transform:scale(1.12)}.acadBadges .bsvg{transition:transform .2s}
+#badgePop{left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;text-align:center;width:min(360px,90vw);border-color:var(--gold);padding:20px;animation:bp .5s cubic-bezier(.2,1.6,.4,1)}
+#badgePop.hidden{display:none}
+#badgePop small{color:var(--gold);letter-spacing:.2em;font-weight:700}
+#badgePop h2{margin:4px 0;font:700 26px 'Chakra Petch',sans-serif}
+#badgePop p{color:var(--muted);margin:0 0 14px}
+#badgePop .bglow{filter:drop-shadow(0 0 22px rgba(240,191,90,.6));animation:bs 3s ease-in-out infinite}
+@keyframes bp{from{transform:translate(-50%,-50%) scale(.4);opacity:0}}
+@keyframes bs{50%{transform:rotate(-4deg) scale(1.04)}}
+#toCC{position:fixed;left:16px;top:16px;z-index:3;text-decoration:none}
+/* week picker */
+#weeks{left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,94vw);max-height:92vh;overflow:auto}
+#weeks .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin:12px 0}
+.week{background:rgba(20,28,38,.85);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:12px;cursor:pointer;text-align:left;color:var(--fg);font:inherit}
+.week:hover,.week.sel{border-color:var(--gold)}
+.week b{font:700 18px 'Chakra Petch',sans-serif;display:block}
+.week small{color:var(--muted)}
+.week .thumbs{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
+.week .thumbs img{width:44px;height:44px;object-fit:cover;border-radius:6px}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.mode{background:rgba(20,28,38,.85);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px;cursor:pointer;color:var(--fg);font:inherit;text-align:left}
+.mode:hover{border-color:var(--teal)}
+.mode b{font:700 16px 'Chakra Petch',sans-serif}
+.mode small{display:block;color:var(--muted);margin-top:3px}
+/* planner */
+#plan{left:12px;top:12px;bottom:12px;width:min(470px,calc(100vw - 24px));display:flex;flex-direction:column;gap:10px;overflow:hidden}
+#plan .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#tlist{display:flex;gap:6px;flex-wrap:wrap}
+.tchip{display:flex;gap:6px;align-items:center;background:rgba(20,28,38,.9);border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:4px 8px 4px 4px;color:var(--fg);font:inherit;font-size:12.5px;cursor:pointer}
+.tchip img{width:30px;height:30px;object-fit:cover;border-radius:6px}
+.tchip.off{opacity:.5;cursor:help}
+.tchip:not(.off):hover{border-color:var(--gold)}
+#cards{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+.card{background:rgba(20,28,38,.92);border:1px solid rgba(255,255,255,.14);border-left:4px solid var(--teal);border-radius:10px;padding:8px 10px;font-size:13px}
+.card.op{border-left-color:var(--gold)}
+.card .ct{display:flex;justify-content:space-between;align-items:center;font-weight:600}
+.card select,.card input{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:3px 5px;font:inherit;font-size:12.5px}
+.card .f{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.card .x{background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer}
+#code{flex:1;width:100%;background:#05080c;color:#cfe7ff;border:1px solid var(--line);border-radius:10px;padding:10px;font:13px/1.45 'IBM Plex Mono',monospace;resize:none;white-space:pre;tab-size:2}
+.est{font-size:12.5px;color:var(--muted)}
+/* systems */
+#sys{right:12px;top:12px;width:250px;font-size:12px}
+#sys .lab{font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:var(--muted);margin-top:8px}
+#sys .val{font:600 14px 'IBM Plex Mono',monospace}
+.bar{height:8px;border-radius:4px;background:#1c2530;overflow:hidden;margin-top:3px}
+.bar span{display:block;height:100%;width:0;background:var(--teal);transition:width .3s}
+.bar.mom span{background:linear-gradient(90deg,var(--teal),var(--gold) 70%,var(--bad))}
+.fgs{display:flex;gap:4px;margin-top:3px}
+.fgs span{flex:1;text-align:center;font:600 10px 'IBM Plex Mono',monospace;padding:3px 0;border-radius:5px;background:#1c2530;color:var(--muted)}
+.fgs span.on{background:var(--teal);color:#06231f}
+.fgs.bad span.on{background:var(--bad);color:#2a0a06}
+#sysCv{width:100%;height:56px;display:block;margin-top:3px}
+/* log, picture, results, album */
+#log{left:50%;bottom:12px;transform:translateX(-50%);width:min(620px,calc(100vw - 24px));font-size:13.5px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+#log div{opacity:.55}
+#log div:last-child{opacity:1}
+#log .bad{color:var(--bad)}
+#log .good{color:#8fe3a0}
+#log .sun{color:var(--warn)}
+#runbar{position:fixed;right:12px;bottom:12px;display:flex;gap:6px;z-index:2}
+#result,#album,#photo{left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,94vw);max-height:90vh;overflow:auto}
+.pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.pic{background:rgba(20,28,38,.9);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:6px;cursor:pointer;color:var(--fg);font:inherit;text-align:left}
+.pic img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:7px;display:block}
+.pic b{display:block;font-size:13px;margin-top:4px}
+.pic small{color:var(--gold)}
+.pic.lock{opacity:.45;cursor:default}
+#photo img.big{width:100%;max-height:52vh;object-fit:contain;border-radius:10px;background:#000}
+#photo .checks div{font-size:13.5px}
+#photo .credit{font-size:12px;color:var(--muted)}
+.stars{color:var(--gold);letter-spacing:2px}
+/* hand steering */
+#lcol{position:fixed;left:16px;top:16px;display:flex;flex-direction:column;gap:10px;width:300px;z-index:1}
+#lcol .panel{position:static}
+#card{max-width:360px}
+#card p{margin:4px 0 0;font-size:14px;color:var(--muted)}
+#read{text-align:center;padding:10px 12px}
+#gauge{width:100%;height:auto;display:block}
+#read .gl{display:grid;grid-template-columns:1fr auto;align-items:baseline;text-align:left;margin-top:4px}
+#read .gl span{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+#read .gl b{font:700 30px 'Chakra Petch',sans-serif;grid-row:span 2;color:var(--fg)}
+#read .gl small{font-size:11px;color:var(--muted)}
+#read .gt{font-size:12px;margin-top:6px;text-align:left}
+#read .gs{font-size:10px;color:var(--muted);margin-top:4px;text-align:left}
+#warn{left:50%;top:18%;transform:translateX(-50%);border-color:var(--warn);color:var(--warn);font-weight:600;text-align:center}
+#next{position:fixed;left:50%;bottom:214px;transform:translateX(-50%);z-index:2;padding:9px 18px;border-radius:999px;background:rgba(10,14,20,.82);border:1px solid rgba(240,191,90,.5);color:var(--fg);font-weight:600;font-size:16px;white-space:nowrap;pointer-events:none}
+#next b{color:var(--gold)}
+/* the control dashboard: brushed metal, screws, keycaps, a lever, lamps and a big red button */
+#console{position:fixed;right:16px;bottom:12px;display:flex;gap:10px;padding:14px 16px 12px;border-radius:14px;z-index:2;user-select:none;-webkit-user-select:none;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 4px),linear-gradient(180deg,#363d45,#1b2026 60%,#14181c);
+  border:1px solid #4b545e;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.5),0 10px 30px rgba(0,0,0,.6)}
+#console:before,#console:after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;top:6px;left:6px;background:radial-gradient(circle at 35% 35%,#c9d1d8,#59626b 60%,#2a3036);box-shadow:0 1px 0 rgba(0,0,0,.6)}
+#console:after{left:auto;right:6px}
+#console.hidden{display:none}
+#console section{background:linear-gradient(180deg,#0e1216,#151a1f);border:1px solid #2a3138;border-radius:10px;padding:8px 10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center}
+#console h6{margin:0 0 6px;font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#f0bf5a;text-shadow:0 0 6px rgba(240,191,90,.35)}
+#console h6 b{color:#7fe0ff}
+#pad8{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px}
+#pad8 button{font-size:20px;border-radius:9px;border:1px solid #5b6570;color:#e8eef3;cursor:pointer;touch-action:none;
+  background:linear-gradient(180deg,#4a535d,#2b3239);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 0 #0b0e11,0 4px 6px rgba(0,0,0,.5);transition:transform .05s}
+#pad8 button:active,#pad8 button.on{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 0 #0b0e11;background:linear-gradient(180deg,#5a8fa8,#2f5a6e)}
+#pad8 .hold{font:700 11px 'IBM Plex Mono',monospace;background:linear-gradient(180deg,#6b3a35,#3b1f1c);border-color:#8a4b44}
+#lever{display:flex;flex-direction:column;align-items:center;gap:4px;font:700 10px 'IBM Plex Mono',monospace;color:#9fb0c0}
+#ltrack{position:relative;width:26px;height:118px;border-radius:13px;background:linear-gradient(90deg,#05070a,#1a2027,#05070a);border:1px solid #3a434c;box-shadow:inset 0 2px 8px #000;cursor:grab;touch-action:none}
+#ltrack .mk{position:absolute;left:-7px;right:-7px;top:50%;height:2px;background:#f0bf5a;opacity:.6}
+#lknob{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;cursor:grab;z-index:1;
+  background:radial-gradient(circle at 35% 30%,#ff9c8c,#d23a2c 45%,#7a160f);box-shadow:0 4px 8px rgba(0,0,0,.7),inset 0 -3px 6px rgba(0,0,0,.4);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+#lknob.drag{transition:none;cursor:grabbing}
+#lever.pulse #lknob{animation:lp 1s ease-in-out infinite}
+@keyframes lp{50%{box-shadow:0 0 0 7px rgba(240,191,90,.5),0 4px 8px rgba(0,0,0,.7)}}
+.lcd{margin-top:6px;font:700 13px 'IBM Plex Mono',monospace;color:#9dffb0;background:#04140a;border:1px solid #1d3b26;border-radius:5px;padding:2px 8px;text-shadow:0 0 6px rgba(120,255,150,.6);min-width:58px;text-align:center}
+.lamps{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font:700 10px 'IBM Plex Mono',monospace;color:#b9c6d2;margin-bottom:8px}
+.lamps div{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.lamps i{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#55606a,#1d2329);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+.lamps i.g{background:radial-gradient(circle at 35% 35%,#d4ffe0,#2fd36a 55%,#0f6b31);box-shadow:0 0 10px #2fd36a}
+.lamps i.r{background:radial-gradient(circle at 35% 35%,#ffd2c8,#ff4a33 55%,#7a160f);box-shadow:0 0 10px #ff4a33;animation:lb .5s steps(2) infinite}
+@keyframes lb{50%{opacity:.35}}
+#rw{width:160px;height:28px}
+.hazard{padding:7px;border-radius:50%;background:repeating-conic-gradient(#f0bf5a 0 15deg,#16191c 15deg 30deg);box-shadow:0 2px 6px rgba(0,0,0,.6)}
+#shoot{width:96px;height:96px;border-radius:50%;border:3px solid #2a0d0a;cursor:pointer;font:800 13px 'Chakra Petch',sans-serif;line-height:1.1;color:#fff;letter-spacing:.04em;
+  background:radial-gradient(circle at 35% 30%,#ff8e7e,#e0291a 45%,#6d0f08);box-shadow:inset 0 -6px 10px rgba(0,0,0,.45),0 5px 0 #3a0905,0 8px 14px rgba(0,0,0,.6);transition:transform .06s,filter .2s}
+#shoot:disabled{cursor:not-allowed;filter:grayscale(.85) brightness(.55)}
+#shoot.armed{animation:arm 1s ease-in-out infinite}
+#shoot.armed:active{transform:translateY(4px);box-shadow:inset 0 -3px 6px rgba(0,0,0,.45),0 1px 0 #3a0905}
+@keyframes arm{50%{box-shadow:inset 0 -6px 10px rgba(0,0,0,.45),0 5px 0 #3a0905,0 0 26px 8px rgba(255,80,50,.7)}}
+.tog{display:flex;align-items:center;gap:6px;margin-top:8px;font:700 10px 'IBM Plex Mono',monospace;color:#b9c6d2;cursor:pointer}
+.tog input{display:none}
+.tog span{width:30px;height:16px;border-radius:8px;background:#0a0d10;border:1px solid #3a434c;position:relative}
+.tog span:after{content:"";position:absolute;left:1px;top:1px;width:12px;height:12px;border-radius:50%;background:linear-gradient(#c9d1d8,#6b757f);transition:left .15s}
+.tog input:checked+span{background:#16502c}.tog input:checked+span:after{left:15px}
+
+@keyframes zp{50%{box-shadow:0 0 0 6px rgba(240,191,90,.45);background:rgba(240,191,90,.35)}}
+#mini{position:fixed;left:12px;bottom:26px;width:250px;height:180px;pointer-events:none}
+#mini img{position:absolute;left:50%;top:55%;width:236px;transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px rgba(0,0,0,.7))}
+#credit{position:fixed;right:10px;bottom:3px;font-size:10.5px;color:rgba(195,206,216,.55);pointer-events:none}
+select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:3px 6px;font:inherit}
+@media (max-width:760px){#next{top:150px;bottom:auto;font-size:14px;white-space:normal;width:max-content;max-width:88vw;text-align:center}#lcol{width:calc(100vw - 32px)}#lcol #read{position:fixed;top:auto;bottom:190px;right:12px;width:170px;padding:6px 8px}#read .gl b{font-size:20px}#read .gl small,#read .gs{display:none}#read .gt{font-size:10px}#card{max-width:calc(100vw - 32px)}#log{bottom:60px;font-size:12px}#sys{width:170px;font-size:11px}#mini{width:150px;height:110px;bottom:180px}#mini img{width:140px}#console{left:6px;right:6px;bottom:6px;gap:5px;padding:10px 8px 8px;justify-content:space-between}#console section{padding:6px 5px}#console h6{font-size:8px;letter-spacing:.06em}#pad8{grid-template-columns:repeat(3,36px);grid-template-rows:repeat(3,36px);gap:3px}#pad8 button{font-size:15px}#pad8 .hold{font-size:8px}#ltrack{height:96px;width:22px}#lknob{width:32px;height:32px;margin:-16px 0 0 -16px}.c-stat{display:none!important}#shoot{width:72px;height:72px;font-size:11px}.lcd{font-size:11px;min-width:44px}#plan{width:calc(100vw - 24px)}}
+</style>
+</head>
+<body>
+<canvas id="gl" class="full"></canvas>
+<canvas id="hud" class="full"></canvas>
+<img id="webb" src="img/webb/webb.webp" alt="The James Webb Space Telescope">
+<div id="mini" class="hidden"><img src="img/webb/webb-corner.webp" alt=""></div>
+<a class="btn small" id="toCC" href="index.html#levels">◀ Back to the levels</a>
+<div id="title">
+  <h1>JAMES WEBB SPACE TELESCOPE</h1>
+  <p>Webb floats 1.5 million kilometers from Earth, always keeping its sunshield between the Sun and its gold mirror. The sky behind it is the real sky, made from 1.7 billion real stars.</p>
+  <button class="btn gold" id="go">START OBSERVING</button>
+</div>
+<div class="panel hidden" id="weeks"></div>
+<div class="panel hidden" id="plan"></div>
+<div class="panel hidden" id="sys"></div>
+<div class="panel hidden" id="log"></div>
+<div class="hidden" id="runbar"><button class="btn small" id="spd">Speed ×1</button><button class="btn small" id="toEnd">Skip to the end</button></div>
+<div class="panel hidden" id="result"></div>
+<div class="panel hidden" id="album"></div>
+<div class="panel hidden" id="photo"></div>
+<!-- hand steering -->
+<div id="lcol"><div class="panel mono hidden" id="read"></div><div class="panel hidden" id="card"></div></div>
+<div class="panel hidden" id="warn">☀ SUNSHIELD LIMIT<br><span style="font-weight:400;color:var(--fg)">Webb can't point there: the Sun would shine on its mirror.</span></div>
+<!-- the control dashboard -->
+<div class="hidden" id="console">
+  <section class="c-att"><h6>ATTITUDE CONTROL</h6>
+    <div id="pad8">
+      <button data-d="-1,1" aria-label="Up and left">↖</button><button data-d="0,1" aria-label="Up">▲</button><button data-d="1,1" aria-label="Up and right">↗</button>
+      <button data-d="-1,0" aria-label="Left">◀</button><button data-d="0,0" class="hold" aria-label="Stop">STOP</button><button data-d="1,0" aria-label="Right">▶</button>
+      <button data-d="-1,-1" aria-label="Down and left">↙</button><button data-d="0,-1" aria-label="Down">▼</button><button data-d="1,-1" aria-label="Down and right">↘</button>
+    </div></section>
+  <section class="c-zoom"><h6>ZOOM</h6>
+    <div id="lever"><span>IN</span><div id="ltrack"><div id="lknob"></div><i class="mk"></i></div><span>OUT</span></div>
+    <div class="lcd" id="zread">60°</div></section>
+  <section class="c-stat"><h6>STATUS</h6>
+    <div class="lamps"><div><i id="lSun"></i>SUN SAFE</div><div><i id="lTgt"></i>ON TARGET</div><div><i id="lZm"></i>ZOOMED IN</div><div><i id="lRdy"></i>READY</div></div>
+    <h6>REACTION WHEELS</h6><canvas id="rw" width="320" height="56"></canvas></section>
+  <section class="c-shoot"><h6>CAMERA <b id="camName">NIRCam</b></h6>
+    <div class="hazard"><button id="shoot" disabled aria-label="Take the picture">TAKE<br>PICTURE</button></div>
+    <label class="tog"><input type="checkbox" id="tSound"><span></span>SOUND</label></section>
+</div>
+<div class="hidden" id="next"></div>
+<button class="btn gold hidden" id="shoot">📸 TAKE THE PICTURE</button>
+<div id="credit">Sky: NASA/Goddard SVS Deep Star Maps 2020, Gaia DR2: ESA/Gaia/DPAC · Webb: NASA GSFC/CIL/Adriana Manrique Gutierrez · Pictures: NASA, ESA, CSA, STScI</div>
+<script src="js/edition.js?v=17"></script>
+<script src="js/webb/data.js?v=17"></script>
+<script src="js/webb/store.js?v=17"></script>
+<script src="js/webb/model.js?v=17"></script>
+<script src="js/webb/doc.js?v=17"></script>
+<script src="js/webb/app.js?v=17"></script>
+</body>
+</html>

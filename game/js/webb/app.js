@@ -79,34 +79,40 @@ const noiseCv = (() => { const c = document.createElement('canvas'); c.width = c
 
 /* ================= the screens ================= */
 let screen = 'title', week = W.WEEKS[0], cards = [], codeMode = false, codeText = '', run = null, steer = null;
-const show0 = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini']
+const show0 = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini', 'toCC']
   .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id))) || ($('webb').style.opacity = ids.includes('title') ? 1 : 0);
 const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result')) DOC.hide(); show0(...ids); };
-const album = (() => { try { return JSON.parse(localStorage.getItem('webb.album') || '{}'); } catch (e) { return {}; } })();
-const saveAlbum = () => { try { localStorage.setItem('webb.album', JSON.stringify(album)); } catch (e) {} };
+const album = W.load('album', {});
+const saveAlbum = () => W.save('album', album);
 
 /* a week's goal: which of its pictures are already in the album */
 const goalDone = w => w.ids.filter(id => Object.values(album).some(a => a.id === id && (id !== 'wasp96' || a.cam === 'NIRISS')));
 const goalHtml = w => { const d = goalDone(w); return `<div style="font-size:12.5px;margin-top:6px">🎯 ${esc(w.goal)}: <b style="color:${d.length === w.ids.length ? '#8fe3a0' : 'var(--gold)'}">${d.length}/${w.ids.length}</b>${d.length === w.ids.length ? ' ✅' : ''}</div>`; };
 
+/* Inside Crater Crew: the way back to the main game, and the free demo's limits (First Light week, Training day). */
+const DEMO = !!(window.MR && MR.ED && MR.ED.demo), ccHome = 'index.html' + (W.slot ? '?slot=' + W.slot : '') + '#levels';   // back to Crater Crew's level list
+if (DEMO) W.WEEKS = W.WEEKS.filter(w => w.id === 'first');
+$('toCC').href = ccHome;
+/* Dr. Orbit greets the player by name when Webb is opened from Crater Crew. */
+const hi = t => W.player && W.player.name ? t.replace('Hello, cadet!', `Hello, cadet ${W.player.name}!`) : t;
 /* --- Webb Academy: Dr. Orbit's campaign --- */
 let acad = null;   // the session being played: {s, i, hints, wrong:Set, said:{}}
-const acadData = (() => { try { return JSON.parse(localStorage.getItem('webb.academy') || '{}'); } catch (e) { return {}; } })(); acadData.done = acadData.done || 0; acadData.at = acadData.at || {};   // at: where you are in each session
-const acadSave = () => { try { localStorage.setItem('webb.academy', JSON.stringify(acadData)); } catch (e) {} };
+const acadData = W.load('academy', {}); acadData.done = acadData.done || 0; acadData.at = acadData.at || {};   // at: where you are in each session
+const acadSave = () => W.save('academy', acadData);
 const acadHtml = () => { const A = W.ACADEMY, n = Math.min(acadData.done, A.length - 1), cur = A[n];
   return `<div class="acad"><div class="acadHead"><b>🎓 Webb Academy</b><small>with Dr. Orbit</small></div>
     <div class="acadRank">Your rank: <b>${W.RANKS[rankNow()].icon} ${esc(W.RANKS[rankNow()].name)}</b></div>
     <div class="acadBadges">${W.RANKS.map((r, i) => `<div title="${esc(r.name)}: ${esc(r.how)}">${badgeSvg(r, i <= rankNow(), 58)}<small>${i <= rankNow() ? esc(r.name) : esc(r.how)}</small></div>`).join('')}</div>
     <div class="acadDots">${A.map((a, i) => `<span class="${i < acadData.done ? 'ok' : i === n ? 'cur' : ''}" title="${esc(a.name)}">${i < acadData.done ? '✓' : i + 1}</span>`).join('<i></i>')}</div>
     <div class="acadNow"><div><b>Session ${n + 1}: ${esc(cur.name)}</b><small>${esc(cur.what)}</small></div>
-    ${cur.soon ? '<button class="btn" disabled>Coming soon</button>' : `<button class="btn gold" id="acadGo">▶ ${acadData.at[cur.id] ? `Continue (${acadData.at[cur.id] + 1} of ${cur.ids.length})` : 'Start'}</button>`}</div>
+    ${DEMO && n > 0 ? '<button class="btn" disabled>🔒 Full game</button>' : cur.soon ? '<button class="btn" disabled>Coming soon</button>' : `<button class="btn gold" id="acadGo">▶ ${acadData.at[cur.id] ? `Continue (${acadData.at[cur.id] + 1} of ${cur.ids.length})` : 'Start'}</button>`}</div>
     ${acadData.done ? `<div class="acadAgain">Play again: ${A.slice(0, acadData.done).filter(a => !a.soon).map(a => `<button class="btn small" data-s="${A.indexOf(a)}">${esc(a.name)}</button>`).join('')}</div>` : ''}</div>`; };
 function startSession(si){
   const S = W.ACADEMY[si], cur = acadData.at[S.id] || 0;   // pick up where you left off
   acad = {s:si, i:cur, hints:0, wrong:new Set(), said:{}};
   if (cur > 0) { week = W.WEEKS.find(w => w.id === S.week); sunMs = week.date; docMet = true; startSteer(); DOC.say([{text:`Welcome back, ${W.RANKS[rankNow()].name}! Let's keep going.`, mood:'wow'}, {text:acadAsk(), mood:'think'}]); return; }
   week = W.WEEKS.find(w => w.id === S.week); sunMs = week.date; docMet = true;
-  startSteer(); DOC.say([...S.intro.map((text, i) => ({text, mood:i === 0 ? 'wow' : 'happy'})), {text:acadAsk(), mood:'think'}]);
+  startSteer(); DOC.say([...S.intro.map((text, i) => ({text:hi(text), mood:i === 0 ? 'wow' : 'happy'})), {text:acadAsk(), mood:'think'}]);
 }
 const acadT = () => acad && W.byId(W.ACADEMY[acad.s].ids[acad.i]);
 const acadAsk = () => { const S = W.ACADEMY[acad.s], t = acadT(), who = W.RANKS[rankNow()].name;
@@ -165,7 +171,8 @@ function weeks(){
       <button class="mode" data-m="cards"><b>🗂️ Plan the week with cards</b><small>Fill in observation cards like real astronomers do in NASA's planning tool, then watch Webb run them.</small></button>
       <button class="mode" data-m="code"><b>💻 Write the script</b><small>Webb really runs JavaScript scripts on board. Write your own plan with loops and ifs.</small></button>
     </div>
-    <div class="row" style="margin-top:12px;display:flex;gap:8px"><button class="btn small" id="toAlbum">📔 Album (${Object.keys(album).length})</button><button class="btn small" id="toHow">🛠 How Webb works</button></div>`;
+    <div class="row" style="margin-top:12px;display:flex;gap:8px"><button class="btn small" id="toAlbum">📔 Album (${Object.keys(album).length})</button><button class="btn small" id="toHow">🛠 How Webb works</button><a class="btn small" href="${ccHome}" style="text-decoration:none;margin-left:auto">◀ Back to the levels</a></div>
+    ${DEMO ? `<p class="est" style="margin-top:10px">Free demo: First Light week and Training day. The full game adds every week, Mystery targets and more Academy sessions. <a href="${esc(MR.ED.buyUrl || '#')}" target="_blank" rel="noopener" style="color:var(--gold)">Get the full game</a></p>` : ''}`;
   show('weeks');
   document.querySelectorAll('.week').forEach(b => b.onclick = () => { week = W.WEEKS.find(w => w.id === b.dataset.w); sunMs = week.date; weeks(); });
   document.querySelectorAll('.mode').forEach(b => b.onclick = () => { if (b.dataset.m === 'steer') startSteer(); else { codeMode = b.dataset.m === 'code'; startPlan(); } });
@@ -257,7 +264,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=15'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=17'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -431,7 +438,7 @@ function startSteer(){
   readyOnce = false;
   if (acad) { acadCard(); show('card', 'read', 'console', 'mini'); return; }
   $('tsel').onchange = e => { steer = W.byId(e.target.value); docTarget(); readyOnce = false; };
-  if (!docMet) { docMet = true; DOC.say([{text:`Hello, cadet! I'm Dr. Orbit, Webb's one-man science team. I need your help to find things in space!`, mood:'wow'}, {text:docLine(steer)},
+  if (!docMet) { docMet = true; DOC.say([{text:hi(`Hello, cadet! I'm Dr. Orbit, Webb's one-man science team. I need your help to find things in space!`), mood:'wow'}, {text:docLine(steer)},
     {text:`Follow the gold arrow. And keep the Sun angle in the green, or the Sun would shine on Webb's mirror!`, mood:'think'}]); }
   else docTarget();
   $('sBack').onclick = weeks; $('sAlb').onclick = () => openAlbum(startSteer);

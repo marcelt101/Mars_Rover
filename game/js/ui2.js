@@ -97,7 +97,7 @@ if (on('cards')) {
     document.querySelectorAll('#jobPick .job').forEach(b => { if (b.querySelector('canvas')) return; const c = document.createElement('canvas'); c.width = c.height = 120; c.className = 'jpic'; b.prepend(c);
       const job = b.dataset.job; MR.Render.drawPreview(c, {zh:MR.Game.lobby && MR.Game.lobby.map === 'utopia' && ['scout','science','hauler','excavator'].includes(job), job, role:job === 'buggy' || job === 'heli' ? 'cadet' : 'explorer', color:(p && p.color) || 'teal', perks:[], tubes:job === 'hauler' ? ['clay','olivine','salts'] : [], dust:0}, moon && job !== 'heli' && job !== 'lab'); });
     document.querySelectorAll('#mapPick .mapcard').forEach(b => { if (b.querySelector('.mart')) return; const a = document.createElement('span'); a.className = 'mart'; a.dataset.m = b.dataset.map; a.setAttribute('aria-hidden', 'true');
-      if (realThumbs()) { a.classList.add('real'); b.classList.add('pic'); const bp = b.querySelector('p'); if (bp) b.title = bp.textContent; a.style.backgroundImage = `url(img/maps/${b.dataset.map}.jpg)`; } if (!(MR.Game.lobby && MR.Game.lobby.unlocked || MR.Store.unlocked()).includes(b.dataset.map)) a.innerHTML = '<i>LOCKED</i>'; b.prepend(a); });
+      if (realThumbs()) { a.classList.add('real'); b.classList.add('pic'); const bp = b.querySelector('p'); if (bp) b.title = bp.textContent; a.style.backgroundImage = `url(img/maps/${b.dataset.map}.jpg)`; } if (b.dataset.map === 'webb' ? b.disabled && !/solo level/.test(b.textContent) : !(MR.Game.lobby && MR.Game.lobby.unlocked || MR.Store.unlocked()).includes(b.dataset.map)) a.innerHTML = '<i>LOCKED</i>'; b.prepend(a); });
   };
   new MutationObserver(deco).observe($('jobPick'), {childList:true});
   new MutationObserver(deco).observe($('mapPick'), {childList:true});
@@ -146,5 +146,9 @@ if (!/[?&]nomenu=1/.test(location.search)) {   /* approved: the title screen */
   const go = () => { sp.classList.add('out'); document.body.classList.remove('onsplash'); MR.sfx && MR.sfx.click(); setTimeout(() => sp.remove(), 350); };
   $('splashPlay').onclick = go;
   addEventListener('keydown', e => { if (document.getElementById('splash') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } });
+  if (location.hash === '#levels') sp.remove(), document.body.classList.remove('onsplash');   // back from the Webb level: no title screen
 }
+/* Back from the Webb level (webb.html#…→ index.html#levels): straight to the level list, Webb still picked. */
+if (location.hash === '#levels') setTimeout(() => { history.replaceState(null, '', location.pathname + location.search);
+  if (!MR.Store.current()) return; $('soloBtn').click(); if (MR.webbOn() && MR.webbOpen(MR.Store.unlocked())) { MR.Game.lobby.map = 'webb'; const b = document.querySelector('#mapPick [data-map="webb"]'); if (b) b.click(); } }, 0);
 })();

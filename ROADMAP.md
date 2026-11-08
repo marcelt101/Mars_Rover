@@ -81,7 +81,10 @@ there's no lander, and there's no Mission Log week yet. Clipper starts its Europ
 The user's idea, contemporary and different from driving. Kids point the telescope at chosen spots in the sky and
 take pictures of what Webb really photographed, using Webb's real images (NASA/ESA/CSA/STScI, credited). Each
 picture teaches one thing: galaxies, clouds of dust and gas, star formation, black holes, quasars, and so on.
-**Status:** playable test at `game/webb-test.html` (not linked, not in the itch.io builds), waiting for feedback.
+**Status:** a level of Crater Crew, after the Moon (game/webb.html, opened from the level list like a map; back returns
+  to the level list). Behind ?preview=webb until approved; MR.WEBB_ON = true in js/edition.js lists it for everyone and ships
+  it in the builds (not in the free demo, which shows it as full game). Progress is per player profile (p.webb), so it
+  travels with the save codes. Solo for now; team play later. The old webb-test.html link redirects.
 - Three observing weeks with real dates (June 2022 First Light, August 2022, March 2023); the Sun rule (85-135
   degrees) decides what can be seen, and blocked targets say when they come back into view.
 - Thirteen real targets with real Webb pictures and kid-level facts: Cosmic Cliffs, Southern Ring (NIRCam and MIRI),
