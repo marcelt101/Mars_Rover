@@ -10,3 +10,12 @@
   Credit: NASA, ESA, CSA, STScI.
 - `webb-corner.webp`: the small telescope in the corner of the telescope view. Supplied by the game's author; it is
   NASA's artist's conception of Webb (credit NASA). The checkerboard painted into the downloaded file was removed.
+- Target pictures (`t_*.jpg`), resized for the game:
+  - `t_carina.jpg` Cosmic Cliffs, `t_ring_nircam.jpg` / `t_ring_miri.jpg` Southern Ring Nebula (split from NASA's
+    side-by-side), `t_deepfield.jpg` Webb's First Deep Field (SMACS 0723), `t_wasp96.jpg` WASP-96 b spectrum:
+    NASA's image library. Credit: NASA, ESA, CSA, STScI.
+  - From ESA/Webb (esawebb.org, CC BY 4.0), credits as given there: `t_pillars.jpg` (weic2216b) NASA, ESA, CSA, STScI;
+    J. DePasquale, A. Koekemoer, A. Pagan (STScI). `t_stephan.jpg` (weic2208a) NASA, ESA, CSA, and STScI.
+    `t_cartwheel.jpg` (weic2211a) NASA, ESA, CSA, STScI. `t_phantom.jpg` (potm2208a) ESA/Webb, NASA & CSA, J. Lee
+    and the PHANGS-JWST Team. `t_crab.jpg` (weic2326a) NASA, ESA, CSA, STScI, T. Temim (Princeton University).
+    `t_rhooph.jpg` (weic2316a) NASA, ESA, CSA, STScI, K. Pontoppidan (STScI), A. Pagan (STScI).
