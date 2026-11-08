@@ -31,16 +31,15 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 #pad{right:16px;bottom:16px;display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:6px;padding:10px}
 #pad button{font-size:22px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(20,28,38,.85);color:var(--fg);cursor:pointer;touch-action:none}
 #zoom{right:206px;bottom:16px;display:flex;flex-direction:column;gap:8px;align-items:center}
-#mini{position:fixed;left:16px;bottom:16px;width:230px;height:170px;border-radius:12px;border:1px solid rgba(88,207,190,.3);background:radial-gradient(circle at 50% 55%,rgba(30,45,70,.55),rgba(4,6,10,.75));pointer-events:none;overflow:hidden}
-#mini img{position:absolute;left:50%;top:56%;width:168px;transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px rgba(0,0,0,.7));transition:transform .15s linear}
-#mini small{position:absolute;left:10px;top:6px;font:600 11px 'IBM Plex Mono',monospace;color:var(--muted);letter-spacing:.06em}
+#mini{position:fixed;left:12px;bottom:26px;width:250px;height:180px;pointer-events:none}
+#mini img{position:absolute;left:50%;top:55%;width:236px;transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px rgba(0,0,0,.7));transition:transform .15s linear}
 #zoom button{width:52px;height:52px;font-size:24px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(20,28,38,.85);color:var(--fg);cursor:pointer}
 #credit{position:fixed;right:10px;bottom:4px;font-size:11px;color:rgba(195,206,216,.6);pointer-events:none}
 #done{left:50%;bottom:16px;transform:translateX(-50%);max-width:560px;display:none}
 #done h2{margin:0 0 6px;font:700 20px 'Chakra Petch',sans-serif;color:var(--gold)}
 #done p{margin:0 0 6px;font-size:14.5px}
 .hidden{display:none!important}
-@media (max-width:640px){#mini{width:150px;height:112px}#mini img{width:110px}#zoom{right:170px}#card{max-width:62vw}#read{font-size:11px}#pad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px)}#zoom button{width:44px;height:44px}}
+@media (max-width:640px){#mini{width:160px;height:118px}#mini img{width:150px}#zoom{right:170px}#card{max-width:62vw}#read{font-size:11px}#pad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px)}#zoom button{width:44px;height:44px}}
 </style>
 </head>
 <body>
@@ -60,7 +59,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
   <button data-d="-1,0" aria-label="Left">◀</button><span></span><button data-d="1,0" aria-label="Right">▶</button>
   <span></span><button data-d="0,-1" aria-label="Down">▼</button><span></span>
 </div>
-<div id="mini" class="hidden"><small>WEBB</small><img src="img/webb/webb-small.webp" alt=""></div>
+<div id="mini" class="hidden"><img src="img/webb/webb-small.webp" alt=""></div>
 <div class="panel hidden" id="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button></div>
 <div class="panel hidden" id="done"><h2>The Cosmic Cliffs</h2>
   <p>This is the edge of a giant bubble in the Carina Nebula, 7,600 light-years away. Hot young stars blew it open with their light and winds. Webb's infrared camera sees through the dust and reveals hundreds of baby stars that were hidden before.</p>
@@ -193,7 +192,13 @@ function drawHud(t, b, tanF){
   $('warn').style.display = t - warnT < 2500 ? 'block' : 'none';
   /* the corner telescope leans the way it turns, and a Sun marks the side the real Sun is on (always behind the sunshield) */
   const sp = Math.max(.01, fov * .12), lean = Math.max(-1, Math.min(1, vra / sp)), nod = Math.max(-1, Math.min(1, vdec / sp));
-  $('mini').querySelector('img').style.transform = `translate(-50%,-50%) translate(${-lean * 8}px, ${-nod * 6}px) rotate(${-lean * 7}deg) scale(${1 + Math.abs(nod) * .03})`;
+  const mimg = $('mini').querySelector('img');
+  mimg.style.transform = `translate(-50%,-50%) translate(${-lean * 8}px, ${-nod * 6}px) rotate(${-10 - lean * 7}deg) scale(-1, 1) scale(${1 + Math.abs(nod) * .03})`;
+  /* Webb's line of sight: dots stream from the gold mirror to the frame in the middle, where it is looking */
+  { const ib = mimg.getBoundingClientRect(), mx = (ib.left + ib.width * .64) * (hud.width / innerWidth), my = (ib.top + ib.height * .36) * (hud.height / innerHeight);
+    const ex = W / 2, ey = H / 2, len = Math.hypot(ex - mx, ey - my), n = Math.floor(len / (22 * s));
+    for (let i = 1; i < n; i++) { const u = ((i + (t / 400) % 1) / n); if (u > 1) continue; const x = mx + (ex - mx) * u, y = my + (ey - my) * u;
+      hc.fillStyle = `rgba(255,214,120,${.95 - u * .55})`; hc.beginPath(); hc.arc(x, y, (3.4 - u * 1.6) * s, 0, 7); hc.fill(); } }
   const mb = $('mini').getBoundingClientRect(), k = hud.width / innerWidth, sx = dot(SUN, b.r), sy = -dot(SUN, b.u), sa = Math.atan2(sy, sx);
   const cx = (mb.left + mb.width / 2) * k, cy = (mb.top + mb.height / 2) * k, rx = (mb.width / 2 - 14) * k, ry = (mb.height / 2 - 14) * k;
   const px = cx + Math.cos(sa) * rx, py = cy + Math.sin(sa) * ry, gs = hc.createRadialGradient(px, py, 0, px, py, 16 * k);
