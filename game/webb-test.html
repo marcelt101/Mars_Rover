@@ -193,9 +193,9 @@ function drawHud(t, b, tanF){
   /* the corner telescope leans the way it turns, and a Sun marks the side the real Sun is on (always behind the sunshield) */
   const sp = Math.max(.01, fov * .12), lean = Math.max(-1, Math.min(1, vra / sp)), nod = Math.max(-1, Math.min(1, vdec / sp));
   const mimg = $('mini').querySelector('img');
-  mimg.style.transform = `translate(-50%,-50%) translate(${-lean * 8}px, ${-nod * 6}px) rotate(${-10 - lean * 7}deg) scale(-1, 1) scale(${1 + Math.abs(nod) * .03})`;
+  mimg.style.transform = `translate(-50%,-50%) translate(${-lean * 8}px, ${-nod * 6}px) rotate(${-lean * 7}deg) scale(${1 + Math.abs(nod) * .03})`;   // as drawn, Webb looks up and to the right, toward the middle
   /* Webb's line of sight: dots stream from the gold mirror to the frame in the middle, where it is looking */
-  { const ib = mimg.getBoundingClientRect(), mx = (ib.left + ib.width * .54) * (hud.width / innerWidth), my = (ib.top + ib.height * .34) * (hud.height / innerHeight);
+  { const ib = mimg.getBoundingClientRect(), mx = (ib.left + ib.width * .66) * (hud.width / innerWidth), my = (ib.top + ib.height * .14) * (hud.height / innerHeight);   // from the secondary mirror, out along the line of sight
     const ex = W / 2, ey = H / 2, len = Math.hypot(ex - mx, ey - my), n = Math.floor(len / (22 * s));
     for (let i = 1; i < n; i++) { const u = ((i + (t / 400) % 1) / n); if (u > 1) continue; const x = mx + (ex - mx) * u, y = my + (ey - my) * u;
       hc.fillStyle = `rgba(255,214,120,${.95 - u * .55})`; hc.beginPath(); hc.arc(x, y, (3.4 - u * 1.6) * s, 0, 7); hc.fill(); } }
