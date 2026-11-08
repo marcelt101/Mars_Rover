@@ -183,9 +183,11 @@ h1,h2,h3{font-family:'Chakra Petch',sans-serif;margin:0}
 #mini{position:fixed;left:12px;bottom:26px;width:250px;height:180px;pointer-events:none}
 #mini .mbody{position:absolute;left:50%;top:55%;width:236px;transform:translate(-50%,-50%)}
 #mini img{display:block;width:100%;filter:drop-shadow(0 6px 10px rgba(0,0,0,.7))}
-/* a tiny green LED on the spacecraft body, blinking like a heartbeat: Webb is awake */
-#mini .led{position:absolute;left:52.5%;top:83%;width:4px;height:4px;border-radius:50%;background:#7dffa0;box-shadow:0 0 4px 2px rgba(80,255,130,.8);animation:led 2.4s infinite}
-@keyframes led{0%,8%{opacity:1}10%,18%{opacity:.15}20%,26%{opacity:1}28%,100%{opacity:.15}}
+/* a tiny green LED on the spacecraft body, flickering: Webb is awake */
+#mini .led{position:absolute;left:52.5%;top:83%;width:5px;height:5px;border-radius:50%;background:#9dffb8;box-shadow:0 0 5px 2px rgba(80,255,130,.85);animation:led 1.7s steps(1,end) infinite}
+/* an uneven flicker, like a busy status light */
+@keyframes led{0%{opacity:1}6%{opacity:.1}10%{opacity:1}14%{opacity:.2}17%{opacity:.9}30%{opacity:.15}36%{opacity:1}48%{opacity:.3}52%{opacity:1}
+  63%{opacity:.1}66%{opacity:.85}70%{opacity:.1}74%{opacity:1}88%{opacity:.25}93%{opacity:1}}
 #credit{position:fixed;right:10px;bottom:3px;font-size:10.5px;color:rgba(195,206,216,.55);pointer-events:none}
 select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:3px 6px;font:inherit}
 @media (max-width:760px){#next{top:150px;bottom:auto;font-size:14px;white-space:normal;width:max-content;max-width:88vw;text-align:center}#lcol{width:calc(100vw - 32px)}#lcol #read{position:fixed;top:auto;bottom:190px;right:12px;width:170px;padding:6px 8px}#read .gl b{font-size:20px}#read .gl small,#read .gs{display:none}#read .gt{font-size:10px}#card{max-width:calc(100vw - 32px)}#log{bottom:60px;font-size:12px}#sys{width:170px;font-size:11px}#mini{width:150px;height:110px;bottom:180px}#mini .mbody{width:140px}#console{left:6px;right:6px;bottom:6px;gap:5px;padding:10px 8px 8px;justify-content:space-between}#console section{padding:6px 5px}#console h6{font-size:8px;letter-spacing:.06em}#pad8{grid-template-columns:repeat(3,36px);grid-template-rows:repeat(3,36px);gap:3px}#pad8 button{font-size:15px}#pad8 .hold{font-size:8px}#jball{width:28px;height:28px}.zbtns button{width:40px;height:30px;font-size:18px}.c-stat{display:none!important}#shoot{width:72px;height:72px;font-size:11px}.lcd{font-size:11px;min-width:44px}#plan{width:calc(100vw - 24px)}}
@@ -231,11 +233,11 @@ select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);
 </div>
 <div class="hidden" id="next"></div>
 <div id="credit">Sky: NASA/Goddard SVS Deep Star Maps 2020, Gaia DR2: ESA/Gaia/DPAC · Webb: NASA GSFC/CIL/Adriana Manrique Gutierrez · Pictures: NASA, ESA, CSA, STScI</div>
-<script src="js/edition.js?v=24"></script>
-<script src="js/webb/data.js?v=24"></script>
-<script src="js/webb/store.js?v=24"></script>
-<script src="js/webb/model.js?v=24"></script>
-<script src="js/webb/doc.js?v=24"></script>
-<script src="js/webb/app.js?v=24"></script>
+<script src="js/edition.js?v=25"></script>
+<script src="js/webb/data.js?v=25"></script>
+<script src="js/webb/store.js?v=25"></script>
+<script src="js/webb/model.js?v=25"></script>
+<script src="js/webb/doc.js?v=25"></script>
+<script src="js/webb/app.js?v=25"></script>
 </body>
 </html>

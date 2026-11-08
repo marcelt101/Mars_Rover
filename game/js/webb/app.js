@@ -263,7 +263,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=24'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=25'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
