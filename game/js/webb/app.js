@@ -79,24 +79,28 @@ const show = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'res
 const album = (() => { try { return JSON.parse(localStorage.getItem('webb.album') || '{}'); } catch (e) { return {}; } })();
 const saveAlbum = () => { try { localStorage.setItem('webb.album', JSON.stringify(album)); } catch (e) {} };
 
+/* a week's goal: which of its pictures are already in the album */
+const goalDone = w => w.ids.filter(id => Object.values(album).some(a => a.id === id && (id !== 'wasp96' || a.cam === 'NIRISS')));
+const goalHtml = w => { const d = goalDone(w); return `<div style="font-size:12.5px;margin-top:6px">🎯 ${esc(w.goal)}: <b style="color:${d.length === w.ids.length ? '#8fe3a0' : 'var(--gold)'}">${d.length}/${w.ids.length}</b>${d.length === w.ids.length ? ' ✅' : ''}</div>`; };
+
 /* --- the week picker --- */
 function weeks(){
   screen = 'weeks'; zone = 0; $('webb').style.opacity = 0;
   $('weeks').innerHTML = `<h2>Choose your observing week</h2><p class="est" style="margin:4px 0 0">Webb's sunshield must always face the Sun, so each week only part of the sky can be seen. These are real dates.</p>
     <div class="grid">${W.WEEKS.map(w => { const vis = W.TARGETS.filter(t => W.inField(t.ra, t.dec, w.date));
       return `<button class="week ${w === week ? 'sel' : ''}" data-w="${w.id}"><b>${esc(w.name)}</b><small>${fmtDate(w.date)}</small><div style="font-size:13px;margin-top:4px">${esc(w.note)}</div>
-        <div class="thumbs">${vis.map(t => `<img src="${thumb(t, t.cam)}" alt="${esc(t.name)}" title="${esc(t.name)}">`).join('')}</div><small>${vis.length} targets in view</small></button>`; }).join('')}</div>
+        <div class="thumbs">${vis.map(t => `<img src="${thumb(t, t.cam)}" alt="${esc(t.name)}" title="${esc(t.name)}">`).join('')}</div><small>${vis.length} targets in view</small>${goalHtml(w)}</button>`; }).join('')}</div>
     <h3 style="margin-top:6px">How do you want to fly Webb?</h3>
     <div class="modes" style="margin-top:8px">
       <button class="mode" data-m="steer"><b>🕹️ Steer it yourself</b><small>Turn the telescope with the arrows, find the target, take the picture. Great for younger crew.</small></button>
       <button class="mode" data-m="cards"><b>🗂️ Plan the week with cards</b><small>Fill in observation cards like real astronomers do in NASA's planning tool, then watch Webb run them.</small></button>
       <button class="mode" data-m="code"><b>💻 Write the script</b><small>Webb really runs JavaScript scripts on board. Write your own plan with loops and ifs.</small></button>
     </div>
-    <div class="row" style="margin-top:12px;display:flex;gap:8px"><button class="btn small" id="toAlbum">📔 Album (${Object.keys(album).length})</button></div>`;
+    <div class="row" style="margin-top:12px;display:flex;gap:8px"><button class="btn small" id="toAlbum">📔 Album (${Object.keys(album).length})</button><button class="btn small" id="toHow">🛠 How Webb works</button></div>`;
   show('weeks');
   document.querySelectorAll('.week').forEach(b => b.onclick = () => { week = W.WEEKS.find(w => w.id === b.dataset.w); sunMs = week.date; weeks(); });
   document.querySelectorAll('.mode').forEach(b => b.onclick = () => { if (b.dataset.m === 'steer') startSteer(); else { codeMode = b.dataset.m === 'code'; startPlan(); } });
-  $('toAlbum').onclick = () => openAlbum(weeks);
+  $('toAlbum').onclick = () => openAlbum(weeks); $('toHow').onclick = () => openHow(weeks);
 }
 
 /* --- the planner --- */
@@ -136,8 +140,8 @@ function cardCode(){ return W.cardsToCode(cards); }
 function renderPlan(){
   const est = codeMode ? null : W.runCode(cardCode(), week);
   const homeN = est ? new Set(est.home.map(p => p.id)).size : 0;
-  $('plan').innerHTML = `<div class="row" style="justify-content:space-between"><div><h2 style="font-size:20px">${esc(week.name)}</h2><span class="est">${fmtDate(week.date)} · 168 hours</span></div>
-      <div class="row"><button class="btn small" id="back">◀ Weeks</button><button class="btn small" id="toCode">${codeMode ? '🗂️ Cards' : '💻 JavaScript'}</button></div></div>
+  $('plan').innerHTML = `<div class="row" style="justify-content:space-between"><div><h2 style="font-size:20px">${esc(week.name)}</h2><span class="est">${fmtDate(week.date)} · 168 hours</span>${goalHtml(week)}</div>
+      <div class="row"><button class="btn small" id="back">◀ Weeks</button><button class="btn small" id="howBtn" title="How Webb works">🛠</button><button class="btn small" id="toCode">${codeMode ? '🗂️ Cards' : '💻 JavaScript'}</button></div></div>
     <div><div class="est" style="margin-bottom:4px">${codeMode ? 'Target ids for your script (tap to copy):' : 'Tap a target to add an observation card. Grey ones are behind the Sun this week.'}</div>
       <div id="tlist">${W.TARGETS.map(t => { const v = visible(t), nv = v ? null : W.nextVisible(t, week.date);
         return `<button class="tchip ${v ? '' : 'off'}" data-t="${t.id}" title="${v ? esc(t.kind) : 'In the Sun zone this week' + (nv ? '. Back in view ' + fmtDate(nv) : '')}"><img src="${thumb(t, t.cam)}" alt="">${esc(codeMode ? t.id : t.name)}</button>`; }).join('')}</div></div>
@@ -146,7 +150,7 @@ function renderPlan(){
          <div class="row"><button class="btn small" id="addDL">📡 + Send pictures home</button><button class="btn small" id="addUL">🔥 + Unload momentum</button></div>
          <div class="est">${est ? `This plan uses about <b>${Math.round(est.h)}</b> of 168 hours. ${homeN} picture${homeN === 1 ? '' : 's'} would reach Earth.${est.recorder.length ? ' ⚠ ' + est.recorder.length + ' picture(s) still on the recorder at the end: add "Send pictures home".' : ''}${est.events.some(e => e.type === 'full') ? ' ⚠ The recorder fills up: send pictures home in between.' : ''}${est.events.some(e => e.type === 'guide' && !e.ok) ? ' ⚠ Momentum gets too high: add "Unload momentum".' : ''}` : ''}</div>`}
     <div class="row"><button class="btn gold" id="runBtn" style="flex:1">▶ RUN THE PLAN</button></div>`;
-  $('back').onclick = weeks;
+  $('back').onclick = weeks; $('howBtn').onclick = () => openHow(startPlan);
   $('toCode').onclick = () => { if (!codeMode) { codeText = cards.length ? '// Made from your cards. Change anything you like!\n' + cardCode() + '\n' : starterCode(); codeMode = true; }
     else codeMode = false; renderPlan(); };
   document.querySelectorAll('.tchip').forEach(b => b.onclick = () => { const t = W.byId(b.dataset.t);
@@ -219,8 +223,11 @@ function drawSysCanvas(dt){
 }
 /* run overlay: what the HUD draws during a run */
 const ov = {pic:null, exp:0, blurry:false, guide:null, dither:[0, 0], spectrum:null};
-const tween = (ms, fn) => new Promise(res => { if (toEnd) { fn(1); return res(); } const t0 = performance.now(), dur = ms / speed;
-  (function f(){ const k = Math.min(1, (performance.now() - t0) / dur); fn(k); if (k < 1 && !toEnd) requestAnimationFrame(f); else { fn(1); res(); } })(); });
+/* animations advance by the current speed every frame, so the speed button and pausing work at once */
+let paused = false;
+const tween = (ms, fn) => new Promise(res => { if (toEnd) { fn(1); return res(); } let k = 0, last = performance.now();
+  (function f(){ const now = performance.now(); if (!paused) k = Math.min(1, k + (now - last) * speed / ms); last = now; fn(k);
+    if (k < 1 && !toEnd) requestAnimationFrame(f); else { fn(1); res(); } })(); });
 const ease = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
 function slerp(a, b, k){ const va = W.vec(a[0], a[1]), vb = W.vec(b[0], b[1]), om = Math.acos(Math.max(-1, Math.min(1, dot(va, vb))));
   if (om < 1e-6) return b; const s = Math.sin(om), p = va.map((v, i) => (Math.sin((1 - k) * om) * v + Math.sin(k * om) * vb[i]) / s);
@@ -275,9 +282,10 @@ function results(res, from){
   const got = res.home.map(p => ({p, t:W.byId(p.id), g:W.grade(p)}));
   got.forEach(({p, g}) => { const k = p.id + '|' + p.cam, old = album[k]; if (!old || old.stars < g.stars) album[k] = {id:p.id, cam:p.cam, filter:p.filter, stars:g.stars, minutes:p.minutes, dither:p.dither, locked:p.locked, week:week.id}; });
   saveAlbum();
-  const skipped = res.events.filter(e => e.type === 'skip' && e.why === 'sun').length, left = res.recorder.length;
+  const skipped = res.events.filter(e => e.type === 'skip' && e.why === 'sun').length, left = res.recorder.length, gd = goalDone(week);
   $('result').innerHTML = `<h2>${got.length ? 'Pictures from Webb!' : 'No pictures reached Earth'}</h2>
     <p class="est">The plan took ${Math.round(res.h)} of 168 hours.${skipped ? ` ${skipped} target(s) were in the Sun zone.` : ''}${left ? ` ⚠ ${left} picture(s) stayed on the recorder: they never reached Earth. Add "Send pictures home" at the end.` : ''}</p>
+    ${gd.length === week.ids.length ? `<p style="color:#8fe3a0;font-weight:600">🎯 Week goal complete: ${esc(week.goal)}! ✅</p>` : `<p class="est">🎯 Week goal: ${esc(week.goal)} (${gd.length}/${week.ids.length}).</p>`}
     <div class="pics">${got.map(({p, t, g}) => `<button class="pic" data-k="${p.id}|${p.cam}"><img src="${thumb(t, p.cam)}" alt=""><b>${esc(t.name)}</b><small class="stars">${'★'.repeat(g.stars)}${'☆'.repeat(3 - g.stars)}</small></button>`).join('')}</div>
     <div class="row" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">${from === 'plan' ? '<button class="btn gold" id="again">◀ Change the plan</button>' : '<button class="btn gold" id="again">🕹️ Steer to another target</button>'}<button class="btn" id="other">Other week</button><button class="btn" id="alb">📔 Album</button></div>`;
   show('result', 'mini');
@@ -306,6 +314,32 @@ function openPhoto(key, back){
     <p class="credit">Image: ${esc(t.credit)}</p>`;
   show('photo', 'mini'); $('phBack').onclick = back;
 }
+
+/* ================= How Webb works: the parts in the systems panel, at kid level ================= */
+const HOW = [
+  ['🛡️', 'Sunshield', 'Five thin layers as big as a tennis court. The side facing the Sun gets hotter than boiling water; the telescope side is colder than −230 °C. That cold lets Webb see faint heat (infrared) light. This is why Webb must never point toward the Sun.'],
+  ['🟡', 'Gold mirror', '18 six-sided mirror pieces, 6.5 meters across, coated with a very thin layer of real gold. Gold reflects infrared light very well.'],
+  ['⚙️', 'Reaction wheels', 'Six heavy wheels spin inside Webb. Spin one faster and the whole telescope turns the other way, slowly, with no fuel at all.'],
+  ['🧭', 'Star trackers and gyroscopes', 'Small cameras recognize star patterns, like a map, and gyroscopes feel every turn. Together they tell Webb which way it is facing.'],
+  ['🎯', 'Fine Guidance Sensor', 'Built by Canada. It finds a guide star in 4 steps: IDENTIFY, ACQUIRE, TRACK, FINE GUIDE. Then it checks the star 16 times every second.'],
+  ['🪞', 'Fine steering mirror', 'A small mirror that tilts by tiny amounts many times a second, so the picture stays perfectly still, even during hours-long exposures.'],
+  ['🔥', 'Momentum and thrusters', 'Sunlight gently pushes on the huge sunshield, so the wheels slowly spin faster and faster. Every so often Webb fires small thrusters to "unload" that spin.'],
+  ['📷', 'Instruments', 'NIRCam is the main camera (near-infrared). MIRI sees longer infrared light and is cooled to −266 °C. NIRISS, from Canada, splits light into colors to read the air of planets. NIRSpec measures the light of up to 100 objects at once.'],
+  ['💻', 'Electronics', 'Each detector is read by special chips (SIDECAR ASICs) that engineers can reprogram from Earth. A computer runs all the instruments and packs every picture into data. The observation plan runs as JavaScript scripts on board: if a step fails, Webb skips that observation and goes on.'],
+  ['💾', 'Recorder', 'About 65 GB of memory hold the pictures until they can be sent home.'],
+  ['📡', 'Deep Space Network', 'Big dishes in California, Spain and Australia. About twice a day, Webb sends its pictures home at 28 megabits per second, in contacts of about 4 hours.'],
+  ['🌍', 'Where Webb lives', '1.5 million kilometers from Earth, at a spot called L2, where it circles slowly with the Sun and Earth always behind its sunshield.'],
+];
+function openHow(back){
+  $('photo').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2>🛠 How Webb works</h2><button class="btn small" id="phBack">◀ Back</button></div>
+    <p class="est">The parts you see in the systems panel, and what they really do.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:8px">${HOW.map(([ic, h, txt]) => `<div class="card" style="border-left-color:var(--gold)"><div style="font-size:24px">${ic}</div><b style="font-size:15px">${esc(h)}</b><div style="margin-top:4px">${esc(txt)}</div></div>`).join('')}</div>
+    <p class="est" style="margin-top:10px">From NASA, STScI and JPL documents about Webb's attitude control, guidance sensor, recorder, communications and onboard scripts.</p>`;
+  const was = [...document.querySelectorAll('body > .panel, body > div, body > button')].filter(el => !el.classList.contains('hidden')).map(el => el.id);
+  show('photo', 'mini'); $('phBack').onclick = () => back ? back() : show(...was.filter(id => id !== 'photo'));
+}
+$('sys').style.cursor = 'pointer'; $('sys').title = 'How Webb works';
+$('sys').onclick = () => { if (screen === 'run') { paused = true; openHow(() => { paused = false; show('sys', 'log', 'runbar', 'mini'); }); } };
 
 /* ================= hand steering ================= */
 let keys = {x:0, y:0}, vra = 0, vdec = 0, held = 0, step = {x:0, y:0}, fine = false, warnT = -1e9;
@@ -354,7 +388,7 @@ addEventListener('pointerup', () => { if (drag) { drag = null; keys.x = keys.y =
 addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag[0], dy = e.clientY - drag[1]; keys.x = Math.max(-1, Math.min(1, -dx / 60)); keys.y = Math.max(-1, Math.min(1, dy / 60)); });
 
 /* ================= the frame loop ================= */
-let last = performance.now();
+let last = performance.now(), sysT = 0;
 function frame(t){
   const dt = Math.min(.05, (t - last) / 1000); last = t;
   if (screen === 'title' || screen === 'weeks') { view.ra = (view.ra + dt * 1.2) % 360; view.dec = -20 + 8 * Math.sin(t / 9000); view.fov = 70; }
@@ -366,7 +400,7 @@ function frame(t){
   if (screen === 'steer') steerHud(g, s, t);
   if (screen === 'run' || screen === 'result') runHud(g, s, t);
   if (!$('mini').classList.contains('hidden')) miniHud(g, s, t);
-  if (screen === 'run') drawSysCanvas(dt);
+  if (screen === 'run') { if (t - sysT > 120) { sysT = t; renderSys(); } drawSysCanvas(dt); }   // the clock, bars and lights move during each step
   requestAnimationFrame(frame);
 }
 /* planning: every target of the week on the sky, gold if in view, grey in the Sun zone */
@@ -401,7 +435,7 @@ function runHud(g, s, t){
 }
 function steerHud(g, s, t){
   frameBox(s); hc.beginPath(); hc.arc(hud.width/2, hud.height/2, 4 * s, 0, 7); hc.stroke();
-  drawTarget(steer, steer.cam, g, Math.max(0, Math.min(1, (fovFor(steer) * 6 - view.fov) / (fovFor(steer) * 4))), false, null);
+  drawTarget(steer, steer.cam, g, .35 * Math.max(0, Math.min(1, (fovFor(steer) * 6 - view.fov) / (fovFor(steer) * 4))), true, null);   // a blurry preview: the sharp picture comes when you take it
   const c = project(W.vec(steer.ra, steer.dec), g.b, g.tanF), on = c && c[0] > 0 && c[0] < hud.width && c[1] > 0 && c[1] < hud.height;
   if (on && view.fov > fovFor(steer) * 6) { hc.strokeStyle = `rgba(240,191,90,${.6 + .3 * Math.sin(t / 300)})`; hc.lineWidth = 3 * s; hc.beginPath(); hc.arc(c[0], c[1], 26 * s, 0, 7); hc.stroke();
     hc.fillStyle = '#f0bf5a'; hc.font = `600 ${15 * s}px 'IBM Plex Mono', monospace`; hc.textAlign = 'center'; hc.fillText(steer.name.toUpperCase(), c[0], c[1] - 36 * s); }

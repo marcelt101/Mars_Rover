@@ -81,11 +81,19 @@ there's no lander, and there's no Mission Log week yet. Clipper starts its Europ
 The user's idea, contemporary and different from driving. Kids point the telescope at chosen spots in the sky and
 take pictures of what Webb really photographed, using Webb's real images (NASA/ESA/CSA/STScI, credited). Each
 picture teaches one thing: galaxies, clouds of dust and gas, star formation, black holes, quasars, and so on.
-**Status:** a first test is at `game/webb-test.html` (not linked, not shipped): NASA's Webb rendering cut out and
-flying over the real sky (NASA SVS Deep Star Maps 2020, drawn with WebGL), then the telescope's view: steer to
-Carina in June 2022, the Sun zone (85-135 degrees) blocks the way, zoom in and the real Cosmic Cliffs picture
-appears at its true spot. Next, if approved: guide star lock, the exposure building up the picture, the recorder
-and sending pictures home through the Deep Space Network, then more targets and the album.
+**Status:** playable test at `game/webb-test.html` (not linked, not in the itch.io builds), waiting for feedback.
+- Three observing weeks with real dates (June 2022 First Light, August 2022, March 2023); the Sun rule (85-135
+  degrees) decides what can be seen, and blocked targets say when they come back into view.
+- Ten real targets with real Webb pictures and kid-level facts: Cosmic Cliffs, Southern Ring (NIRCam and MIRI),
+  First Deep Field, Stephan's Quintet (black hole), WASP-96 b (water, needs NIRISS), Cartwheel, Pillars of
+  Creation, Phantom Galaxy, Crab Nebula, Rho Ophiuchi. Week goals (First Light: the 5 pictures of July 12, 2022).
+- Three ways to fly: steer by hand (fine steering centers the target, then Take the picture), plan with
+  observation cards (like NASA's APT forms), or write JavaScript (like Webb's onboard scripts; runs in a worker).
+- Webb's rules in js/webb/model.js: slews with reaction wheels, guide star lock, momentum from sunlight on the
+  sunshield (thrusters unload it), dithers, a 65 GB recorder, Deep Space Network downlink at 28 Mbit/s, 168 hours
+  a week, event-driven skips. A systems panel shows it all; "How Webb works" explains each part.
+- Results with stars (guide star, exposure, instrument, dithers) and an album.
+- Next: feedback from play, then fold it into the game (a Webb button on the menu, profiles, team play).
 
 ## Later ideas (keep in mind)
 - **Titan:** NASA's Dragonfly drone, planned to land in 2034. Fly between landing spots, with methane lakes and dunes.

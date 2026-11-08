@@ -59,9 +59,12 @@ W.TARGETS = [
 W.byId = id => W.TARGETS.find(t => t.id === id || t.name.toLowerCase() === String(id).toLowerCase());
 /* Observing weeks with real dates: the Sun decides what Webb may look at that week. */
 W.WEEKS = [
-  {id:'first', name:'First Light', date:Date.UTC(2022, 5, 15), note:'June 2022. Webb takes its very first science pictures, the ones the whole world saw.'},
-  {id:'summer', name:'Summer Week', date:Date.UTC(2022, 7, 25), note:'August 2022. The sky has turned: the Pillars of Creation come into view.'},
-  {id:'spring', name:'Spring Week', date:Date.UTC(2023, 2, 15), note:'March 2023. A star that exploded in 1054 is waiting.'},
+  {id:'first', name:'First Light', date:Date.UTC(2022, 5, 15), note:'June 2022. Webb takes its very first science pictures, the ones the whole world saw.',
+    goal:'Recreate the 5 pictures NASA showed the world on July 12, 2022', ids:['carina', 'ring', 'deep', 'stephan', 'wasp96']},
+  {id:'summer', name:'Summer Week', date:Date.UTC(2022, 7, 25), note:'August 2022. The sky has turned: the Pillars of Creation come into view.',
+    goal:'Photograph the Pillars of Creation and the Phantom Galaxy', ids:['pillars', 'phantom']},
+  {id:'spring', name:'Spring Week', date:Date.UTC(2023, 2, 15), note:'March 2023. A star that exploded in 1054 is waiting.',
+    goal:'Photograph the Crab Nebula and the closest star nursery, Rho Ophiuchi', ids:['crab', 'rhooph']},
 ];
 /* The instruments and filters kids can pick. GB per hour of pictures fill the recorder. */
 W.CAMS = {
