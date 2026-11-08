@@ -356,7 +356,7 @@ function renderLobby(){
   $('mapNote').textContent = dm ? `Mission Log, day ${dm.day}: ${dm.title} (${MR.MAPS[dm.map].name}).` : G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
   if (G.resume || dm) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);
   $('startBtn').hidden = G.mode === 'client';
-  $('startBtn').textContent = G.resume ? 'Continue expedition' : G.lobby.map === 'webb' ? '🔭 Launch the Webb mission' : 'Start expedition';
+  $('startBtn').textContent = G.resume ? 'Continue expedition' : 'Start expedition';   // the same on every level, Webb included
   $('jobPick').closest('.panel').hidden = G.lobby.map === 'webb';   // no rover to pick: you fly the telescope
   $('lobbyWait').textContent = G.mode === 'client' ? 'Waiting for the host to start…' : (host && players.length < 2 ? 'Waiting for players to join (you can also start alone).' : '');
 }

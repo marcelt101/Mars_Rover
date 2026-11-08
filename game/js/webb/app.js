@@ -82,7 +82,7 @@ let screen = 'weeks', week = W.WEEKS[0], cards = [], codeMode = false, codeText 
 const show0 = (...ids) => ['weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini', 'exitBtn', 'proc']
   .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id)));
 const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result') && !ids.includes('proc')) DOC.hide();
-  if (['card', 'plan', 'result', 'album', 'photo'].some(id => ids.includes(id))) ids.push('exitBtn');   // a way out to the level list on every screen but the run
+  if (['weeks', 'card', 'plan', 'result', 'album', 'photo', 'proc'].some(id => ids.includes(id))) ids.push('exitBtn');   // a way out to the level list on every screen but the run
   show0(...ids); };
 const album = W.load('album', {});
 const saveAlbum = () => W.save('album', album);
@@ -179,7 +179,7 @@ function weeks(){
   const MODES = {steer:['🕹️ Steer it yourself', 'Turn the telescope with the joystick, find the target, take the picture. Great for younger crew.'],
     cards:['🗂️ Plan the week with cards', 'Fill in observation cards like real astronomers do in NASA\'s planning tool, then watch Webb run them.'],
     code:['💻 Write the script', 'Webb really runs JavaScript scripts on board. Write your own plan with loops and ifs.']};
-  $('weeks').innerHTML = `<div class="whead"><h2>🔭 James Webb Space Telescope</h2><button class="btn small exitlink">⏏ Exit to levels</button></div>
+  $('weeks').innerHTML = `<div class="whead"><h2>🔭 James Webb Space Telescope</h2></div>
     ${acadHtml()}
     <div class="orown"><span>or fly on your own</span></div>
     <h3 class="step"><i>1</i> Pick a week <small>Webb's sunshield must always face the Sun, so each week only part of the sky can be seen. These are real dates.</small></h3>
@@ -295,7 +295,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=31'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=32'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };

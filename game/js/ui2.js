@@ -54,6 +54,15 @@ if (on('title')) {
   document.addEventListener('click', e => { if (!e.target.closest('.maptools') && !e.target.closest('#gearBtn')) document.body.classList.remove('toolsopen'); });
 }
 
+/* Leave game: always visible in the top-right corner during a game (it used to be only in the settings menu).
+   The same name and place as in the Webb level. It asks once more before leaving, like before. */
+{
+  const L = document.createElement('button'); L.className = 'btn hudleave'; L.id = 'hudLeave'; L.textContent = '⏏ Leave game';
+  document.querySelector('.topright').append(L);
+  L.onclick = () => { $('leaveGameBtn').click(); L.textContent = /Tap again/.test($('leaveGameBtn').textContent) ? '⏏ Tap again to leave' : '⏏ Leave game';
+    setTimeout(() => { L.textContent = '⏏ Leave game'; }, 3000); };
+}
+
 /* 5. Phone: the map stays on top and a tab bar at the bottom switches Plan / Mission / Log. */
 const TABS = [['plan','Plan','plan'],['mission','Mission','flag'],['log','Log','log']];
 function setTab(t){ document.body.dataset.ptab = t; document.querySelectorAll('#ptabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t)); if (t === 'log') { const b = document.querySelector('#ptabs [data-t=log]'); b && b.classList.remove('new'); } }

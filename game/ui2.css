@@ -221,3 +221,7 @@ body.onsplash{overflow:hidden}
   .splash{background:linear-gradient(180deg,#0b0f15 12vh,rgba(11,15,21,0) calc(12vh + 14vw),rgba(7,10,16,0) calc(12vh + 74vw),#0b0f15 calc(12vh + 92vw)),url(img/title.jpg) center 12vh/160% auto no-repeat,#0b0f15;justify-content:flex-end}
 }
 
+
+/* Leave game in the top-right corner, only during a game */
+.hudleave{display:none;border-color:rgba(255,123,108,.55)!important;color:#ffb3a8}
+body[data-scr="scrGame"] .hudleave{display:inline-flex}

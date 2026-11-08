@@ -53,7 +53,7 @@ h1,h2,h3{font-family:'Chakra Petch',sans-serif;margin:0}
 #badgePop .bglow{filter:drop-shadow(0 0 22px rgba(240,191,90,.6));animation:bs 3s ease-in-out infinite}
 @keyframes bp{from{transform:translate(-50%,-50%) scale(.4);opacity:0}}
 @keyframes bs{50%{transform:rotate(-4deg) scale(1.04)}}
-#exitBtn{position:fixed;top:16px;right:16px;z-index:4}
+#exitBtn{position:fixed;top:16px;right:16px;z-index:4;border-color:rgba(255,123,108,.55);color:#ffb3a8}
 /* the weeks screen: steps 1-2-3 */
 .whead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.whead h2{margin:0}
 .orown{display:flex;align-items:center;gap:10px;margin:14px 0 6px;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.12em}
@@ -87,7 +87,7 @@ h3.step{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:12px 0 0
 .fchip{font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer}
 .fchip.on{background:var(--c);color:#0b0f14;border-color:var(--c)}
 /* week picker */
-#weeks{left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,94vw);max-height:92vh;overflow:auto}
+#weeks{left:50%;top:calc(50% + 22px);transform:translate(-50%,-50%);width:min(980px,94vw);max-height:calc(92vh - 44px);overflow:auto}
 #weeks .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}
 .week>div:not(.thumbs){display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12.5px!important}
 .week{padding:10px!important}.week b{font-size:16px!important}
@@ -232,7 +232,7 @@ select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);
 <canvas id="gl" class="full"></canvas>
 <canvas id="hud" class="full"></canvas>
 <div id="mini" class="hidden"><div class="mbody"><img src="img/webb/webb-corner.webp" alt=""><i class="led" title="Webb is awake"></i></div></div>
-<button class="btn small hidden" id="exitBtn" title="Back to the level list (Webb remembers where you are)">⏏ Exit to levels</button>
+<button class="btn hidden" id="exitBtn" title="Back to the level list (Webb remembers where you are)">⏏ Leave game</button>
 <div class="panel hidden" id="weeks"></div>
 <div class="panel hidden" id="plan"></div>
 <div class="panel hidden" id="sys"></div>
@@ -270,12 +270,12 @@ select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);
 </div>
 <div class="hidden" id="next"></div>
 <div id="credit">Sky: NASA/Goddard SVS Deep Star Maps 2020, Gaia DR2: ESA/Gaia/DPAC · Webb: NASA GSFC/CIL/Adriana Manrique Gutierrez · Pictures: NASA, ESA, CSA, STScI</div>
-<script src="js/edition.js?v=31"></script>
-<script src="js/webb/data.js?v=31"></script>
-<script src="js/webb/store.js?v=31"></script>
-<script src="js/webb/model.js?v=31"></script>
-<script src="js/music.js?v=31"></script>
-<script src="js/webb/doc.js?v=31"></script>
-<script src="js/webb/app.js?v=31"></script>
+<script src="js/edition.js?v=32"></script>
+<script src="js/webb/data.js?v=32"></script>
+<script src="js/webb/store.js?v=32"></script>
+<script src="js/webb/model.js?v=32"></script>
+<script src="js/music.js?v=32"></script>
+<script src="js/webb/doc.js?v=32"></script>
+<script src="js/webb/app.js?v=32"></script>
 </body>
 </html>
