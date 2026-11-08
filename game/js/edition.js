@@ -7,15 +7,15 @@ MR.BUILD = 'dev';
 MR.EDITIONS = {
   /* GitHub Pages: everything, plus the links to version 1 and the classic missions. */
   web:         {label:'Web', maps:null, logDays:30, oldVersions:true, qr:true},
-  /* Free itch.io demo: Jezero Crater and week 1 of the Mission Log. */
-  'itch-demo': {label:'Free demo', demo:true, maps:['jezero'], logDays:7, oldVersions:false, qr:false, buyUrl:'https://marshorizon.itch.io/crater-crew'},
+  /* Free itch.io demo: Jezero Crater, week 1 of the Mission Log, and Webb's First Light week with Training day. */
+  'itch-demo': {label:'Free demo', demo:true, maps:['jezero', 'webb'], logDays:7, oldVersions:false, qr:false, buyUrl:'https://marshorizon.itch.io/crater-crew'},
   /* Paid itch.io game: everything. */
   'itch-full': {label:'Full game', maps:null, logDays:30, oldVersions:false, qr:false},
   /* Desktop app (Electron or Tauri), later. */
   desktop:     {label:'Desktop', maps:null, logDays:30, oldVersions:false, qr:true},
 };
 MR.ED = MR.EDITIONS[MR.EDITION] || MR.EDITIONS.web;
-/* The James Webb level (webb.html): true lists it among the levels (after the Moon) and ships it in the builds.
+/* The James Webb level (webb.html): true lists it among the levels (next to Jezero) and ships it in the builds.
    Until then ?preview=webb shows the button on this device. */
 MR.WEBB_ON = false;
 /* Features waiting for approval: ?preview=a,b turns them on, ?preview=off turns them off (remembered on this device). */
@@ -25,6 +25,6 @@ try { const q = new URLSearchParams(location.search).get('preview'); if (q != nu
 /* Bug reports go to a Google Form: formUrl ends in /formResponse, fields are its entry ids. Without them the
    report can be copied and emailed instead. */
 MR.REPORT = {formUrl:null, fields:null, email:null};
-MR.edMapOk = m => !MR.ED.maps || MR.ED.maps.includes(m);   // 'webb' counts as a map here, so the free demo shows it as full game only
+MR.edMapOk = m => !MR.ED.maps || MR.ED.maps.includes(m);   // 'webb' counts as a map here (the demo has its first week)
 MR.edDayOk = d => d <= MR.ED.logDays;
 })();

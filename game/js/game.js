@@ -360,13 +360,13 @@ function renderLobby(){
   $('jobPick').closest('.panel').hidden = G.lobby.map === 'webb';   // no rover to pick: you fly the telescope
   $('lobbyWait').textContent = G.mode === 'client' ? 'Waiting for the host to start…' : (host && players.length < 2 ? 'Waiting for players to join (you can also start alone).' : '');
 }
-/* The James Webb Space Telescope: one more level in the same game, after the Moon. It's a different activity
+/* The James Webb Space Telescope: one more level in the same game, open from the start next to Jezero. It's a different activity
    (fly a telescope instead of a rover), so it opens its own screen, and comes back here. Solo for now. */
 function webbCard(unlocked){
   if (!MR.webbOn()) return '';
   const W = MR.WEBB_LEVEL, ok = MR.edMapOk('webb'), open = ok && MR.webbOpen(unlocked), solo = G.mode === 'solo';
   return `<button class="mapcard webbcard" data-map="webb" aria-pressed="${G.lobby.map === 'webb'}" ${open && solo ? '' : 'disabled'}><b>${W.name}</b><small>${W.rover} · ${W.year}</small><p>${
-    !ok ? 'In the full game.' : !open ? `Locked. Finish a ${MR.MAPS[W.after].name} expedition to unlock.` : !solo ? 'A solo level for now: pick it from Play solo.' : esc(W.blurb)}</p></button>`;
+    !ok ? 'In the full game.' : !solo ? 'A solo level for now: pick it from Play solo.' : esc(W.blurb)}</p></button>`;
 }
 function renderNet(){
   const t = G.mode === 'host' ? `Hosting · ${G.lobby.players.filter(x => x.connected).length} connected` : G.mode === 'client' ? (G.lastPing != null ? `Connected · ${G.lastPing} ms` : 'Connecting…') : 'Solo';

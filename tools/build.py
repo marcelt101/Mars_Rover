@@ -25,7 +25,7 @@ def build(edition, name):
     shutil.rmtree(out, ignore_errors=True)
     # The James Webb mission ships once MR.WEBB_ON is true in js/edition.js; webb-test.html (an old link) never does.
     webb_on = re.search(r"MR\.WEBB_ON = true;", open(os.path.join(SRC, 'js', 'edition.js'), encoding='utf-8').read()) is not None
-    skip = ['webb-test.html'] + ([] if webb_on and edition != 'itch-demo' else ['webb', 'webb.html'])   # the demo lists Webb (with its picture) as full game only
+    skip = ['webb-test.html'] + ([] if webb_on else ['webb', 'webb.html'])
     shutil.copytree(SRC, out, ignore=shutil.ignore_patterns(*skip))
     path = os.path.join(out, 'js', 'edition.js')
     js = open(path, encoding='utf-8').read()
