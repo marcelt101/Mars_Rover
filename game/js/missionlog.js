@@ -186,7 +186,7 @@ MR.MISSIONS = [
         {t:'Collect breccia', kid:'Find a smashed rock', kind:'col', res:'breccia', of:1, what:'Find and drill breccia on the hills and bright rock.', ...(MR.MINERALS ? {why:MR.MINERALS.breccia.why.short, whyFull:MR.MINERALS.breccia.why.full, card:'breccia'} : {})},
       ]}),
     coding:'If (or while) checks a sensor: rover.sense_ahead() == "clear" is True or False.',
-    quiz:[{q:'Why must a rover make some decisions by itself?', a:['Signals from Earth take minutes to arrive','It gets bored','It has no radio'], ok:0, why:'From Mars, a signal takes 4 to 24 minutes each way.'},
+    quiz:[{q:'Why must a rover make some decisions by itself?', a:['Signals from Earth take minutes to arrive','It gets bored','It has no radio'], ok:0, why:'From Mars, a signal takes 3 to 22 minutes each way.'},
       {q:'What does "If path clear { Forward 1 }" do when a rock is ahead?', a:['Skips the drive','Drives into the rock','Turns into a helicopter'], ok:0, why:'The condition is false, so the blocks inside are skipped.'},
       {q:'What is AEGIS?', a:['A program that lets a rover pick laser targets itself','A Moon base','A dust storm'], ok:0, why:'It saves time by choosing targets without waiting for Earth.'}],
     journal:'Write one rule your rover should follow, like "If the battery is low, then go home."'},

@@ -9,3 +9,5 @@
 NASA images are used under NASA's media usage guidelines: they are credited, cropped and darkened at the edges,
 and their use does not mean NASA endorses this game. The game shows each credit on the picture.
 Zhurong has no freely usable photo, so it is drawn in code (`js/garage-art.js`).
+- `uplink.jpg`: the transmission picture. Goldstone 70-meter Deep Space Network antenna, NASA/JPL-Caltech,
+  PIA17790 (mirrored so it faces Mars); Mars, NASA/JPL/USGS Viking mosaic, PIA00407; stars added.

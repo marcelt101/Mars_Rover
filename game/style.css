@@ -772,3 +772,11 @@ body.ui-phone[data-scr="scrGame"] .dmpops{bottom:90px}
 #ulCv{width:100%;aspect-ratio:4/1;border-radius:10px;border:1px solid var(--line);display:block}
 .chip.parts .mod{opacity:.3;filter:grayscale(1)}
 .chip.parts .mod.on{opacity:1;filter:none;color:var(--sci)}
+#ulCv{cursor:pointer}
+.sciw{display:grid;gap:12px}
+.sci{display:flex;gap:14px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#0b1015;border:1px solid var(--line)}
+.sci h3{margin:0 0 4px;font-family:var(--display);font-size:17px}
+.sci p{margin:0 0 6px}
+.sic{font-size:36px;line-height:1;flex:none;width:44px;text-align:center}
+.sci input[type=range]{width:100%;accent-color:var(--signal)}
+.scibig{font-family:var(--display);font-size:18px;color:var(--signal)}

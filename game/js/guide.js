@@ -19,7 +19,7 @@ const SUBJECTS = [
     learn:'Mars weather: very cold nights, wind, dust and dust storms that block sunlight, and why that matters for a solar rover.',
     where:'The weather station card and forecast every sol, dust storm days in the Mission Log, and the MEDA and REMS weather stations in the rover pages.'},
   {id:'space', icon:'☾', col:'#b9c0c8', name:'Space science and astronomy',
-    learn:'Real places on Mars and the Moon, a sol (a Mars day), why radio signals take 4 to 24 minutes to reach Mars, why helicopters can\'t fly on the airless Moon, low gravity, and Earth seen from the Moon. The game covers planetary science (Mars and the Moon) rather than cosmology, the study of the whole universe.',
+    learn:'Real places on Mars and the Moon, a sol (a Mars day), why radio signals take 3 to 22 minutes to reach Mars, why helicopters can\'t fly on the airless Moon, low gravity, and Earth seen from the Moon. The game covers planetary science (Mars and the Moon) rather than cosmology, the study of the whole universe.',
     where:'The five maps, the signal delay every time a plan is sent, the Moon week of the Mission Log (Earth in the sky, hammer and feather).'},
   {id:'life', icon:'❦', col:'#86d48f', name:'Life science (astrobiology)',
     learn:'What life needs (water, the right chemistry and energy) and how scientists search for signs of past life without finding living things.',

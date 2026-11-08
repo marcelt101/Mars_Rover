@@ -483,7 +483,7 @@ function healthModal(){
     ['Wheels', `${wheels}%`, wheels, wheels < 25 ? 'Worn wheels use a little more power on every square. Dock at the station for a free repair.' : 'Sharp rocks wear the wheels a little. Curiosity got holes in its wheels, so Perseverance got tougher ones.' + (P('wide_wheels') ? ' Your wide wheels wear half as fast.' : ''), wheels + '%'],
     ['Sample tubes', `${r.tubes.length} of ${MR.tubesOf(r)} full`, 100 - r.tubes.length / Math.max(1, MR.tubesOf(r)) * 60, 'Perseverance seals its samples in tubes so a future mission can bring them to Earth.', `${r.tubes.length}/${MR.tubesOf(r)}`, r.tubes.length / Math.max(1, MR.tubesOf(r)) * 100],
     ['Heaters', wx.lo != null ? `Tonight ${wx.lo}°C` : '–', 80, 'Nights on Mars are colder than Antarctica, so heaters use a little battery to keep the electronics warm.', wx.lo != null ? wx.lo + '°' : '–'],
-    ['Radio', `${MR.antennaName(r)}`, P('hg_antenna') ? 100 : P('better_radio') ? 80 : 60, `Commands take ${delay} s to arrive. Real signals travel at the speed of light, which still takes 4 to 24 minutes. Your scan reaches ${MR.scanOf(r)} squares${P('supercam') ? ' and the SuperCam laser checks 3 squares ahead' : ''}.`, delay + 's'],
+    ['Radio', `${MR.antennaName(r)}`, P('hg_antenna') ? 100 : P('better_radio') ? 80 : 60, `Commands take ${delay} s to arrive. Real signals travel at the speed of light, which still takes 3 to 22 minutes. Your scan reaches ${MR.scanOf(r)} squares${P('supercam') ? ' and the SuperCam laser checks 3 squares ahead' : ''}.`, delay + 's'],
   ];
   if (r.stuck) parts.unshift(['Stuck', 'In soft sand', 10, 'Spirit got stuck in soft sand in 2009. Back up 1 square, the way you came, to escape.', '!', 100]);
   /* Pie-style gauges: a ring that fills up, with the reading in the middle. */
@@ -1206,16 +1206,19 @@ function uplink(own){
   const gen = G.gen;
   const r = myRover(), ms = MR.uplinkMs(G.state, r);
   $('uplink').hidden = false;
-  let cv = $('ulCv'); if (MR.Garage && r && !cv) { cv = document.createElement('canvas'); cv.id = 'ulCv'; cv.width = 600; cv.height = 150; $('uplink').prepend(cv); }
+  let cv = $('ulCv'); if (MR.Garage && r && !cv) { cv = document.createElement('canvas'); cv.id = 'ulCv'; cv.width = 1200; cv.height = 300; cv.title = 'How the signal works'; cv.onclick = () => UI.signalScience(); $('uplink').prepend(cv); }
   if (cv) cv.hidden = !(MR.Garage && r);
-  if (MR.Garage && r) $('ulSub').innerHTML = `${MR.Garage.barsHtml(r)} ${MR.antennaName(r)}: ${Math.round(ms / 100) / 10} s here. Real signals take 4 to 24 minutes.` + (MR.Garage.nextComms(r) ? ' ' + MR.Garage.nextComms(r) : '');
-  else $('ulSub').textContent = `${r ? MR.antennaName(r) : 'Stock antenna'}. Real signals take 4 to 24 minutes.` + (r && r.role !== 'cadet' && !(r.perks||[]).includes('hg_antenna') ? ' Radio and antenna perks make it faster.' : '');
+  if (MR.Garage && r) $('ulSub').innerHTML = `${MR.Garage.barsHtml(r)} ${MR.antennaName(r)}: ${Math.round(ms / 100) / 10} s here. Real signals take 3 to 22 minutes.` + (MR.Garage.nextComms(r) ? ' ' + MR.Garage.nextComms(r) : '');
+  else $('ulSub').textContent = `${r ? MR.antennaName(r) : 'Stock antenna'}. Real signals take 3 to 22 minutes.` + (r && r.role !== 'cadet' && !(r.perks||[]).includes('hg_antenna') ? ' Radio and antenna perks make it faster.' : '');
   return new Promise(res => { const t0 = performance.now();
     (function step(t){ const k = ms ? Math.min(1, (t - t0) / ms) : 1;
       $('ulBar').style.width = (k*100) + '%'; if (cv && !cv.hidden) MR.Garage.drawUplink(cv, k, r, t);
       $('ulTitle').textContent = `Signal on its way to Mars… ${Math.max(0, Math.ceil((ms - (t - t0)) / 1000))} s`;
       if (own && (gen !== G.gen || !G.ready || G.phase !== 'plan')) { $('uplink').hidden = true; $('ulBar').style.width = '0'; res(); return; }
-      if (k < 1) requestAnimationFrame(step); else { $('uplink').hidden = true; $('ulBar').style.width = '0'; if (own) MR.sfx.click(); res(); } })(t0); });
+      if (k < 1) requestAnimationFrame(step);
+      else if (cv && !cv.hidden && !own) { res(); MR.sfx.click(); const b0 = performance.now();   // the rover beeps back while the sol starts
+        (function back(t2){ const b = (t2 - b0) / 1200; if (b < 1 && gen === G.gen) { MR.Garage.drawUplink(cv, 1, r, t2, b); requestAnimationFrame(back); } else { $('uplink').hidden = true; $('ulBar').style.width = '0'; } })(b0); }
+      else { $('uplink').hidden = true; $('ulBar').style.width = '0'; if (own) MR.sfx.click(); res(); } })(t0); });
 }
 async function playSol(timeline, newState){
   const gen = G.gen;
