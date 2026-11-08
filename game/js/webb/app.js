@@ -79,8 +79,9 @@ const noiseCv = (() => { const c = document.createElement('canvas'); c.width = c
 
 /* ================= the screens ================= */
 let screen = 'title', week = W.WEEKS[0], cards = [], codeMode = false, codeText = '', run = null, steer = null;
-const show = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'pad', 'zoom', 'shoot', 'next', 'mini']
+const show0 = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'pad', 'zoom', 'shoot', 'next', 'mini']
   .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id))) || ($('webb').style.opacity = ids.includes('title') ? 1 : 0);
+const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result')) DOC.hide(); show0(...ids); };
 const album = (() => { try { return JSON.parse(localStorage.getItem('webb.album') || '{}'); } catch (e) { return {}; } })();
 const saveAlbum = () => { try { localStorage.setItem('webb.album', JSON.stringify(album)); } catch (e) {} };
 
@@ -292,6 +293,11 @@ function results(res, from){
     <div class="pics">${got.map(({p, t, g}) => `<button class="pic" data-k="${p.id}|${p.cam}"><img src="${thumb(t, p.cam)}" alt=""><b>${esc(t.name)}</b><small class="stars">${'★'.repeat(g.stars)}${'☆'.repeat(3 - g.stars)}</small></button>`).join('')}</div>
     <div class="row" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">${from === 'plan' ? '<button class="btn gold" id="again">◀ Change the plan</button>' : '<button class="btn gold" id="again">🕹️ Steer to another target</button>'}<button class="btn" id="other">Other week</button><button class="btn" id="alb">📔 Album</button></div>`;
   show('result', 'mini');
+  { const best = got[0], tip = best && best.g.checks.find(c => !c.ok);
+    if (!got.length) DOC.say({text:left ? 'Oh no! The pictures are still on Webb\'s recorder. Send them home through the Deep Space Network!' : 'Hmm, no pictures came home this time. Let\'s try again!', mood:'worried'});
+    else if (gd.length === week.ids.length) DOC.say([{text:`You did it! The whole week goal is done. Real astronomers would be proud of you!`, mood:'wow'}, {text:`Did you know? ${best.t.more}`}]);
+    else if (tip) DOC.say([{text:`Nice, a picture of ${best.t.name}! To make it even better: ${tip.label.toLowerCase()}.`, mood:'think'}]);
+    else DOC.say([{text:`Wow, look at ${best.t.name}! Three stars!`, mood:'wow'}, {text:`Did you know? ${best.t.more}`}]); }
   document.querySelectorAll('#result .pic').forEach(b => b.onclick = () => openPhoto(b.dataset.k, () => results(res, from)));
   $('again').onclick = () => from === 'plan' ? startPlan() : startSteer();
   $('other').onclick = weeks; $('alb').onclick = () => openAlbum(() => results(res, from));
@@ -346,13 +352,21 @@ $('sys').onclick = () => { if (screen === 'run') { paused = true; openHow(() => 
 
 /* ================= hand steering ================= */
 let keys = {x:0, y:0}, vra = 0, vdec = 0, held = 0, step = {x:0, y:0}, fine = false, warnT = -1e9;
+/* Dr. Orbit's lines */
+let docMet = false, readyOnce = false, docWarnT = -1e9;
+const docLine = t => `Can you find ${t.name} for me? ${t.kind}, ${t.far} away. ${t.kid}`;
+const docTarget = () => DOC.say({text:docLine(steer)});
 function startSteer(){
   screen = 'steer'; sunMs = week.date; zone = 1;
   const vis = W.TARGETS.filter(visible); steer = steer && vis.includes(steer) ? steer : vis.find(t => week.ids.includes(t.id)) || vis[0];   // start with a target from the week's goal
   const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 60; view.upv = null; vra = vdec = 0;
   $('card').innerHTML = `<h3>Find: <select id="tsel">${vis.map(t => `<option value="${t.id}" ${t === steer ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></h3>
     <p>${esc(fmtDate(week.date))}. Follow the gold arrow, zoom in, then take the picture.</p><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Weeks</button><button class="btn small" id="sAlb">📔 Album</button></div>`;
-  $('tsel').onchange = e => { steer = W.byId(e.target.value); };
+  $('tsel').onchange = e => { steer = W.byId(e.target.value); docTarget(); readyOnce = false; };
+  readyOnce = false;
+  if (!docMet) { docMet = true; DOC.say([{text:`Hello, crew! I'm Dr. Orbit, and Webb is all yours today.`, mood:'wow'}, {text:docLine(steer)},
+    {text:`Follow the gold arrow. And keep the Sun angle in the green, or the Sun would shine on Webb's mirror!`, mood:'think'}]); }
+  else docTarget();
   $('sBack').onclick = weeks; $('sAlb').onclick = () => openAlbum(startSteer);
   show('card', 'read', 'pad', 'zoom', 'mini');
 }
@@ -367,13 +381,14 @@ function steerStep(dt, t){
   if (fine) { const k = Math.min(1, dt * 1.6), tv = W.vec(steer.ra, steer.dec); mra += dot(tv, b.r) / D2R * k; mdec += dot(tv, b.u) / D2R * k; }
   const nf = norm(b.f.map((v, i) => v + (b.r[i] * mra + b.u[i] * mdec) * D2R)), nra = ((Math.atan2(nf[1], nf[0]) / D2R) + 360) % 360, ndec = Math.asin(Math.max(-1, Math.min(1, nf[2]))) / D2R;
   const out = x => x < 85 ? 85 - x : x > 135 ? x - 135 : 0, a0 = out(W.sunAngle(view.ra, view.dec, sunMs)), a1 = out(W.sunAngle(nra, ndec, sunMs));
-  if (a1 > 0 && a1 >= a0) { const p = W.clampToBand(nra, ndec, sunMs); view.ra = p[0]; view.dec = p[1]; warnT = t; }   // slide along the Sun limit: Webb can still spin all the way around the Sun
+  if (a1 > 0 && a1 >= a0) { const p = W.clampToBand(nra, ndec, sunMs); view.ra = p[0]; view.dec = p[1]; warnT = t;  if (t - docWarnT > 20000 && !DOC.busy) { docWarnT = t; DOC.say({text:'Whoa, whoa! Not that way! The Sun would shine on the mirror. Slide along the edge instead.', mood:'worried'}); } }   // slide along the Sun limit: Webb can still spin all the way around the Sun
   else { view.ra = nra; view.dec = ndec; }
   const ready = tsep < Math.max(.02, fovFor(steer) * .2) && view.fov < fovFor(steer) * 3;
   const zoomed = view.fov < fovFor(steer) * 3, near = tsep < Math.max(.02, fovFor(steer) * .2);
   const tip = ready ? '' : tsep > view.fov * .14 ? '<b>Step 1 of 3:</b> follow the gold arrow to the target' :
     !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> zoom in with <b>+</b> (or the mouse wheel)' : '';
   $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('zin').classList.toggle('pulse', near && !zoomed);
+  if (ready && !readyOnce) { readyOnce = true; DOC.say({text:`Perfect! ${steer.name} is right in the middle. Press TAKE THE PICTURE!`, mood:'wow'}); }
   $('shoot').classList.toggle('hidden', !ready); $('warn').classList.toggle('hidden', t - warnT > 2500);
   drawGauge(tsep);
 }

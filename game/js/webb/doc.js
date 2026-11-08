@@ -1,0 +1,123 @@
+/* Dr. Orbit: the mission scientist who calls in from a little screen. Types messages and can read them out loud
+   with the browser's own voice (speechSynthesis), so young kids who can't read yet can follow.
+   Usage: DOC.say('text', {mood:'happy' | 'wow' | 'worried' | 'think'}). Messages queue up. */
+(function (root) {
+const $ = id => document.getElementById(id);
+let voiceOn = true; try { voiceOn = localStorage.getItem('webb.voice') !== 'off'; } catch (e) {}
+const box = document.createElement('div'); box.id = 'doc'; box.className = 'hidden';
+box.innerHTML = `
+  <div class="dscreen" id="dHead" title="Dr. Orbit">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <defs><radialGradient id="dBg" cx=".5" cy=".4" r=".8"><stop offset="0" stop-color="#1d3a4f"/><stop offset="1" stop-color="#07121b"/></radialGradient>
+        <radialGradient id="dSkin" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#ffd9b8"/><stop offset="1" stop-color="#e9b48c"/></radialGradient></defs>
+      <rect width="120" height="120" fill="url(#dBg)"/>
+      <g id="dStars" fill="#fff" opacity=".55"><circle cx="12" cy="14" r="1"/><circle cx="104" cy="22" r="1.3"/><circle cx="96" cy="8" r=".8"/><circle cx="20" cy="40" r=".8"/><circle cx="110" cy="48" r=".9"/></g>
+      <g id="dBody">
+        <path d="M8 122 Q14 96 60 93 Q106 96 112 122 Z" fill="#eef2f5" stroke="#b9c4cc" stroke-width="1.5"/>
+        <path d="M46 94 L60 112 L74 94 Z" fill="#3b6f9e"/>
+        <path d="M60 104 L48 98 L48 110 Z M60 104 L72 98 L72 110 Z" fill="#e0483e"/><circle cx="60" cy="104" r="3" fill="#b8322b"/>
+        <rect x="88" y="100" width="12" height="9" rx="2" fill="#f0bf5a"/><text x="94" y="107" font-size="6" text-anchor="middle" fill="#3b2a07" font-family="sans-serif">★</text>
+        <rect x="52" y="84" width="16" height="12" fill="#e9b48c"/>
+      </g>
+      <g id="dHeadG">
+        <g id="dHairL"><circle cx="27" cy="52" r="10" fill="#f4f6f8"/><circle cx="23" cy="64" r="9" fill="#e9edf0"/><circle cx="29" cy="40" r="8" fill="#f4f6f8"/></g>
+        <g id="dHairR"><circle cx="93" cy="52" r="10" fill="#f4f6f8"/><circle cx="97" cy="64" r="9" fill="#e9edf0"/><circle cx="91" cy="40" r="8" fill="#f4f6f8"/></g>
+        <ellipse cx="31" cy="62" rx="6" ry="8" fill="#e9b48c"/><ellipse cx="89" cy="62" rx="6" ry="8" fill="#e9b48c"/>
+        <ellipse cx="60" cy="58" rx="29" ry="33" fill="url(#dSkin)"/>
+        <g id="dSprigs" stroke="#e9edf0" stroke-width="2.6" fill="none" stroke-linecap="round">
+          <path d="M56 26 Q50 14 56 8"/><path d="M61 25 Q64 12 72 10"/><path d="M58 26 Q58 16 62 12"/></g>
+        <g id="dBrows" fill="#d6dbe0"><rect x="38" y="40" width="18" height="5" rx="2.5" transform="rotate(-8 47 42)"/><rect x="64" y="40" width="18" height="5" rx="2.5" transform="rotate(8 73 42)"/></g>
+        <g id="dEyes" fill="#1b2630"><circle cx="48" cy="55" r="3.6"/><circle cx="72" cy="55" r="3.6"/>
+          <circle cx="49.3" cy="53.8" r="1.1" fill="#fff"/><circle cx="73.3" cy="53.8" r="1.1" fill="#fff"/></g>
+        <g fill="rgba(190,225,255,.25)" stroke="#2a2f36" stroke-width="2.6"><circle cx="48" cy="55" r="11"/><circle cx="72" cy="55" r="11"/></g>
+        <path d="M59 54 Q60 51 61 54" stroke="#2a2f36" stroke-width="2.6" fill="none"/>
+        <ellipse cx="60" cy="69" rx="6.5" ry="5.5" fill="#e59b78"/><ellipse cx="58" cy="67.5" rx="2" ry="1.4" fill="#f6c3a6"/>
+        <ellipse id="dMouth" cx="60" cy="82" rx="7" ry="1.2" fill="#6b1f24"/>
+        <path id="dStache" d="M60 75 Q52 72 45 76 Q40 79 37 75 Q40 83 49 80 Q55 78 60 77 Q65 78 71 80 Q80 83 83 75 Q80 79 75 76 Q68 72 60 75 Z" fill="#d6dbe0" stroke="#b8bfc6" stroke-width=".8"/>
+        <ellipse cx="40" cy="70" rx="4" ry="2.4" fill="#f2a08a" opacity=".45"/><ellipse cx="80" cy="70" rx="4" ry="2.4" fill="#f2a08a" opacity=".45"/>
+      </g>
+    </svg>
+    <div class="dlive"><span></span>LIVE</div>
+  </div>
+  <div class="dtalk">
+    <div class="dname">DR. ORBIT <small>Mission scientist</small></div>
+    <div class="dtext" id="dText"></div>
+    <div class="dbtns"><button id="dVoice" title="Read messages out loud"></button><button id="dNext">OK ▸</button></div>
+  </div>`;
+document.body.appendChild(box);
+const css = document.createElement('style'); css.textContent = `
+#doc{position:fixed;left:50%;top:16px;transform:translateX(-50%);display:flex;gap:12px;align-items:stretch;width:min(560px,calc(100vw - 32px));
+  background:var(--panel,rgba(6,10,16,.85));border:1px solid rgba(240,191,90,.55);border-radius:14px;padding:10px;z-index:5;box-shadow:0 8px 30px rgba(0,0,0,.45);
+  transition:opacity .25s, transform .25s}
+#doc.hidden{display:none}
+#doc.small{width:auto;padding:6px;cursor:pointer}
+#doc.small .dtalk{display:none}
+#doc.small .dscreen{width:64px;height:64px}
+#doc .dscreen{position:relative;flex:none;width:110px;height:110px;border-radius:10px;overflow:hidden;border:3px solid #39424c;box-shadow:inset 0 0 0 2px #11171d}
+#doc .dscreen svg{width:100%;height:100%;display:block}
+#doc .dscreen:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 1px,transparent 1px 3px);pointer-events:none}
+#doc .dlive{position:absolute;left:5px;top:5px;font:700 9px 'IBM Plex Mono',monospace;color:#fff;background:rgba(0,0,0,.45);padding:1px 4px;border-radius:4px;display:flex;gap:3px;align-items:center}
+#doc .dlive span{width:6px;height:6px;border-radius:50%;background:#ff5a4e;animation:dl 1.2s infinite}
+@keyframes dl{50%{opacity:.25}}
+#doc.small .dlive{display:none}
+#doc .dtalk{flex:1;display:flex;flex-direction:column;min-width:0}
+#doc .dname{font:700 14px 'Chakra Petch',sans-serif;color:var(--gold,#f0bf5a);letter-spacing:.05em}
+#doc .dname small{font:400 11px 'IBM Plex Sans',sans-serif;color:var(--muted,#9fb0c0);letter-spacing:0;margin-left:6px}
+#doc .dtext{flex:1;font-size:16px;line-height:1.4;margin:4px 0 6px;min-height:46px}
+#doc .dbtns{display:flex;gap:6px;justify-content:flex-end}
+#doc .dbtns button{font:600 13px 'Chakra Petch',sans-serif;background:rgba(255,255,255,.08);color:var(--fg,#e6ecf1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:4px 10px;cursor:pointer}
+#doc #dNext{background:var(--gold,#f0bf5a);color:#140c02;border-color:var(--gold,#f0bf5a)}
+@media (max-width:760px){#doc{top:196px}#doc .dscreen{width:76px;height:76px}#doc .dtext{font-size:14px}}`;
+document.head.appendChild(css);
+
+/* --- the face --- */
+const mouth = $('dMouth'), eyes = $('dEyes'), brows = $('dBrows'), head = $('dHeadG'), sprigs = $('dSprigs');
+let open = 0, talking = false, mood = 'happy', blinkAt = 0, browUp = 0, t0 = performance.now();
+function face(t){
+  const k = (t - t0) / 1000;
+  const target = talking ? .35 + .65 * Math.abs(Math.sin(k * 13)) * (.6 + .4 * Math.sin(k * 3.1)) : (mood === 'wow' ? .9 : 0);
+  open += (target - open) * .35;
+  mouth.setAttribute('ry', (1.2 + open * 5.2).toFixed(2)); mouth.setAttribute('rx', (mood === 'wow' && !talking ? 5 : 7 - open * 1.5).toFixed(2));
+  if (t > blinkAt) blinkAt = t + 2500 + Math.random() * 3000;
+  const bl = blinkAt - t < 130 ? .1 : 1; eyes.setAttribute('transform', `translate(0 ${55 * (1 - bl)}) scale(1 ${bl})`);
+  const by = mood === 'wow' ? -5 : mood === 'worried' ? -2 : mood === 'think' ? -3 + Math.sin(k * 2) * 2 : talking ? -1.5 * Math.abs(Math.sin(k * 2.3)) : 0; browUp += (by - browUp) * .2;
+  brows.setAttribute('transform', `translate(0 ${browUp.toFixed(2)})` + (mood === 'worried' ? ' rotate(0)' : ''));
+  head.setAttribute('transform', `rotate(${(talking ? Math.sin(k * 2.7) * 3 : Math.sin(k * .8) * 1.2).toFixed(2)} 60 90)`);
+  sprigs.setAttribute('transform', `rotate(${(Math.sin(k * 4) * (talking ? 6 : 2)).toFixed(2)} 58 26)`);
+  requestAnimationFrame(face);
+}
+requestAnimationFrame(face);
+
+/* --- talking --- */
+const queue = []; let busy = false, typing = null, full = '', onDone = null;
+const pickVoice = () => { const vs = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); return vs.find(v => /male|daniel|fred|alex|google uk english male/i.test(v.name)) || vs[0]; };
+function speak(text){
+  if (!voiceOn || !('speechSynthesis' in root)) return false;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[★☀📸🔭]/g, '')); u.rate = 1.02; u.pitch = 1.25; const v = pickVoice(); if (v) u.voice = v;
+    u.onend = u.onerror = () => { talking = false; }; speechSynthesis.speak(u); return true; } catch (e) { return false; }
+}
+function next(){
+  if (typing) { clearInterval(typing); typing = null; $('dText').textContent = full; talking = !!(voiceOn && root.speechSynthesis && speechSynthesis.speaking); return; }
+  if (!queue.length) { busy = false; box.classList.add('small'); talking = false; try { speechSynthesis.cancel(); } catch (e) {} const f = onDone; onDone = null; if (f) f(); return; }
+  const m = queue.shift(); busy = true; full = m.text; mood = m.mood || 'happy'; box.classList.remove('hidden', 'small');
+  $('dNext').textContent = queue.length ? 'Next ▸' : 'OK ✓';
+  const spoke = speak(m.text); talking = true; let i = 0; $('dText').textContent = '';
+  typing = setInterval(() => { i += 1; $('dText').textContent = full.slice(0, i);
+    if (i >= full.length) { clearInterval(typing); typing = null; if (!spoke) setTimeout(() => { if (!typing) talking = false; }, 200); } }, spoke ? 45 : 28);
+  if (spoke) { const poll = setInterval(() => { if (!speechSynthesis.speaking && !typing) { talking = false; clearInterval(poll); } }, 200); }
+}
+$('dNext').onclick = e => { e.stopPropagation(); next(); };
+box.onclick = () => { if (box.classList.contains('small')) { box.classList.remove('small'); if (!busy && full) { queue.push({text:full, mood}); next(); } } };
+const setVoiceBtn = () => { $('dVoice').textContent = voiceOn ? '🔊 Voice on' : '🔇 Voice off'; };
+$('dVoice').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; try { localStorage.setItem('webb.voice', voiceOn ? 'on' : 'off'); } catch (er) {} setVoiceBtn(); if (!voiceOn) { try { speechSynthesis.cancel(); } catch (er) {} talking = !!typing; } else speak(full); };
+setVoiceBtn();
+if ('speechSynthesis' in root) speechSynthesis.onvoiceschanged = () => {};
+
+root.DOC = {
+  /* Say one or more lines. A new say() replaces whatever was waiting, so the newest news always wins. */
+  say(lines, opts = {}){ const arr = (Array.isArray(lines) ? lines : [lines]).map(l => typeof l === 'string' ? {text:l, mood:opts.mood} : l);
+    queue.length = 0; queue.push(...arr); onDone = opts.done || null; if (typing) { clearInterval(typing); typing = null; } next(); },
+  hide(){ queue.length = 0; if (typing) { clearInterval(typing); typing = null; } try { speechSynthesis.cancel(); } catch (e) {} talking = false; box.classList.add('hidden'); },
+  get busy(){ return busy; },
+};
+})(window);

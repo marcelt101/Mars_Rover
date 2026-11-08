@@ -98,6 +98,12 @@ picture teaches one thing: galaxies, clouds of dust and gas, star formation, bla
   sunshield (thrusters unload it), dithers, a 65 GB recorder, Deep Space Network downlink at 28 Mbit/s, 168 hours
   a week, event-driven skips. A systems panel shows it all; "How Webb works" explains each part.
 - Results with stars (guide star, exposure, instrument, dithers) and an album.
+- Dr. Orbit (js/webb/doc.js): an original, code-drawn funny scientist on a little LIVE screen. Types and reads his
+  messages out loud (browser voice, can be turned off): hello and target clues, Sun-limit warnings, "take the
+  picture", and reactions with facts or tips on the results.
+- Planned next (agreed): science requests with hidden targets (clues and gauge numbers, the arrow as a hint),
+  spot-the-discovery inside each real picture, collection badges by kind on a sky map; then breaking-news targets
+  (DART impact, Jupiter, Neptune) and team roles.
 - Next: feedback from play, then fold it into the game (a Webb button on the menu, profiles, team play).
 
 ## Later ideas (keep in mind)
