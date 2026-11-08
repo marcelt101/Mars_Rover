@@ -79,7 +79,7 @@ const noiseCv = (() => { const c = document.createElement('canvas'); c.width = c
 
 /* ================= the screens ================= */
 let screen = 'title', week = W.WEEKS[0], cards = [], codeMode = false, codeText = '', run = null, steer = null;
-const show0 = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'pad', 'zoom', 'shoot', 'next', 'mini']
+const show0 = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini']
   .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id))) || ($('webb').style.opacity = ids.includes('title') ? 1 : 0);
 const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result')) DOC.hide(); show0(...ids); };
 const album = (() => { try { return JSON.parse(localStorage.getItem('webb.album') || '{}'); } catch (e) { return {}; } })();
@@ -257,7 +257,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=14'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=15'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -429,13 +429,13 @@ function startSteer(){
   $('card').innerHTML = `<h3>Find: <select id="tsel">${vis.map(t => `<option value="${t.id}" ${t === steer ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></h3>
     <p>${esc(fmtDate(week.date))}. Follow the gold arrow, zoom in, then take the picture.</p><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Weeks</button><button class="btn small" id="sAlb">📔 Album</button></div>`;
   readyOnce = false;
-  if (acad) { acadCard(); show('card', 'read', 'pad', 'zoom', 'mini'); return; }
+  if (acad) { acadCard(); show('card', 'read', 'console', 'mini'); return; }
   $('tsel').onchange = e => { steer = W.byId(e.target.value); docTarget(); readyOnce = false; };
   if (!docMet) { docMet = true; DOC.say([{text:`Hello, cadet! I'm Dr. Orbit, Webb's one-man science team. I need your help to find things in space!`, mood:'wow'}, {text:docLine(steer)},
     {text:`Follow the gold arrow. And keep the Sun angle in the green, or the Sun would shine on Webb's mirror!`, mood:'think'}]); }
   else docTarget();
   $('sBack').onclick = weeks; $('sAlb').onclick = () => openAlbum(startSteer);
-  show('card', 'read', 'pad', 'zoom', 'mini');
+  show('card', 'read', 'console', 'mini');
 }
 function acadCard(){
   const S = W.ACADEMY[acad.s], t = steer, n = S.ids.length;
@@ -453,6 +453,7 @@ function aimTarget(){ if (!clueMode()) return steer; let best = null, bd = 1e9;
   W.TARGETS.filter(visible).forEach(t => { const d = W.sep(view.ra, view.dec, t.ra, t.dec); if (d < bd) { bd = d; best = t; } });
   return bd < view.fov * .14 ? best : null; }
 function steerStep(dt, t){
+  if (lev) zoomBy(Math.exp(-lev * Math.abs(lev) * dt * 1.6));   // the further you pull the lever, the faster it zooms
   held = keys.x || keys.y ? held + dt : 0;
   const ramp = Math.min(1, Math.max(0, held - .15) / 1.6), sp = view.fov * (.016 + .2 * ramp * ramp);   // a tap is a small step; holding speeds up for long turns
   vra += (keys.x * sp - vra) * Math.min(1, dt * 7); vdec += (keys.y * sp - vdec) * Math.min(1, dt * 7);
@@ -472,17 +473,30 @@ function steerStep(dt, t){
   if (acad && !clueMode()) acadGuide(tsep, near, zoomed, ready);
   const tip = ready ? '' : (!aim || asep > view.fov * .14) ? (clueMode() ? (acad.hints > 2 ? '<b>Step 1 of 3:</b> follow the gold arrow' : '<b>Step 1 of 3:</b> find a gold <b>?</b> that matches the clue') : '<b>Step 1 of 3:</b> follow the gold arrow to the target') :
     (clueMode() && acad.wrong.has(aim.id)) ? 'Not this one: look for another gold <b>?</b>' :
-    !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> zoom in with <b>+</b> (or the mouse wheel)' : '';
-  $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('zin').classList.toggle('pulse', near && !zoomed);
-  if (ready && !readyOnce) { readyOnce = true; DOC.say({text:clueMode() ? `Yes! You found it: ${steer.name}! Press TAKE THE PICTURE!` : `Perfect! ${steer.name} is right in the middle. Press TAKE THE PICTURE!`, mood:'wow'}); }
-  $('shoot').classList.toggle('hidden', !ready); $('warn').classList.toggle('hidden', t - warnT > 2500);
+    !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> pull the <b>ZOOM</b> lever up' : '';
+  $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('lever').classList.toggle('pulse', near && !zoomed);
+  dash(t, a1 > 0 || t - warnT < 600, !!aim && asep < view.fov * .14, centered, ready);
+  if (ready && !readyOnce) { readyOnce = true; DOC.say({text:clueMode() ? `Yes! You found it: ${steer.name}! Press the big red button!` : `Perfect! ${steer.name} is right in the middle. Press the big red button!`, mood:'wow'}); }
+  $('shoot').disabled = !ready; $('shoot').classList.toggle('armed', ready); $('warn').classList.toggle('hidden', t - warnT > 2500);
   drawGauge(tsep);
 }
 /* Training day: Dr. Orbit explains each step the first time it comes up. */
 function acadGuide(tsep, near, zoomed, ready){ const sd = acad.said, once = (k, text, mood) => { if (!sd[k] && !DOC.busy) { sd[k] = 1; DOC.say({text, mood}); } };
   if (acad.i > 0) return;   // he explains it all on the first target only
   if (tsep < view.fov * .45 && !near) once('see', 'There it is, inside the gold circle! Steer toward the middle, then let go of the arrows: Webb\'s fine steering mirror centers it for you.');
-  else if (near && !zoomed) once('zoom', 'Great! Now zoom in with the plus button, so the picture fills the screen.', 'wow'); }
+  else if (near && !zoomed) once('zoom', 'Great! Now grab the red ZOOM lever and pull it up, so the picture fills the screen.', 'wow'); }
+/* Dashboard lamps, the zoom readout and Webb's six reaction wheels (they spin faster when you turn). */
+let wheelA = 0;
+function dash(t, sunBad, onT, zoomedIn, ready){
+  const L = (id, c) => { $(id).className = c; };
+  L('lSun', sunBad ? 'r' : 'g'); L('lTgt', onT ? 'g' : ''); L('lZm', zoomedIn ? 'g' : ''); L('lRdy', ready ? 'g' : '');
+  $('zread').textContent = view.fov < 2 ? view.fov.toFixed(2) + '°' : view.fov.toFixed(0) + '°'; $('camName').textContent = steer ? steer.cam : '';
+  const c = $('rw'), x = c.getContext('2d'), spd = Math.min(1, (Math.abs(vra) + Math.abs(vdec)) / Math.max(.01, view.fov * .1)); wheelA += .02 + spd * .5;
+  x.clearRect(0, 0, c.width, c.height);
+  for (let i = 0; i < 6; i++) { const cx = 28 + i * 53, cy = 28, r = 22, a = wheelA * (i % 2 ? -1 : 1) + i;
+    x.strokeStyle = spd > .05 ? '#7fe0ff' : '#5b6670'; x.lineWidth = 3; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.stroke();
+    x.lineWidth = 2.5; for (let k = 0; k < 3; k++) { const b = a + k * 2.094; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(b) * r, cy + Math.sin(b) * r); x.stroke(); } }
+}
 /* The big Sun gauge: the angle from the Sun must stay 85-135 (green), but Webb may spin all the way around the Sun (0-360). */
 let gaugeHtml = '';
 function drawGauge(tsep){
@@ -515,10 +529,23 @@ addEventListener('keydown', e => { if (screen !== 'steer' || e.repeat || e.targe
   if (KX[e.key] != null) { keys.x = KX[e.key]; nudge(keys.x, 0); } if (KY[e.key] != null) { keys.y = KY[e.key]; nudge(0, keys.y); }
   if (e.key === '+' || e.key === '=') zoomBy(.8); if (e.key === '-') zoomBy(1.25); });
 addEventListener('keyup', e => { if (KX[e.key] != null) keys.x = 0; if (KY[e.key] != null) keys.y = 0; });
-document.querySelectorAll('#pad button').forEach(bt => { const [x, y] = bt.dataset.d.split(',').map(Number);
-  bt.onpointerdown = e => { e.preventDefault(); keys.x = x; keys.y = y; nudge(x, y); }; bt.onpointerup = bt.onpointerleave = () => { keys.x = 0; keys.y = 0; }; });
+/* The dashboard: 8 arrow keys (diagonals too) and STOP in the middle. */
+document.querySelectorAll('#pad8 button').forEach(bt => { const [x, y] = bt.dataset.d.split(',').map(Number);
+  bt.onpointerdown = e => { e.preventDefault(); if (!x && !y) { keys.x = keys.y = 0; vra = vdec = 0; step.x = step.y = 0; return; }
+    const k = x && y ? Math.SQRT1_2 : 1; keys.x = x * k; keys.y = y * k; nudge(x * k, y * k); bt.classList.add('on'); };
+  bt.onpointerup = bt.onpointerleave = bt.onpointercancel = () => { keys.x = 0; keys.y = 0; bt.classList.remove('on'); }; });
+/* The zoom lever: grab the red knob and pull it up to zoom in, down to zoom out. It springs back to the middle. */
+let lev = 0, levDrag = null;
+const levSet = d => { lev = Math.max(-1, Math.min(1, d)); $('lknob').style.transform = `translateY(${(-lev * ($('ltrack').clientHeight / 2 - 12)).toFixed(1)}px)`; };
+$('ltrack').addEventListener('pointerdown', e => { e.preventDefault(); const r = $('ltrack').getBoundingClientRect(), cy = r.top + r.height / 2;
+  levDrag = {cy, h:r.height / 2 - 12, moved:false}; $('ltrack').setPointerCapture(e.pointerId); $('lknob').classList.add('drag');
+  if (e.target !== $('lknob')) levDrag.tap = (cy - e.clientY) / levDrag.h; });
+$('ltrack').addEventListener('pointermove', e => { if (!levDrag) return; levDrag.moved = true; levSet((levDrag.cy - e.clientY) / levDrag.h); });
+const levUp = () => { if (!levDrag) return; if (!levDrag.moved && levDrag.tap != null) zoomBy(levDrag.tap > 0 ? .7 : 1.43);   // a tap above or below the knob is one zoom step
+  levDrag = null; $('lknob').classList.remove('drag'); levSet(0); };
+$('ltrack').addEventListener('pointerup', levUp); $('ltrack').addEventListener('pointercancel', levUp);
+$('tSound').checked = DOC.sound; $('tSound').onchange = e => { DOC.sound = e.target.checked; };
 const zoomBy = k => { const lo = steer ? Math.min(.3, fovFor(steer) * .8) : .3; view.fov = Math.max(lo, Math.min(70, view.fov * k)); };   // tiny targets (the quasar) may zoom in further
-$('zin').onclick = () => zoomBy(.7); $('zout').onclick = () => zoomBy(1.43);
 addEventListener('wheel', e => { if (screen === 'steer') zoomBy(e.deltaY > 0 ? 1.12 : .89); }, {passive:true});
 let drag = null; cv.addEventListener('pointerdown', e => { if (screen === 'steer') drag = [e.clientX, e.clientY]; });
 addEventListener('pointerup', () => { if (drag) { drag = null; keys.x = keys.y = 0; } });
