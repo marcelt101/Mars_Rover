@@ -63,7 +63,7 @@ UI.garage = slot => {
    glows with its label; empty slots show a dim "?", so the rover fills up as parts are collected. Some parts also
    change the picture: the gold dish, the laser, the glowing wheel rims. Spots are in the 1280 x 800 picture. */
 const PHOTO = {
-  mer:  {src:'img/garage/mer.jpg', credit:'', spots:{sharp_eyes:[556, 40], supercam:[628, 30], hg_antenna:[885, 252], better_radio:[718, 104], big_battery:[560, 505], dust_wiper:[760, 398], wide_wheels:[660, 712]},
+  mer:  {src:'img/garage/mer.jpg', credit:'Image: NASA, Mars Exploration Rover', spots:{sharp_eyes:[556, 40], supercam:[628, 30], hg_antenna:[885, 252], better_radio:[718, 104], big_battery:[560, 505], dust_wiper:[760, 398], wide_wheels:[660, 712]},
          wheels:[[205, 640, 70], [420, 600, 62], [660, 712, 78], [870, 636, 66], [1015, 566, 56]]},
   lrv:  {src:'img/garage/lrv.jpg', credit:'Photo: NASA, Apollo 15 (1971)', spots:{hg_antenna:[350, 165], better_radio:[685, 212], sharp_eyes:[412, 226], supercam:[650, 410], big_battery:[300, 548], dust_wiper:[545, 522], wide_wheels:[520, 625]},
          wheels:[[520, 625, 108], [1120, 598, 98]]},

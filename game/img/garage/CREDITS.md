@@ -1,6 +1,7 @@
 # Garage pictures
 
-- `mer.jpg`: the Explorer rover picture, supplied by the game's author for use in Crater Crew.
+- `mer.jpg`: Mars Exploration Rover (Spirit/Opportunity class). A NASA image, supplied by the game's author.
+  Its NASA page or ID is still to be added here.
 - `lrv.jpg`: Apollo 15 Lunar Roving Vehicle on the Moon. NASA, photo AS15-88-11901 (1971).
 - `buggy.jpg`: Sojourner rover on Mars. NASA/JPL, Mars Pathfinder, PIA01551 (1997).
 - `heli.jpg`: Ingenuity Mars Helicopter on Mars. NASA/JPL-Caltech/ASU/MSSS, PIA25881 (2023).

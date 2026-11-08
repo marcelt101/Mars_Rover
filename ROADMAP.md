@@ -78,6 +78,13 @@ A radiation meter replaces the battery, and each player runs one instrument team
 how thick is the ice, is there a plume. Halite (table salt) appears here. Defaults: it unlocks after the Mars maps,
 there's no lander, and there's no Mission Log week yet. Clipper starts its Europa flybys in 2031.
 
+## Next in line after the polish: James Webb Space Telescope
+The user's idea, contemporary and different from driving. Kids point the telescope at chosen spots in the sky and
+take pictures of what Webb really photographed, using Webb's real images (NASA/ESA/CSA/STScI, credited). Each
+picture teaches one thing: galaxies, clouds of dust and gas, star formation, black holes, quasars, and so on.
+To plan later: how aiming works (a sky map, coordinates, filters), what makes it a game (targets, time on the
+telescope, guide stars), and which of Webb's images to use.
+
 ## Later ideas (keep in mind)
 - **Titan:** NASA's Dragonfly drone, planned to land in 2034. Fly between landing spots, with methane lakes and dunes.
 - **The Moon's far side and south pole:** China's Yutu-2 rover (since 2019), with a relay satellite needed to talk
