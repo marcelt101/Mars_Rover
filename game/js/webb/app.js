@@ -91,18 +91,20 @@ const goalHtml = w => { const d = goalDone(w); return `<div style="font-size:12.
 
 /* --- Webb Academy: Dr. Orbit's campaign --- */
 let acad = null;   // the session being played: {s, i, hints, wrong:Set, said:{}}
-const acadData = (() => { try { return JSON.parse(localStorage.getItem('webb.academy') || '{}'); } catch (e) { return {}; } })(); acadData.done = acadData.done || 0;
+const acadData = (() => { try { return JSON.parse(localStorage.getItem('webb.academy') || '{}'); } catch (e) { return {}; } })(); acadData.done = acadData.done || 0; acadData.at = acadData.at || {};   // at: where you are in each session
 const acadSave = () => { try { localStorage.setItem('webb.academy', JSON.stringify(acadData)); } catch (e) {} };
 const acadHtml = () => { const A = W.ACADEMY, n = Math.min(acadData.done, A.length - 1), cur = A[n];
   return `<div class="acad"><div class="acadHead"><b>🎓 Webb Academy</b><small>with Dr. Orbit</small></div>
     <div class="acadRank">Your rank: <b>${W.RANKS[rankNow()].icon} ${esc(W.RANKS[rankNow()].name)}</b></div>
-    <div class="acadBadges">${W.RANKS.map((r, i) => `<div title="${esc(r.name)}: ${esc(r.how)}">${badgeSvg(r, i <= rankNow(), 40)}<small>${i <= rankNow() ? esc(r.name) : esc(r.how)}</small></div>`).join('')}</div>
+    <div class="acadBadges">${W.RANKS.map((r, i) => `<div title="${esc(r.name)}: ${esc(r.how)}">${badgeSvg(r, i <= rankNow(), 58)}<small>${i <= rankNow() ? esc(r.name) : esc(r.how)}</small></div>`).join('')}</div>
     <div class="acadDots">${A.map((a, i) => `<span class="${i < acadData.done ? 'ok' : i === n ? 'cur' : ''}" title="${esc(a.name)}">${i < acadData.done ? '✓' : i + 1}</span>`).join('<i></i>')}</div>
     <div class="acadNow"><div><b>Session ${n + 1}: ${esc(cur.name)}</b><small>${esc(cur.what)}</small></div>
-    ${cur.soon ? '<button class="btn" disabled>Coming soon</button>' : `<button class="btn gold" id="acadGo">▶ Start</button>`}</div>
+    ${cur.soon ? '<button class="btn" disabled>Coming soon</button>' : `<button class="btn gold" id="acadGo">▶ ${acadData.at[cur.id] ? `Continue (${acadData.at[cur.id] + 1} of ${cur.ids.length})` : 'Start'}</button>`}</div>
     ${acadData.done ? `<div class="acadAgain">Play again: ${A.slice(0, acadData.done).filter(a => !a.soon).map(a => `<button class="btn small" data-s="${A.indexOf(a)}">${esc(a.name)}</button>`).join('')}</div>` : ''}</div>`; };
 function startSession(si){
-  const S = W.ACADEMY[si]; acad = {s:si, i:0, hints:0, wrong:new Set(), said:{}};
+  const S = W.ACADEMY[si], cur = acadData.at[S.id] || 0;   // pick up where you left off
+  acad = {s:si, i:cur, hints:0, wrong:new Set(), said:{}};
+  if (cur > 0) { week = W.WEEKS.find(w => w.id === S.week); sunMs = week.date; docMet = true; startSteer(); DOC.say([{text:`Welcome back, ${W.RANKS[rankNow()].name}! Let's keep going.`, mood:'wow'}, {text:acadAsk(), mood:'think'}]); return; }
   week = W.WEEKS.find(w => w.id === S.week); sunMs = week.date; docMet = true;
   startSteer(); DOC.say([...S.intro.map((text, i) => ({text, mood:i === 0 ? 'wow' : 'happy'})), {text:acadAsk(), mood:'think'}]);
 }
@@ -111,24 +113,40 @@ const acadAsk = () => { const S = W.ACADEMY[acad.s], t = acadT(), who = W.RANKS[
   return S.clue ? `${who}, here's mystery target ${acad.i + 1}: ${t.clue[0]}` : `Target ${acad.i + 1}: ${t.name}! ${t.kind}, ${t.far} away. Follow the gold arrow.`; };
 function acadNext(){
   const S = W.ACADEMY[acad.s], acad_s = acad.s; acad.i++; acad.hints = 0; acad.wrong = new Set(); acad.said = {};
-  if (acad.i < S.ids.length) { startSteer(); DOC.say({text:acadAsk(), mood:'think'}); return; }
-  acadData.done = Math.max(acadData.done, acad.s + 1); acadSave(); acad = null;
+  if (acad.i < S.ids.length) { acadData.at[S.id] = acad.i; acadSave(); startSteer(); DOC.say({text:acadAsk(), mood:'think'}); return; }
+  acadData.done = Math.max(acadData.done, acad.s + 1); delete acadData.at[S.id]; acadSave(); acad = null;
   weeks(); showBadge(W.RANKS[acad_s + 1]); DOC.say(S.done.map((text, i) => ({text, mood:'wow'})));
 }
 
 /* Your rank: one per finished Academy session; Chief Scientist also needs every picture in the album. */
 const allPics = () => W.TARGETS.every(t => Object.keys(t.img).every(cam => album[t.id + '|' + cam]));
 const rankNow = () => Math.min(acadData.done, W.ACADEMY.length) + (acadData.done >= W.ACADEMY.length && allPics() ? 1 : 0);
-/* Badges: a gold hexagon like one of Webb's mirror segments. */
-const badgeSvg = (b, got, size = 64) => `<svg class="bsvg${got ? '' : ' off'}" viewBox="0 0 100 112" width="${size}" height="${size * 1.12}" aria-hidden="true">
-  <defs><linearGradient id="bg${size}${got ? 1 : 0}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${got ? '#ffe9a8' : '#4a535c'}"/><stop offset=".55" stop-color="${got ? '#f0bf5a' : '#2c333a'}"/><stop offset="1" stop-color="${got ? '#b9822a' : '#1d2329'}"/></linearGradient></defs>
-  <path d="M30 86 L22 110 L36 102 L44 112 L48 88 Z M70 86 L78 110 L64 102 L56 112 L52 88 Z" fill="${got ? '#d6493f' : '#353c44'}"/>
-  <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="url(#bg${size}${got ? 1 : 0})" stroke="${got ? '#fff3c8' : '#5a646e'}" stroke-width="3"/>
-  <polygon points="50,16 80,33 80,67 50,84 20,67 20,33" fill="${got ? 'rgba(80,45,0,.25)' : 'rgba(0,0,0,.25)'}"/>
-  <text x="50" y="62" text-anchor="middle" font-size="34">${got ? b.icon : '?'}</text></svg>`;
+/* Badges: each one is Webb's own mirror, 18 gold hexagons around a medallion, in the rank's own metal.
+   Cadet is bronze, then silver, gold, emerald, sapphire, amethyst, and a cosmic one for Chief Scientist. */
+const TIERS = [['#ffd9b0', '#c9803f', '#6e3b17', 'Bronze'], ['#ffffff', '#b8c4cf', '#5d6975', 'Silver'], ['#fff3c0', '#f0bf5a', '#9a6516', 'Gold'],
+  ['#d2ffe9', '#3fd193', '#11704a', 'Emerald'], ['#d9ecff', '#5aa6ff', '#1b4a96', 'Sapphire'], ['#f3dcff', '#b774ff', '#55248f', 'Amethyst'], ['#fff3c0', '#ff7ad9', '#5a4dff', 'Cosmic']];
+const HEXES = (() => { const out = [], r = 9.2, s3 = Math.sqrt(3);
+  for (let q = -2; q <= 2; q++) for (let k = -2; k <= 2; k++) { const d = Math.max(Math.abs(q), Math.abs(k), Math.abs(-q - k)); if (d !== 2) continue;
+    const x = 60 + r * s3 * (q + k / 2), y = 56 + r * 1.5 * k; out.push(Array.from({length:6}, (_, a) => { const t = Math.PI / 180 * (60 * a - 30); return (x + (r - .9) * Math.cos(t)).toFixed(1) + ',' + (y + (r - .9) * Math.sin(t)).toFixed(1); }).join(' ')); }
+  return out; })();
+const badgeSvg = (b, got, size = 64) => { const idx = Math.max(0, W.RANKS.indexOf(b)), T = TIERS[Math.min(idx, TIERS.length - 1)], id = 'b' + idx + '_' + size + (got ? 'g' : 'o');
+  const [hi, mid, lo] = got ? T : ['#5b6670', '#353d45', '#1d2329'];
+  return `<svg class="bsvg${got ? '' : ' off'}" viewBox="0 0 120 134" width="${size}" height="${(size * 134 / 120).toFixed(0)}" aria-hidden="true">
+  <defs><linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${hi}"/><stop offset=".5" stop-color="${mid}"/><stop offset="1" stop-color="${lo}"/></linearGradient>
+    <radialGradient id="${id}c" cx=".5" cy=".38" r=".7"><stop offset="0" stop-color="${got ? '#24476a' : '#2a3036'}"/><stop offset="1" stop-color="${got ? '#08131f' : '#14181c'}"/></radialGradient>
+    <linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="${id}k"><circle cx="60" cy="56" r="41"/></clipPath></defs>
+  <path d="M40 92 L28 128 L44 119 L52 132 L58 98 Z M80 92 L92 128 L76 119 L68 132 L62 98 Z" fill="${got ? lo : '#2a3036'}" stroke="${got ? mid : '#3a434b'}" stroke-width="1.5"/>
+  ${got && idx === 6 ? '<circle cx="60" cy="56" r="56" fill="none" stroke="url(#' + id + 'm)" stroke-width="2" stroke-dasharray="2 5" opacity=".9"/>' : ''}
+  <g>${HEXES.map(h => `<polygon points="${h}" fill="url(#${id}m)" stroke="${got ? lo : '#14181c'}" stroke-width="1"/>`).join('')}</g>
+  <circle cx="60" cy="56" r="25.5" fill="url(#${id}c)" stroke="url(#${id}m)" stroke-width="4"/>
+  <text x="60" y="${got ? 66 : 65}" text-anchor="middle" font-size="${got ? 27 : 24}" ${got ? '' : 'fill="#7c8791" font-weight="700" font-family="sans-serif"'}>${got ? b.icon : '?'}</text>
+  ${got ? `<g clip-path="url(#${id}k)"><rect class="glint" x="-60" y="-10" width="40" height="140" fill="url(#${id}s)" transform="skewX(-20)"/></g>` : ''}
+  ${got ? Array.from({length:Math.min(idx + 1, 7)}, (_, k) => `<text x="${60 + (k - Math.min(idx, 6) / 2) * 9}" y="104" text-anchor="middle" font-size="9" fill="${hi}">★</text>`).join('') : ''}
+  </svg>`; };
 function showBadge(b){
   let el = $('badgePop'); if (!el) { el = document.createElement('div'); el.id = 'badgePop'; el.className = 'panel'; document.body.appendChild(el); }
-  el.innerHTML = `<div class="bglow">${badgeSvg(b, true, 150)}</div><small>NEW BADGE</small><h2>${esc(b.name)}</h2><p>Awarded by Dr. Orbit, Webb Academy</p><button class="btn gold" id="badgeOk">Hooray! ✓</button>`;
+  el.innerHTML = `<div class="bglow">${badgeSvg(b, true, 150)}</div><small>NEW RANK · ${TIERS[Math.min(W.RANKS.indexOf(b), 6)][3].toUpperCase()} BADGE</small><h2>${esc(b.name)}</h2><p>Awarded by Dr. Orbit, Webb Academy</p><button class="btn gold" id="badgeOk">Hooray! ✓</button>`;
   el.classList.remove('hidden'); $('badgeOk').onclick = () => el.classList.add('hidden');
   try { const a = new (window.AudioContext || window.webkitAudioContext)(); [523.3, 659.3, 784, 1046.5].forEach((f, i) => { const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + i * .13;
     o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.08, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .6); o.connect(g).connect(a.destination); o.start(t); o.stop(t + .65); }); } catch (e) {}
@@ -239,7 +257,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=13'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=14'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
