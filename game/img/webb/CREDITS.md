@@ -8,3 +8,5 @@
   coordinates, 0h right ascension in the middle, right ascension increasing to the left.
 - `t_carina.jpg`: the Cosmic Cliffs in NGC 3324, Carina Nebula. Webb NIRCam, July 2022.
   Credit: NASA, ESA, CSA, STScI.
+- `webb-corner.webp`: the small telescope in the corner of the telescope view. Supplied by the game's author; it is
+  NASA's artist's conception of Webb (credit NASA). The checkerboard painted into the downloaded file was removed.
