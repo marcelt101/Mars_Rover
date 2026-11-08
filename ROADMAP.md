@@ -6,7 +6,7 @@ Order agreed with the user. Real missions only; future missions are labeled "as 
 their campaigns that already exist, based on play-testing. Venera and Europa wait.
 
 ## Polish: Rover Garage and supply crates
-**Status:** built behind `?preview=garage`, waiting for approval (together with `cadetback` and `helicam`).
+**Status:** approved and live for everyone (game version 6), together with the Cadet back button and the helicopter camera.
 - Perks become parts in slots: wheels, cameras, power, radio, science tool (Cadets: cameras, science tool, radio,
   computer). One part per slot; a better part of the same kind is fitted by itself.
 - Supply crates: one per rank-up (parts in a set order, the same pace as the old rank perks) and one for the first
@@ -27,7 +27,6 @@ their campaigns that already exist, based on play-testing. Venera and Europa wai
 - Garage pictures: the user's Explorer rover picture and NASA photos of Sojourner, Ingenuity and Apollo 15's rover
   (credits on the picture and in `game/img/garage/CREDITS.md`); Zhurong is drawn. Fitted parts glow with labels,
   empty slots show "?", and some parts change the picture (gold dish, laser, wheel rims).
-- Going live: remove the `MR.GARAGE` preview check in `data.js` and raise `MR.VERSION` (team games send parts).
 - Later ideas: more parts per slot (higher levels), paint colors and flags as cosmetic crate prizes.
 
 ## Batch 7: Utopia Planitia, Mars (China's Zhurong rover, 2021)

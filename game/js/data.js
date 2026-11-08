@@ -2,8 +2,8 @@
 (function () {
 const MR = window.MR = window.MR || {};
 
-MR.VERSION = 5;
-MR.GARAGE = (MR.PREVIEW || []).includes('garage');   // Rover Garage, waiting for approval
+MR.VERSION = 6;
+MR.GARAGE = true;   // the Rover Garage (parts, crates, station modules); the older perk code stays for reference
 MR.MW = 64; MR.MH = 44; MR.BASE = 32;
 MR.MAX_PLAYERS = 32;   /* a whole class plus the teacher */
 
@@ -49,7 +49,7 @@ MR.ROLES = {
 
 MR.JOBS = {
   buggy:     {label:'Buggy', roles:['cadet'], desc:'A tough little rover like Sojourner, the first rover on Mars. It digs up treasure and never gets stuck.'},
-  heli:      {label:'Helicopter', roles:['cadet'], get desc(){ return (MR.PREVIEW || []).includes('helicam') ? 'Flies over rocks and takes pictures of treasure, like Ingenuity.' : 'Flies over rocks and spots treasure for the team, like Ingenuity.'; }},
+  heli:      {label:'Helicopter', roles:['cadet'], desc:'Flies over rocks and takes pictures of treasure, like Ingenuity.'},
   scout:     {label:'Scout', roles:['explorer','specialist'], desc:'Sees 1 square farther and scans 6 squares wide. Flags finds for the team. In team games it carries 2 fewer tubes.'},
   science:   {label:'Science', roles:['explorer','specialist'], desc:'Analyze identifies every signal within 2 squares.'},
   hauler:    {label:'Hauler', roles:['explorer','specialist'], desc:'Carries 4 extra sample tubes.'},
@@ -120,9 +120,9 @@ MR.UPGRADES = {
   garage:      {name:MR.GARAGE ? 'Storm garage' : 'Garage', icon:'⌂', cost:{bricks:3, metal:1}, desc:MR.GARAGE ? 'Wheels and solar panels wear half as fast, and rovers parked next to the station are safe from dust storms.' : 'Wheels and solar panels wear half as fast.'},
   greenhouse:  {name:'Greenhouse', icon:'❦', cost:{water:3, bricks:2}, desc:'Everyone earns 10% more XP.'},
 };
-/* Waiting for approval: the Cadet helicopter takes pictures instead of digging (?preview=helicam). */
-MR.heliCam = r => !!r && r.job === 'heli' && (MR.PREVIEW || []).includes('helicam');
-MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','drill'].concat((MR.PREVIEW || []).includes('cadetback') ? ['back'] : []) : job === 'lab' ? Object.keys(MR.CMDS).filter(k => MR.CMDS[k].lab)
+/* The Cadet helicopter takes pictures instead of digging, like Ingenuity. */
+MR.heliCam = r => !!r && r.job === 'heli';
+MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','back','drill'] : job === 'lab' ? Object.keys(MR.CMDS).filter(k => MR.CMDS[k].lab)
   : Object.keys(MR.CMDS).filter(k => !MR.CMDS[k].jobs || MR.CMDS[k].jobs.includes(job));
 
 MR.RARITY = {
@@ -390,7 +390,7 @@ MR.cadetGoals = n => [{t:`Find ${3+2*n} treasures`, kind:'treasure', of:3+2*n}];
 
 const KEYS = 'More keys: I or E opens your inventory, T talks to the team, Tab looks at the next rover, Shift + WASD moves the camera, F follows your rover, M makes the map big, + and − zoom, Esc closes windows.';
 MR.HOW = {
-  cadet:['Tap the picture buttons to plan your moves. Each arrow is one square.','Press the big GO button and watch your rover.','Land on a sparkly gem and dig to find treasure!','Press I to open your treasure chest.','Keys: W or ↑ goes forward, A and D turn, Space digs, Backspace removes, Enter is GO. M makes the map big.'],
+  cadet:['Tap the picture buttons to plan your moves. Each arrow is one square.','Press the big GO button and watch your rover.','Land on a sparkly gem and dig to find treasure!','Press I to open your treasure chest.','Keys: W or ↑ goes forward, S or ↓ backs up, A and D turn, Space digs (or takes a picture), Backspace removes, Enter is GO. M makes the map big.'],
   explorer:['Build a plan of up to 12 blocks, then press Send (or Ready in a team game).','Scan shows mystery signals (?). Drive onto one, Analyze it, then Drill to fill a sample tube.','Dunes use more power and can hide sand traps. If you get stuck, Back up 1 square.','Drive onto the station to unload samples and recharge. Each night the solar panels add 30%.','Smart blocks hold other blocks: click Repeat to put new blocks inside it. At the second rank the satellite relay kit adds If blocks, Until full or low battery, Go to signal, Go home, and plans that run for 2 sols.','Keys like a PC game: W A S D (or arrows) drive, Q scan, R analyze, Space drill, G dig, C charge. Pressing W again adds a square. Backspace removes, Enter sends.', KEYS],
   specialist:['Write your plan in Python. Supports rover commands and for loops, up to 40 moves per sol. while, if, elif, else and def work with the rover sensors (see the sensor list).','At the second rank the satellite relay kit adds rover.go_to_signal(), rover.go_home() and for sol in rover.mission(2): for programs that run for several sols.','Only 6 sample tubes and weaker solar (20% a night). Analyze before you Drill.','Drive onto the station to unload samples and recharge.','Ctrl+Enter sends your program. Click outside the editor to use W A S D, Q, R, Space, G and C to add lines.', KEYS],
 };
