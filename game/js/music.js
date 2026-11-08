@@ -1,6 +1,7 @@
 /* Calm space music, made live in the browser (Web Audio): no songs and no music files. Slow soft chords, a
    quiet low hum and an occasional chime. It follows the game: calm while planning, a soft pulse while rovers
-   drive, wind during a dust storm, sparser and colder on the Moon, and a little chime on a find.
+   drive, wind during a dust storm, sparser and colder on the Moon, wide and floating in deep space (the Webb
+   level), and a little chime on a find.
    Browsers only allow sound after the first tap, so it fades in then. */
 (function () {
 const MR = window.MR;
@@ -8,8 +9,10 @@ const hz = m => 440 * Math.pow(2, (m - 69) / 12);
 const CHORDS = {
   mars: [[50,57,64,65], [46,53,62,69], [48,55,64,67], [43,50,57,62], [45,52,60,64]],
   moon: [[45,52,59,64], [41,48,55,64], [43,50,57,62], [40,47,55,59]],
+  /* deep space (the Webb level): wide, open chords that drift, like floating */
+  deep: [[48,55,62,66,71], [45,52,59,64,71], [43,50,57,62,69], [41,48,55,64,67], [46,53,60,65,69]],
 };
-const BELLS = {mars:[74,77,79,81,84,86], moon:[76,79,81,83,88]};
+const BELLS = {mars:[74,77,79,81,84,86], moon:[76,79,81,83,88], deep:[79,83,86,88,91,95]};
 let ctx = null, out = null, wet = null, drone = null, wind = null, started = false;
 let mode = 'plan', world = 'mars', storm = false, chord = CHORDS.mars[0], padTimer = null, bellTimer = null, pulseTimer = null;
 const S = () => MR.Store.settings;
@@ -40,8 +43,8 @@ function init(){
 /* One soft chord: two slightly detuned oscillators per note through a gentle low-pass, slow in and slow out. */
 function pad(){
   const list = CHORDS[world]; chord = list[Math.floor(Math.random() * list.length)];
-  const t = ctx.currentTime, len = world === 'moon' ? 13 : 11;
-  const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = world === 'moon' ? 650 : 900; f.Q.value = .4;
+  const t = ctx.currentTime, len = world === 'deep' ? 16 : world === 'moon' ? 13 : 11;
+  const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = world === 'deep' ? 760 : world === 'moon' ? 650 : 900; f.Q.value = .4;
   const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.06, t + 3.5); g.gain.setValueAtTime(.06, t + len - 5); g.gain.linearRampToValueAtTime(0, t + len);
   f.connect(g); g.connect(out); g.connect(wet);
   chord.forEach(m => [-6, 6].forEach((cents, k) => { const o = ctx.createOscillator(); o.type = k ? 'triangle' : 'sine'; o.frequency.value = hz(m); o.detune.value = cents;
@@ -57,7 +60,7 @@ function bell(m, when = 0, loud = 1){
 function bells(){
   const list = BELLS[world]; bell(list[Math.floor(Math.random() * list.length)]);
   if (Math.random() < .35) bell(list[Math.floor(Math.random() * list.length)], .45, .7);
-  bellTimer = setTimeout(bells, (world === 'moon' ? 9 + Math.random()*14 : 5 + Math.random()*9) * 1000);
+  bellTimer = setTimeout(bells, (world === 'deep' ? 6 + Math.random()*10 : world === 'moon' ? 9 + Math.random()*14 : 5 + Math.random()*9) * 1000);
 }
 /* While the rovers drive: a soft plucked pulse on the notes of the current chord. */
 function pulse(){
@@ -70,15 +73,15 @@ function pulse(){
 function apply(){
   if (!ctx) return; const t = ctx.currentTime, v = vol();
   out.gain.cancelScheduledValues(t); out.gain.setTargetAtTime(v, t, v > out.gain.value ? 2.5 : .4);
-  wind.gain.setTargetAtTime(storm && world !== 'moon' ? .09 : 0, t, 1.5);
-  drone.gain.setTargetAtTime(world === 'moon' ? .035 : .05, t, 2);
+  wind.gain.setTargetAtTime(storm && world === 'mars' ? .09 : 0, t, 1.5);
+  drone.gain.setTargetAtTime(world === 'deep' ? .03 : world === 'moon' ? .035 : .05, t, 2);
   if (v > 0 && ctx.state === 'suspended' && !document.hidden) ctx.resume();
   if (v === 0) setTimeout(() => { if (vol() === 0 && ctx.state === 'running') ctx.suspend(); }, 1500);
 }
 MR.music = {
   start(){ if (started) return; try { init(); } catch (e) { return; } started = true; pad(); bellTimer = setTimeout(bells, 4000); pulse(); apply(); },
   setMode(m){ mode = m; },
-  setWorld(map){ const w = MR.MAPS[map] && MR.MAPS[map].airless ? 'moon' : 'mars'; if (w !== world) { world = w; apply(); } },
+  setWorld(map){ const w = map === 'webb' || map === 'deep' ? 'deep' : MR.MAPS && MR.MAPS[map] && MR.MAPS[map].airless ? 'moon' : 'mars'; if (w !== world) { world = w; apply(); } },
   setStorm(on){ storm = !!on; apply(); },
   find(){ if (!ctx || vol() === 0) return; const list = BELLS[world]; [0, 2, 4].forEach((k, i) => bell(list[Math.min(list.length - 1, k)] + (world === 'moon' ? 0 : 0), i * .12, 1.3)); },
   refresh(){ apply(); },

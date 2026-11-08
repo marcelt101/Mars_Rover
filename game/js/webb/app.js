@@ -263,7 +263,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=25'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=26'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -318,9 +318,9 @@ async function play(res, from){
     switch (e.type) {
       case 'slew': { ov.pic = null; ov.exp = 0; ov.spectrum = null; sys.fgs = -1; sys.fgsBad = false; logLine(`🛰️ Turning ${e.deg}° to ${t.name} with the reaction wheels…`);
         const a = [view.ra, view.dec], b = [t.ra, t.dec], f0 = view.fov, mid = Math.min(60, Math.max(f0, e.deg * .9 + 10)), f1 = fovFor(t);
-        sys.wheels = 1; await tween(1200 + Math.min(2600, e.deg * 30), (rt => k => { const p = rt(ease(k)); view.ra = p[0]; view.dec = p[1]; view.fov = k < .5 ? f0 + (mid - f0) * ease(k * 2) : mid + (f1 - mid) * ease(k * 2 - 1);
+        sys.wheels = 1; if (MR.music) MR.music.setMode('drive'); await tween(1200 + Math.min(2600, e.deg * 30), (rt => k => { const p = rt(ease(k)); view.ra = p[0]; view.dec = p[1]; view.fov = k < .5 ? f0 + (mid - f0) * ease(k * 2) : mid + (f1 - mid) * ease(k * 2 - 1);
           sys.h = lerpH(sys.h, e.h, k); sys.mom = lerpH(sys.mom, e.mom, k); })(W.route(a, b, sunMs)));
-        sys.wheels = 0; ov.pic = t; ov.cam = sys.cam; break; }
+        sys.wheels = 0; if (MR.music) MR.music.setMode('plan'); ov.pic = t; ov.cam = sys.cam; break; }
       case 'camera': sys.cam = e.cam; sys.filter = e.filter; if (ov.pic) ov.cam = e.cam; logLine(`🔧 Instrument: ${e.cam}, filter ${e.filter}.`); await tween(350, () => {}); break;
       case 'guide': { logLine(`⭐ Fine Guidance Sensor looking for a guide star…`); sys.fgsBad = false;
         for (let st = 0; st < 4; st++) { sys.fgs = st; ov.guide = st; renderSys(); if (!e.ok && st === 2) break; await tween(420, () => {}); }
@@ -358,6 +358,7 @@ function results(res, from){
   got.forEach(({p, g}) => { const k = p.id + '|' + p.cam, old = album[k]; if (!old || old.stars < g.stars) album[k] = {id:p.id, cam:p.cam, filter:p.filter, stars:g.stars, minutes:p.minutes, dither:p.dither, locked:p.locked, week:week.id}; });
   saveAlbum();
   const skipped = res.events.filter(e => e.type === 'skip' && e.why === 'sun').length, left = res.recorder.length, gd = goalDone(week);
+  if (got.length && MR.music) MR.music.find();   // the little find chime, like on Mars
   $('result').innerHTML = `<h2>${got.length ? 'Pictures from Webb!' : 'No pictures reached Earth'}</h2>
     <p class="est">The plan took ${Math.round(res.h)} of 168 hours.${skipped ? ` ${skipped} target(s) were in the Sun zone.` : ''}${left ? ` ⚠ ${left} picture(s) stayed on the recorder: they never reached Earth. Add "Send pictures home" at the end.` : ''}</p>
     ${gd.length === week.ids.length ? `<p style="color:#8fe3a0;font-weight:600">🎯 Week goal complete: ${esc(week.goal)}! ✅</p>` : `<p class="est">🎯 Week goal: ${esc(week.goal)} (${gd.length}/${week.ids.length}).</p>`}
@@ -568,7 +569,7 @@ const zbtn = (id, dir) => { const b = $(id);
   b.onpointerup = b.onpointerleave = b.onpointercancel = () => { clearTimeout(zoomHoldT); zoomHold = 0; b.classList.remove('on'); }; };
 zbtn('zin', 1); zbtn('zout', -1);
 $('tAuto').checked = autoZoom; $('tAuto').onchange = e => { autoZoom = e.target.checked; W.save('autozoom', autoZoom); };
-$('tSound').checked = DOC.sound; $('tSound').onchange = e => { DOC.sound = e.target.checked; };
+$('tSound').checked = DOC.sound; $('tSound').onchange = e => { DOC.sound = e.target.checked; if (MR.music) MR.music.refresh(); };
 const zoomBy = k => { const lo = steer ? Math.min(.3, fovFor(steer) * .8) : .3; view.fov = Math.max(lo, Math.min(70, view.fov * k)); };   // tiny targets (the quasar) may zoom in further
 addEventListener('wheel', e => { if (screen === 'steer') zoomBy(e.deltaY > 0 ? 1.12 : .89); }, {passive:true});
 let drag = null; cv.addEventListener('pointerdown', e => { if (screen === 'steer') drag = [e.clientX, e.clientY]; });
@@ -666,5 +667,6 @@ W.debug = {view};   // for tests: lets a test point the telescope directly
 const q = new URLSearchParams(location.search);
 if (q.get('week')) { week = W.WEEKS.find(w => w.id === q.get('week')) || week; sunMs = week.date; }
 if (q.get('screen') === 'weeks') weeks(); else if (q.get('screen') === 'plan') { startPlan(); } else if (q.get('screen') === 'code') { codeMode = true; startPlan(); } else if (q.get('screen') === 'steer') startSteer(); else weeks();   // opened from Crater Crew's level list: straight to the Academy and the weeks
+if (MR.music) MR.music.setWorld('deep');   // deep-space music
 requestAnimationFrame(frame);
 })();

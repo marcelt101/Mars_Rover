@@ -20,4 +20,9 @@ W.save = (k, v) => {
   const db = readDb(), p = db && Array.isArray(db.list) ? db.list.find(q => q.id === db.current) : null;   // read fresh, so nothing else in the save is lost
   try { if (p) { p.webb = p.webb || {}; p.webb[k] = v; localStorage.setItem(KEY, JSON.stringify(db)); } else localStorage.setItem('webb.' + k, JSON.stringify(v)); } catch (e) {}
 };
+/* The game's music (js/music.js) reads its settings from here: the same music on/off and volume as the rest of
+   Crater Crew, and the dashboard's SOUND switch mutes it too. */
+const MR = root.MR = root.MR || {};
+if (!MR.Store) MR.Store = { get settings(){ let st = {}; try { st = JSON.parse(localStorage.getItem('mr2.settings' + SLOT) || '{}') || {}; } catch (e) {}
+  return {...st, music:st.music !== false && !(root.DOC && !root.DOC.sound)}; } };
 })(window);
