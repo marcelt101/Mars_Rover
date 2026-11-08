@@ -5,6 +5,28 @@ Order agreed with the user. Real missions only; future missions are labeled "as 
 **Current focus (user's decision): quality over size.** No new maps or worlds for now. Polish the six maps and
 their campaigns that already exist, based on play-testing. Venera and Europa wait.
 
+## Polish: Rover Garage and supply crates
+**Status:** built behind `?preview=garage`, waiting for approval (together with `cadetback` and `helicam`).
+- Perks become parts in slots: wheels, cameras, power, radio, science tool (Cadets: cameras, science tool, radio,
+  computer). One part per slot; a better part of the same kind is fitted by itself.
+- Supply crates: one per rank-up (parts in a set order, the same pace as the old rank perks) and one for the first
+  finished expedition on each map (a random missing part). With every part owned, a crate holds XP and a sticker.
+- The crate opens with an animation and shows the part, what it does in the game and what it does in real life.
+- Garage button in the top bar (home and game) and on the map's dashboard (the parts strip with signal bars).
+- Parts are drawn on every rover (bigger dish, radio mast, extra cameras, laser, battery, wiper, scoop, chip) and
+  labeled in the garage picture. Changes are fitted from the next sol (sent with the plan in team games).
+- Players keep everything they had: their rank perks become owned parts.
+- Transmission picture on every Send: Earth's Deep Space Network dish sends dots to Mars. Stock antenna: few slow
+  dots. Better radio: through an orbiter. High-gain dish: many fast gold dots straight to the rover's gold dish.
+  It also names the next comms upgrade to look forward to.
+- Station modules (team, this expedition only): each finished campaign builds the next one (radio tower, solar
+  farm, storm garage, greenhouse); a Lab player can build them sooner. Station strip on the dashboard.
+- How it adds up: signal = radio × dish × radio tower; night charge = role + solar farm; storm dust = wiper × garage,
+  and a rover parked within 2 squares of the station during a storm gets no dust and a full charge.
+- A new part fitted mid-expedition sparkles on the rover with a note.
+- Going live: remove the `MR.GARAGE` preview check in `data.js` and raise `MR.VERSION` (team games send parts).
+- Later ideas: more parts per slot (higher levels), paint colors and flags as cosmetic crate prizes.
+
 ## Batch 7: Utopia Planitia, Mars (China's Zhurong rover, 2021)
 **Status:** approved and live for everyone (game version 5, so older devices can't join a Utopia game).
 - A new Mars map in the same style as the others. It unlocks after Gale.

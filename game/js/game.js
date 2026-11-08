@@ -180,7 +180,9 @@ function hostHandle(pid, m){
       G.plans[pid] = {actions:Array.isArray(m.actions) ? m.actions.slice(0, 60) : [], program:MR.validProgram(m.program) ? m.program : null, cancel:!!m.cancel, loop:!!m.loop};
       G.planSum[pid] = G.plans[pid].program ? ['program'] : G.plans[pid].actions.slice(0, 40).map(a => String(a.type).slice(0, 12));
       if (!G.readyPids.includes(pid)) G.readyPids.push(pid);
-      { const r = G.state && G.state.rovers.find(q => q.pid === pid); G.arrive[pid] = Date.now() + (r && team() ? MR.uplinkMs(G.state, r) : 0); }
+      { const r = G.state && G.state.rovers.find(q => q.pid === pid);
+        if (r && MR.GARAGE && Array.isArray(m.parts)) MR.refitRover(r, m.parts.slice(0, 6).map(String));   // garage changes fit from this sol
+        G.arrive[pid] = Date.now() + (r && team() ? MR.uplinkMs(G.state, r) : 0); }
       sendReady(); renderTeam(); maybeRun(); break;
     case 'unready': G.readyPids = G.readyPids.filter(x => x !== pid); delete G.plans[pid]; delete G.planSum[pid]; delete G.arrive[pid]; sendReady(); renderTeam(); break;
     case 'claim': case 'rename': { const site = G.state && G.state.sites && G.state.sites[m.i]; if (!site || !lp) return;
@@ -502,6 +504,7 @@ $('healthBtn').onclick = () => healthModal();
 function renderHud(){
   const r = myRover(); if (!r) return;
   const power = MR.usesPower(r);
+  if (MR.Garage) MR.Garage.hud(r);
   $('cSol').hidden = false; $('hSol').textContent = G.state.sol;
   $('cBat').hidden = !power; $('cTubes').hidden = !power;
   $('hBatTxt').textContent = r.bat + '%'; $('hBat').style.width = Math.min(100, r.bat / r.batMax * 100) + '%'; $('hBat').classList.toggle('low', r.bat < 25);
@@ -756,7 +759,7 @@ function renderTeam(){
 
 /* palette + plans */
 function cmdsForMe(){ const r = myRover(); return r ? MR.cmdsFor(r.role, r.job) : []; }
-function maxPlan(){ const r = myRover(); if (!r) return 12; return r.role === 'cadet' ? MR.CADET_LEN(r.rank) : MR.ROLES[r.role].maxCmd; }
+function maxPlan(){ const r = myRover(); if (!r) return 12; return r.role === 'cadet' ? MR.cadetLen(r) : MR.ROLES[r.role].maxCmd; }
 const KEYCAP = {forward:'W', left:'A', back:'S', right:'D', scan:'Q', analyze:'R', drill:'Space', dig:'G', charge:'C', photo:'P', catalog:'Q', make_water:'1', make_metal:'2', make_bricks:'3', make_glass:'4', build_solar_farm:'5', build_radio_tower:'6', build_garage:'7', build_greenhouse:'8'};
 function renderPalette(){
   const have = cmdsForMe(), btn = (k, cls = '') => { const d = MR.CMDS[k];
@@ -1098,7 +1101,7 @@ function sendPlan(){
   if (!pa.actions.length && myRole() === 'cadet') return;
   G.planInfo = pa.info || null; G.ready = true; MR.sfx.click(); $('solCard').innerHTML = '';
   G.plan.forEach(c => c.state = ''); G.cursor = null;
-  toHost({type:'plan', actions:pa.actions, program:pa.program || null, cancel:!!G.cancelProg && !pa.program, loop:!!(pa.info && pa.info.loops)});
+  toHost({type:'plan', actions:pa.actions, program:pa.program || null, cancel:!!G.cancelProg && !pa.program, loop:!!(pa.info && pa.info.loops), parts:MR.GARAGE && me() ? MR.equippedPerks(me()) : undefined});
   if (team()) uplink(true);
   if (pa.program && isCode(myRover())) $('editor').dataset.touched = '';
   renderPlan(); renderTeam();
@@ -1203,10 +1206,13 @@ function uplink(own){
   const gen = G.gen;
   const r = myRover(), ms = MR.uplinkMs(G.state, r);
   $('uplink').hidden = false;
-  $('ulSub').textContent = `${r ? MR.antennaName(r) : 'Stock antenna'}. Real signals take 4 to 24 minutes.` + (r && r.role !== 'cadet' && !(r.perks||[]).includes('hg_antenna') ? ' Radio and antenna perks make it faster.' : '');
+  let cv = $('ulCv'); if (MR.Garage && r && !cv) { cv = document.createElement('canvas'); cv.id = 'ulCv'; cv.width = 600; cv.height = 150; $('uplink').prepend(cv); }
+  if (cv) cv.hidden = !(MR.Garage && r);
+  if (MR.Garage && r) $('ulSub').innerHTML = `${MR.Garage.barsHtml(r)} ${MR.antennaName(r)}: ${Math.round(ms / 100) / 10} s here. Real signals take 4 to 24 minutes.` + (MR.Garage.nextComms(r) ? ' ' + MR.Garage.nextComms(r) : '');
+  else $('ulSub').textContent = `${r ? MR.antennaName(r) : 'Stock antenna'}. Real signals take 4 to 24 minutes.` + (r && r.role !== 'cadet' && !(r.perks||[]).includes('hg_antenna') ? ' Radio and antenna perks make it faster.' : '');
   return new Promise(res => { const t0 = performance.now();
     (function step(t){ const k = ms ? Math.min(1, (t - t0) / ms) : 1;
-      $('ulBar').style.width = (k*100) + '%';
+      $('ulBar').style.width = (k*100) + '%'; if (cv && !cv.hidden) MR.Garage.drawUplink(cv, k, r, t);
       $('ulTitle').textContent = `Signal on its way to Mars… ${Math.max(0, Math.ceil((ms - (t - t0)) / 1000))} s`;
       if (own && (gen !== G.gen || !G.ready || G.phase !== 'plan')) { $('uplink').hidden = true; $('ulBar').style.width = '0'; res(); return; }
       if (k < 1) requestAnimationFrame(step); else { $('uplink').hidden = true; $('ulBar').style.width = '0'; if (own) MR.sfx.click(); res(); } })(t0); });

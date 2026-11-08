@@ -30,6 +30,8 @@ function spawnCells(map, world){
   return cells;
 }
 function cleanPerks(p){
+  /* Garage: one part per slot, any part the player's profile owns (checked on their own device). */
+  if (MR.GARAGE) { const out = [], used = new Set(); (p.perks || []).forEach(k => { if (MR.partOK(k, p.role) && !used.has(MR.PARTS[k].slot)) { used.add(MR.PARTS[k].slot); out.push(k); } }); return out; }
   if (p.role === 'cadet') return [];
   const slots = MR.ROLES[p.role].slots;
   return (p.perks || []).filter(k => MR.PERKS[k] && (p.rank|0) >= MR.PERKS[k].rank).slice(0, slots);
@@ -42,6 +44,12 @@ MR.makeRover = (p, cell, map) => {
   r.perks = cleanPerks(p);
   if (r.perks.includes('big_battery')) r.batMax = r.bat = 150;
   return r;
+};
+/* Fit new parts between sols (a team game sends them with the plan). */
+MR.refitRover = (r, perks) => {
+  r.perks = cleanPerks({role:r.role, rank:r.rank, perks});
+  const max = r.perks.includes('big_battery') ? 150 : 100;
+  if (max !== r.batMax) { r.bat = max > r.batMax ? r.bat + (max - r.batMax) : Math.min(r.bat, max); r.batMax = max; }
 };
 
 MR.newGame = ({map, seed, players, day}) => {
@@ -127,6 +135,9 @@ function campaignStep(st, evs){
   if (!st.camp) { st.won = true; evs.push({t:'win', msg:{k:'good', text:'Expedition complete! Every objective is done.'}}); return; }
   const list = st.camp.day ? [MR.dayCampaign(st.camp.day)] : MR.CAMPAIGNS[st.map], C = list[st.camp.i], last = st.camp.i >= list.length - 1;
   evs.push({t:'campaign', i:st.camp.i, id:C.id, last, msg:{k:'good', text:`Campaign complete: ${C.name}!`}});
+  /* Garage preview: each finished campaign adds the next station module for the whole team (a Lab player can build them sooner). */
+  if (MR.GARAGE && !st.camp.day && !last && st.lab) { const up = MR.STATION_ORDER.find(k => !built(st, k));
+    if (up) { st.lab.built[up] = true; evs.push({t:'build', up, auto:true, mats:st.lab.mat, msg:{k:'good', text:`New at the station: ${MR.UPGRADES[up].name}! ${MR.UPGRADES[up].desc}`}}); } }
   if (last) { st.won = true; evs.push({t:'win', msg:{k:'good', text: st.camp.day ? `Day ${st.camp.day} complete!` : 'Expedition complete! Every campaign is done.'}}); return; }
   startCampaign(st, st.camp.i + 1, st.camp.n);
   evs.push({t:'campnext', i:st.camp.i, goals:st.goals, camp:st.camp, msg:{k:'info', text:`New campaign: ${list[st.camp.i].name}.`}});
@@ -267,7 +278,7 @@ function act(st, r, a, E){
     }
     case 'drill': {
       if (cadet) {
-        const opts = [[0,0]].concat(MR.cadetMagnet(r.rank) ? [[1,0],[-1,0],[0,1],[0,-1]] : []);
+        const opts = [[0,0]].concat(MR.cadetGrab(r) ? [[1,0],[-1,0],[0,1],[0,-1]] : []);
         /* The helicopter has no drill (like Ingenuity): it photographs gems from the air and marks them for the diggers. */
         const cam = MR.heliCam(r), snaps = st.snaps || {};
         let i = -1;
@@ -361,7 +372,7 @@ function labAct(st, r, a, E){
   return true;
 }
 function expand(r, actions){
-  const out = [], role = MR.ROLES[r.role], max = r.role === 'cadet' ? MR.CADET_LEN(r.rank) : r.role === 'explorer' ? role.maxCmd : 999;
+  const out = [], role = MR.ROLES[r.role], max = r.role === 'cadet' ? MR.cadetLen(r) : r.role === 'explorer' ? role.maxCmd : 999;
   (actions || []).slice(0, max).forEach(a => {
     const idx = a.idx, n = Math.max(1, Math.min(20, a.arg|0 || 1));
     if (a.type === 'forward') for (let k=0;k<n;k++) out.push({k:'step', sgn:1, idx});
@@ -552,13 +563,15 @@ MR.simulateSol = (prev, plans) => {
   if (pe.length) timeline.push(pe);
   spawnCadetGems(st, timeline);
   if (!st.won) {
-    const charges = [], wasStorm = storm(st), airless = MR.MAPS[st.map].airless, cold = st.wx && st.wx.lo < -82;
+    const charges = [], sheltered = [], wasStorm = storm(st), airless = MR.MAPS[st.map].airless, cold = st.wx && st.wx.lo < -82;
     st.rovers.forEach(r => { if (!isPower(r)) return;
       const before = r.bat, heater = airless ? 3 : wasStorm ? 2 : cold ? 4 : 3;
       let cleaned = false;
-      if (!airless) { r.dust = Math.min(100, (r.dust || 0) + (wasStorm ? 8 : 1.5) * (has(r,'dust_wiper') ? .5 : 1) * (built(st,'garage') ? .5 : 1));
+      const S = MR.MAPS[st.map].station, safe = MR.GARAGE && wasStorm && built(st,'garage') && Math.max(Math.abs(r.x - S.x - .5), Math.abs(r.y - S.y - .5)) <= 2.5;
+      if (safe) sheltered.push(r.name);
+      if (!airless && !safe) { r.dust = Math.min(100, (r.dust || 0) + (wasStorm ? 8 : 1.5) * (has(r,'dust_wiper') ? .5 : 1) * (built(st,'garage') ? .5 : 1));
         if (r.dust > 20 && rnd(st) < .06) { r.dust = 0; cleaned = true; } }
-      const solar = Math.round((MR.ROLES[r.role].solar + (built(st,'solar_farm') ? 10 : 0)) * (wasStorm ? .5 : 1) * (1 - (r.dust || 0)/300));
+      const solar = Math.round((MR.ROLES[r.role].solar + (built(st,'solar_farm') ? 10 : 0)) * (wasStorm && !safe ? .5 : 1) * (1 - (r.dust || 0)/300));
       r.bat = Math.max(0, Math.min(r.batMax, r.bat + solar - heater));
       charges.push({pid:r.pid, before, bat:r.bat, solar, heater, dust:Math.round(r.dust || 0), cleaned}); });
     st.hist = (st.hist || []).concat([{sol:st.sol, r:Object.fromEntries(st.rovers.filter(isPower).map(r => [r.pid, {b:r.bat, d:Math.round(r.dust || 0), s:r.odo || 0, w:Math.round(r.wheels ?? 100)}]))}]).slice(-80);
@@ -567,6 +580,7 @@ MR.simulateSol = (prev, plans) => {
     const lucky = charges.filter(c => c.cleaned).map(c => st.rovers.find(q2 => q2.pid === c.pid).name);
     const night = {t:'night', charges, sol:st.sol, wx:st.wx, storm:wasStorm, msg:{k:'info', text:`Night falls. ${wasStorm ? 'Dust blocks the sun, so the panels charge only half. ' : ''}Solar panels recharge the rovers and the heaters keep them warm. Sol ${st.sol} begins.`}};
     const evs = [night];
+    if (sheltered.length) evs.push({t:'gust', msg:{k:'good', text:`${sheltered.join(' and ')} waited out the dust storm in the storm garage: no new dust and a full charge.`}});
     if (lucky.length) evs.push({t:'gust', msg:{k:'good', text:`A lucky gust of wind cleaned ${lucky.join(' and ')}'s solar panels! That happened to Opportunity too.`}});
     const f = st.wx.forecast && st.wx.forecast.find(x => x.storm);
     if (st.wx.storm) evs.push({t:'wx', msg:{k:'warn', text:'Dust storm today! Rovers see a little less and the panels will charge only half tonight.'}});

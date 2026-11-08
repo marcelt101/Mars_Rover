@@ -590,6 +590,27 @@ function drawHeli(c, r, a, t, s, lod){
   c.fillStyle = '#24456a'; rr(c, -.09*s, -.06*s, .18*s, .12*s, .015*s); c.fill();
   if (lod >= 1) { c.strokeStyle = 'rgba(140,190,240,.5)'; c.lineWidth = s*.01; c.beginPath(); c.moveTo(0, -.06*s); c.lineTo(0, .06*s); c.moveTo(-.09*s, 0); c.lineTo(.09*s, 0); c.stroke(); }
 }
+/* Garage parts drawn on any rover, bold enough to see on the map. The big rover draws its own dish and radio mast. */
+function drawParts(c, r, s, lod, own){
+  if (!MR.GARAGE) return; const P = k => (r.perks || []).includes(k);
+  if (!(r.perks || []).length) return;
+  c.save();
+  if (P('big_battery')) { c.fillStyle = '#2f3b33'; rr(c, -.3*s, .04*s, .16*s, .1*s, .015*s); c.fill(); c.fillStyle = '#86d48f'; c.fillRect(-.285*s, .07*s, .13*s, .04*s);
+    if (lod >= 1) { c.fillStyle = '#0d1a10'; c.fillRect(-.23*s, .065*s, .012*s, .05*s); c.fillRect(-.244*s, .084*s, .04*s, .012*s); } }
+  if (P('dust_wiper')) { c.strokeStyle = '#d9dde1'; c.lineWidth = s*.03; c.lineCap = 'round'; c.beginPath(); c.moveTo(-.28*s, -.02*s); c.lineTo(.02*s, -.2*s); c.stroke(); c.strokeStyle = '#2b3036'; c.lineWidth = s*.014; c.beginPath(); c.moveTo(-.26*s, -.04*s); c.lineTo(.0*s, -.2*s); c.stroke(); }
+  if (P('sharp_eyes')) [-1, 1].forEach(sd => { c.fillStyle = '#1d3f66'; c.beginPath(); c.arc(sd*.22*s, -.36*s, .05*s, 0, Math.PI*2); c.fill(); c.fillStyle = '#7fc4ff'; c.beginPath(); c.arc(sd*.22*s - .012*s, -.372*s, .02*s, 0, Math.PI*2); c.fill(); });
+  if (P('supercam')) { const g = c.createRadialGradient(0, -.4*s, 0, 0, -.4*s, .1*s); g.addColorStop(0, 'rgba(255,90,70,.95)'); g.addColorStop(1, 'rgba(255,90,70,0)'); c.fillStyle = g; c.beginPath(); c.arc(0, -.4*s, .1*s, 0, Math.PI*2); c.fill(); c.fillStyle = '#ff5a46'; c.beginPath(); c.arc(0, -.4*s, .035*s, 0, Math.PI*2); c.fill(); }
+  if (P('scoop')) { c.strokeStyle = '#b9bec4'; c.lineWidth = s*.04; c.lineCap = 'round'; c.beginPath(); c.moveTo(-.26*s, -.22*s); c.lineTo(-.42*s, -.44*s); c.stroke(); c.fillStyle = '#f0bf5a'; c.beginPath(); c.arc(-.44*s, -.47*s, .07*s, 0, Math.PI); c.fill(); }
+  const mem = ['memory_3','memory_2','memory_1'].find(P);
+  if (mem) { const z = (.08 + .02*MR.PARTS[mem].lvl)*s; c.fillStyle = '#1f6f4a'; c.fillRect(-z/2, .2*s, z, z*.7); c.fillStyle = '#9ff0c4'; c.fillRect(-z/4, .2*s + z*.18, z/2, z*.34);
+    if (lod >= 1) { c.fillStyle = '#d9c46a'; for (let k = 0; k < 4; k++) { c.fillRect(-z/2 + (k + .5)*z/4 - .006*s, .19*s, .012*s, .012*s); } } }
+  if (!own) {
+    if (MR.hasPart(r, 'better_radio')) { c.strokeStyle = '#4a5057'; c.lineWidth = s*.02; c.beginPath(); c.moveTo(-.3*s, .3*s); c.lineTo(-.36*s, .02*s); c.stroke(); c.fillStyle = '#ff6b5a'; c.beginPath(); c.arc(-.36*s, .02*s, .03*s, 0, Math.PI*2); c.fill(); }
+    if (P('hg_antenna')) { const hx = .27*s, hy = .24*s, hr = .12*s, g = c.createLinearGradient(hx - hr, hy - hr, hx + hr, hy + hr); g.addColorStop(0, '#f6dc94'); g.addColorStop(1, '#a8812f');
+      c.fillStyle = g; c.beginPath(); for (let k = 0; k < 6; k++) { const an = k/6*Math.PI*2 + .5; c.lineTo(hx + Math.cos(an)*hr, hy + Math.sin(an)*hr); } c.closePath(); c.fill(); c.strokeStyle = '#8a6a24'; c.lineWidth = s*.012; c.stroke(); }
+  }
+  c.restore();
+}
 R.drawPreview = (cv, r, moonPic) => {
   const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
   const g = c.createRadialGradient(cv.width/2, cv.height/2, 10, cv.width/2, cv.height/2, cv.width*.7); g.addColorStop(0, '#b5603d'); g.addColorStop(1, '#5a2a1a');
@@ -597,6 +618,7 @@ R.drawPreview = (cv, r, moonPic) => {
   const s = cv.width*.62; c.save(); c.translate(cv.width/2, cv.height/2);
   const moon = moonPic != null ? moonPic : R.view && MR.MAPS[R.view.map].airless;
   if (r.job === 'heli') drawHeli(c, r, {}, performance.now(), s, 2); else if (r.job === 'buggy') drawBuggy(c, r, {}, 0, s, 2); else if (r.job === 'lab') drawLab(c, r, s, 2); else if (moon) drawLRV(c, r, {}, 0, s, 2); else if (r.zh) drawZhurong(c, r, {}, 0, s, 2); else { c.save(); c.translate(s*.05, s*.06); roverShadow(c, r, s); c.restore(); drawGroundRover(c, r, {}, 0, s, 2); mastShadow(c, r, s, .16*s, .2*s); }
+  if (r.job !== 'lab') drawParts(c, r, s, 2, !(r.job === 'heli' || r.job === 'buggy' || moon || r.zh));
   if ((r.dust || 0) > 10) { c.fillStyle = `rgba(200,140,90,${Math.min(.5, r.dust/200)})`; c.beginPath(); c.arc(0, 0, s*.45, 0, Math.PI*2); c.fill(); }
   c.restore();
 };
@@ -623,6 +645,7 @@ function drawRover(c, r, a, t, ts, ghost){
   if (a.busy || a.wob > 0) c.translate((Math.random()-.5)*s*.03, (Math.random()-.5)*s*.03);
   const moon = R.view && MR.MAPS[R.view.map].airless;
   if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod); else if (moon) drawLRV(c, r, a, t, s, lod); else if (R.view && R.view.map === 'utopia') drawZhurong(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
+  if (r.job !== 'lab') drawParts(c, r, s, lod, !(heli || r.job === 'buggy' || moon || (R.view && R.view.map === 'utopia')));
   if (perse && lod >= 1) { const an = -a.ang*Math.PI/180, ox = .2*s, oy = .25*s; mastShadow(c, r, s, ox*Math.cos(an) - oy*Math.sin(an), ox*Math.sin(an) + oy*Math.cos(an)); }
   c.restore();
 }

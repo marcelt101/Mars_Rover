@@ -716,3 +716,59 @@ body.ui-phone[data-scr="scrGame"] .dmpops{bottom:90px}
 .pcard.new.first{border:2px solid var(--signal);background:rgba(88,207,190,.14);color:var(--fg);flex-direction:column;align-items:flex-start;gap:2px;padding:16px 18px;grid-column:span 2;animation:ring 1.6s ease-in-out infinite}
 .pcard.new.first b{font-size:19px;color:var(--signal)}
 @media (prefers-reduced-motion:reduce){.pcard.new.first{animation:none}}
+/* Rover Garage and supply crates (preview: garage) */
+.sigbars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;vertical-align:-2px}
+.sigbars i{display:block;width:4px;background:#3a4653;border-radius:1px}
+.sigbars i.on{background:var(--signal)}
+.chip.parts{pointer-events:auto;cursor:pointer;font:inherit;color:inherit;text-align:left}
+.chip.parts .v{display:flex;align-items:center;gap:3px;font-size:16px}
+.chip.parts:hover{border-color:var(--signal)}
+.garage .gtop{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;align-items:start}
+.gview canvas{width:100%;aspect-ratio:1;border-radius:14px;border:2px solid var(--line);display:block}
+.gmeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.gnote{font-size:13px;margin:6px 0 0}
+.gslots{display:grid;gap:8px}
+.gslot{display:flex;gap:12px;align-items:center;text-align:left;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--raise);color:var(--fg);cursor:pointer;font:inherit}
+.gslot small{display:block;color:var(--muted);font-size:12px}
+.gslot b{font-family:var(--display);font-size:16px}
+.gslot .ge{color:var(--soft);font-size:12.5px;margin-top:2px}
+.gslot.sel{border-color:var(--signal);box-shadow:0 0 0 3px rgba(88,207,190,.15)}
+.gslot.empty .gi{opacity:.35;filter:grayscale(1)}
+.gi{font-size:30px;line-height:1;width:40px;text-align:center;flex:none}
+.gparts{display:flex;gap:8px;flex-wrap:wrap}
+.gpart{position:relative;width:104px;padding:10px 6px 8px;border-radius:12px;border:2px solid var(--line);background:var(--raise);color:var(--fg);cursor:pointer;display:grid;justify-items:center;gap:4px;font:inherit}
+.gpart small{font-size:12px;line-height:1.2;text-align:center}
+.gpart em{position:absolute;top:-8px;right:-6px;font-style:normal;font-size:10.5px;font-weight:700;background:var(--signal);color:#0b1015;border-radius:999px;padding:1px 6px}
+.gpart.sel{border-color:var(--sci)}
+.gpart.locked{opacity:.55}
+.gpart.locked .gi{font-family:var(--display);font-weight:700;color:var(--muted)}
+.gdet{display:flex;gap:16px;align-items:flex-start;margin-top:14px;padding:14px;border-radius:14px;background:#0b1015;border:1px solid var(--line)}
+.gdet h3{margin:0 0 6px;font-family:var(--display)}
+.gdet p{margin:0 0 8px}
+.gbig{font-size:64px;line-height:1;flex:none;filter:drop-shadow(0 0 14px rgba(240,191,90,.35))}
+.gbig.locked{font-family:var(--display);font-weight:700;color:var(--muted);filter:none;width:64px;text-align:center}
+@media (max-width:640px){.garage .gtop{grid-template-columns:1fr}.gview{max-width:260px;margin:0 auto}.gbig{font-size:48px}}
+.crateov{position:fixed;inset:0;z-index:60;display:grid;place-items:center;align-content:center;gap:18px;padding:16px;background:radial-gradient(circle,rgba(10,14,19,.75),rgba(10,14,19,.94) 70%);animation:crfade .3s ease-out}
+.crbox{position:relative;width:220px;height:210px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.crbox .rays{position:absolute;left:50%;top:40%;width:340px;height:340px;margin:-170px 0 0 -170px;border-radius:50%;background:repeating-conic-gradient(rgba(240,191,90,.22) 0 10deg,transparent 10deg 24deg);opacity:0;animation:rays 4s linear 1.1s infinite,crfade .6s ease-out 1.1s forwards}
+.crbase,.crlid{position:relative;width:190px;border:4px solid #2b3036;display:grid;place-items:center;font-family:var(--mono);font-weight:700;letter-spacing:.12em;font-size:11px;color:#1b1f24;background:linear-gradient(#a9b0b7,#7d858d)}
+.crbase{height:84px;border-radius:6px 6px 12px 12px;background:repeating-linear-gradient(135deg,#f0bf5a 0 14px,#2b3036 14px 28px) top/100% 16px no-repeat,linear-gradient(#a9b0b7,#7d858d)}
+.crbase span{margin-top:14px;background:#d9dde1;padding:2px 6px;border-radius:3px}
+.crlid{height:40px;border-radius:10px 10px 4px 4px;transform-origin:8% 100%;animation:crlid 1.4s ease-out forwards,crshake .5s ease-in-out 2}
+.crpart{position:absolute;bottom:60px;font-size:84px;line-height:1;opacity:0;transform:translateY(20px) scale(.3);filter:drop-shadow(0 0 22px rgba(255,220,140,.8));animation:crpart 1.6s cubic-bezier(.2,1.4,.4,1) .9s forwards}
+.crcard{max-width:520px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;opacity:0;animation:crfade .5s ease-out 1.6s forwards}
+.crcard small{color:var(--sci);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.crcard h2{margin:4px 0 2px;font-family:var(--display)}
+.crcard .slotname{color:var(--muted);margin:0 0 8px}
+.crcard p{margin:0 0 8px}
+@keyframes crfade{from{opacity:0}to{opacity:1}}
+@keyframes crshake{0%,100%{transform:rotate(0)}25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
+@keyframes crlid{0%,70%{transform:none}100%{transform:translate(-30px,-60px) rotate(-75deg)}}
+@keyframes crpart{to{opacity:1;transform:translateY(-70px) scale(1)}}
+@keyframes rays{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.crlid,.crpart,.crbox .rays,.crcard{animation-duration:.01s;animation-delay:0s}}
+.garage .pill,.gdet .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--raise);border:1px solid var(--line);font-size:13px}
+.gdet .pill.ok{color:var(--signal);border-color:var(--signal)}
+#ulCv{width:100%;aspect-ratio:4/1;border-radius:10px;border:1px solid var(--line);display:block}
+.chip.parts .mod{opacity:.3;filter:grayscale(1)}
+.chip.parts .mod.on{opacity:1;filter:none;color:var(--sci)}

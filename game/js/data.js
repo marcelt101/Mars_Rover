@@ -3,6 +3,7 @@
 const MR = window.MR = window.MR || {};
 
 MR.VERSION = 5;
+MR.GARAGE = (MR.PREVIEW || []).includes('garage');   // Rover Garage, waiting for approval
 MR.MW = 64; MR.MH = 44; MR.BASE = 32;
 MR.MAX_PLAYERS = 32;   /* a whole class plus the teacher */
 
@@ -116,7 +117,7 @@ MR.MATS = {water:{name:'Water', from:{salts:2, clay:1, serpentine:1}}, metal:{na
 MR.UPGRADES = {
   solar_farm:  {name:'Solar farm', icon:'☼', cost:{glass:2, metal:2}, desc:'Every rover charges 10% more each night.'},
   radio_tower: {name:'Radio tower', icon:'⌁', cost:{metal:3}, desc:'Signals reach the rovers 25% faster.'},
-  garage:      {name:'Garage', icon:'⌂', cost:{bricks:3, metal:1}, desc:'Wheels and solar panels wear half as fast.'},
+  garage:      {name:MR.GARAGE ? 'Storm garage' : 'Garage', icon:'⌂', cost:{bricks:3, metal:1}, desc:MR.GARAGE ? 'Wheels and solar panels wear half as fast, and rovers parked next to the station are safe from dust storms.' : 'Wheels and solar panels wear half as fast.'},
   greenhouse:  {name:'Greenhouse', icon:'❦', cost:{water:3, bricks:2}, desc:'Everyone earns 10% more XP.'},
 };
 /* Waiting for approval: the Cadet helicopter takes pictures instead of digging (?preview=helicam). */
@@ -272,6 +273,46 @@ MR.PERKS = {
   better_radio: {name:'Better radio', tier:'Common', rank:1, icon:'≋', desc:'Your commands reach the rover 30% faster.', real:'Rovers usually talk to Earth through orbiters like Mars Reconnaissance Orbiter, using a UHF radio.'},
   hg_antenna:  {name:'High-gain antenna', tier:'Rare', rank:3, icon:'⌔', desc:'Your commands reach the rover twice as fast.', real:"Perseverance's high-gain antenna can talk straight to Earth without an orbiter."},
 };
+/* Rover Garage (waiting for approval: ?preview=garage). Perks become parts in slots, earned from supply crates, shown
+   on the rover and the dashboard. Each part says what it does in the game and in real life. */
+MR.SLOTS = {
+  wheels:  {name:'Wheels', icon:'🛞'}, cameras:{name:'Cameras', icon:'📷'}, power:{name:'Power', icon:'🔋'},
+  comms:   {name:'Radio', icon:'📡'}, tool:{name:'Science tool', icon:'🔬'}, computer:{name:'Computer', icon:'💾'},
+};
+MR.STATION_ORDER = ['radio_tower','solar_farm','garage','greenhouse'];
+MR.slotsFor = role => role === 'cadet' ? ['cameras','tool','comms','computer'] : ['wheels','cameras','power','comms','tool'];
+/* lvl ranks parts in the same slot: a new part with a higher lvl is fitted by itself. */
+MR.PARTS = {
+  wide_wheels:  {slot:'wheels', lvl:1, icon:'🛞', name:'Big tough wheels', kid:'Big wheels',
+    game:'Dunes and hills cost 2% less power per square.', real:'Sharp rocks punched holes in Curiosity\'s wheels, so Perseverance got bigger, thicker wheels with curved treads.'},
+  sharp_eyes:   {slot:'cameras', lvl:1, icon:'👀', name:'Extra cameras', kid:'Sharp eyes', cadet:true,
+    game:'See 1 square farther and scan 1 square wider.', kidGame:'You see 1 square farther.', real:'Perseverance has 23 cameras, more than any Mars mission before it.'},
+  big_battery:  {slot:'power', lvl:1, icon:'🔋', name:'Big battery', kid:'Big battery',
+    game:'The battery holds 150% instead of 100%.', real:'Rovers store energy in lithium-ion batteries, like a phone but much tougher.'},
+  dust_wiper:   {slot:'power', lvl:1, icon:'🧹', name:'Dust wiper', kid:'Dust wiper',
+    game:'Dust builds up on your solar panels half as fast.', real:'Opportunity kept going for almost 15 years, partly because Martian winds blew the dust off its panels.'},
+  better_radio: {slot:'comms', lvl:1, icon:'📻', name:'Better radio', kid:'Better radio', cadet:true,
+    game:'Your commands reach the rover 30% faster.', kidGame:'Your GO reaches Mars faster.', real:'Rovers usually talk to Earth through orbiters like Mars Reconnaissance Orbiter, using a UHF radio.'},
+  hg_antenna:   {slot:'comms', lvl:2, icon:'📡', name:'High-gain antenna', kid:'Big dish antenna', cadet:true,
+    game:'Your commands reach the rover about 3 times as fast (it works with the radio too).', kidGame:'Your GO reaches Mars super fast.', real:"Perseverance's high-gain antenna is a flat dish that can talk straight to Earth without an orbiter."},
+  supercam:     {slot:'tool', lvl:1, icon:'🔦', name:'SuperCam laser', kid:'Laser',
+    game:'Analyze also zaps signals up to 3 squares straight ahead.', real:'SuperCam zaps rocks with a laser from up to 7 meters away and reads the glow to learn what they are made of.'},
+  scoop:        {slot:'tool', lvl:1, icon:'🥄', name:'Scoop arm', kid:'Scoop arm', cadetOnly:true,
+    game:'Also gets gems in the squares right next to you.', kidGame:'Also gets gems right next to you.', real:'The Viking landers dug up Mars dirt with a scoop on a long arm in 1976.'},
+  memory_1:     {slot:'computer', lvl:1, icon:'💾', name:'Memory chip', kid:'Memory chip', cadetOnly:true,
+    game:'Plan 6 pictures at once.', kidGame:'Plan 6 pictures at once.', real:'Rover computers are built tough against radiation from space, so they are much slower than your phone.'},
+  memory_2:     {slot:'computer', lvl:2, icon:'🧠', name:'Faster computer', kid:'Faster computer', cadetOnly:true,
+    game:'Plan 7 pictures at once.', kidGame:'Plan 7 pictures at once.', real:'Perseverance\'s main computer is about as fast as a home computer from the late 1990s, because toughness matters more than speed.'},
+  memory_3:     {slot:'computer', lvl:3, icon:'🖥️', name:'Driving computer', kid:'Driving computer', cadetOnly:true,
+    game:'Plan 8 pictures at once.', kidGame:'Plan 8 pictures at once.', real:'Perseverance has an extra computer that helps it find its own way across the rocks.'},
+};
+MR.partOK = (k, role) => { const P = MR.PARTS[k]; return !!P && (role === 'cadet' ? !!(P.cadet || P.cadetOnly) : !P.cadetOnly); };
+/* The order rank-up crates hand parts out in (the same pace as the old rank perks). Other crates pick at random. */
+MR.PART_ORDER = {cadet:['better_radio','memory_1','scoop','hg_antenna','sharp_eyes','memory_2','memory_3'],
+  other:['better_radio','wide_wheels','sharp_eyes','hg_antenna','supercam','big_battery','dust_wiper']};
+MR.hasPart = (r, k) => (r.perks || []).includes(k) || (k === 'better_radio' && MR.GARAGE && (r.perks || []).includes('hg_antenna'));
+MR.cadetLen = r => MR.GARAGE ? 5 + Math.max(0, ...(r.perks || []).map(k => k.startsWith('memory_') ? MR.PARTS[k].lvl : 0)) : MR.CADET_LEN(r.rank);
+MR.cadetGrab = r => MR.GARAGE ? (r.perks || []).includes('scoop') : MR.cadetMagnet(r.rank);
 /* Cadet perks are automatic. */
 MR.CADET_LEN = rank => 5 + Math.min(3, rank);
 MR.cadetMagnet = rank => rank >= 2;
@@ -280,15 +321,15 @@ MR.cadetMagnet = rank => rank >= 2;
 MR.uplinkMs = (st, r) => {
   const h = Math.sin((st.seed % 100000) * 12.9898 + st.sol * 78.233) * 43758.5453, frac = h - Math.floor(h);
   let ms = 5000 + 5000 * frac;
-  const radio = r && (r.role === 'cadet' ? r.rank >= 1 : (r.perks || []).includes('better_radio'));
-  const antenna = r && (r.role === 'cadet' ? r.rank >= 3 : (r.perks || []).includes('hg_antenna'));
+  const radio = r && (MR.GARAGE ? MR.hasPart(r, 'better_radio') : r.role === 'cadet' ? r.rank >= 1 : (r.perks || []).includes('better_radio'));
+  const antenna = r && (MR.GARAGE ? MR.hasPart(r, 'hg_antenna') : r.role === 'cadet' ? r.rank >= 3 : (r.perks || []).includes('hg_antenna'));
   if (radio) ms *= .7;
   if (antenna) ms *= .5;
   if (st.lab && st.lab.built && st.lab.built.radio_tower) ms *= .75;
   const q = new URLSearchParams(location.search).get('uplink');
   return ms * (q != null ? Math.max(0, +q) : 1);
 };
-MR.antennaName = r => { const radio = r.role === 'cadet' ? r.rank >= 1 : (r.perks||[]).includes('better_radio'), ant = r.role === 'cadet' ? r.rank >= 3 : (r.perks||[]).includes('hg_antenna');
+MR.antennaName = r => { const radio = MR.GARAGE ? MR.hasPart(r, 'better_radio') : r.role === 'cadet' ? r.rank >= 1 : (r.perks||[]).includes('better_radio'), ant = MR.GARAGE ? MR.hasPart(r, 'hg_antenna') : r.role === 'cadet' ? r.rank >= 3 : (r.perks||[]).includes('hg_antenna');
   return ant && radio ? 'High-gain antenna and better radio' : ant ? 'High-gain antenna' : radio ? 'Better radio' : 'Stock antenna'; };
 
 /* Maps */

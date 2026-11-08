@@ -148,7 +148,11 @@ UI.inventory = tab => {
     const eq = MR.equippedPerks(p), own = MR.ownedPerks(p), slots = MR.ROLES[p.role].slots;
     body = `<div class="row" style="gap:14px">${UI.avatar(p)}<div style="flex:1;min-width:200px"><b style="font-family:var(--display);font-size:20px">${esc(ri.name)}</b><div class="xpbar"><span style="width:${Math.round(ri.frac*100)}%"></span></div><small class="muted">${p.xp} XP${ri.next ? ` · ${ri.toNext} XP to ${ri.next}` : ' · top rank!'}</small></div><button class="btn" id="invEdit">Edit name, color or role</button></div>
       <div class="statgrid">${MR.RANKS.map((r, i) => `<div class="stat" style="${i <= ri.rank ? 'border-color:#4a5b6b' : 'opacity:.5'}"><div class="k">${r.xp} XP</div><div class="v" style="font-size:15px">${r.name}</div></div>`).join('')}</div>`;
-    if (p.role === 'cadet') {
+    if (MR.GARAGE) {
+      const g = MR.garageOf(p), eq = MR.slotsFor(p.role).map(sl => g.eq[sl]).filter(Boolean);
+      body += `<h3 class="t">Rover parts</h3><div class="perks">${eq.map(k => `<div class="perk" aria-pressed="true"><span class="pi">${MR.PARTS[k].icon}</span><span><b>${esc(p.role === 'cadet' ? MR.PARTS[k].kid : MR.PARTS[k].name)}</b><small>${esc(p.role === 'cadet' && MR.PARTS[k].kidGame ? MR.PARTS[k].kidGame : MR.PARTS[k].game)}</small></span></div>`).join('') || '<p class="muted">No parts yet. Supply crates bring new parts.</p>'}</div>
+        <div class="row"><button class="btn primary" id="invGarage">🔧 Open the Rover Garage</button></div>`;
+    } else if (p.role === 'cadet') {
       body += `<h3 class="t">Cadet powers</h3><div class="perks">
         <div class="perk" aria-pressed="true"><span class="pi">↑</span><span><b>${MR.CADET_LEN(ri.rank)} pictures per plan</b><small>Rank up to plan longer trips (up to 8).</small></span></div>
         <div class="perk ${MR.cadetMagnet(ri.rank) ? '' : 'locked'}" aria-pressed="${MR.cadetMagnet(ri.rank)}"><span class="pi">✦</span><span><b>Gem magnet</b><small>Dig grabs gems right next to you. ${MR.cadetMagnet(ri.rank) ? 'Unlocked!' : 'Unlocks at Field Geologist.'}</small></span></div>
@@ -176,6 +180,7 @@ UI.inventory = tab => {
   if (invTab === 'notebook' || invTab === 'photos') MR.LogUI.wireInventory(p, () => UI.inventory());
   $('sheet').querySelectorAll('[data-el]').forEach(b => b.onclick = () => elementModal(b.dataset.el, p));
   if ($('invEdit')) $('invEdit').onclick = () => UI.profileModal(p);
+  if ($('invGarage')) $('invGarage').onclick = () => UI.garage();
   if ($('rovAbout')) $('rovAbout').onclick = e => { const b = e.target.closest('[data-info]'); if (b) UI.roverInfo(b.dataset.info, false, () => UI.inventory('rover')); };
   if ($('perkList')) $('perkList').onclick = e => { const b = e.target.closest('.perk'); if (!b || b.disabled) return;
     const k = b.dataset.perk, eq = MR.equippedPerks(p);
@@ -293,8 +298,9 @@ UI.notify = (notices, cadet) => {
     } else if (n.k === 'sticker') { const x = MR.STICKERS.find(q => q.id === n.id); if (n.isNew || x.tier !== 'C') UI.toast(x.e, MR.STICKER_TIER[x.tier].col, n.isNew ? `New sticker: ${x.name}!` : `${MR.STICKER_TIER[x.tier].name}: ${x.name}`, 'Press I and open Stickers.'); }
     else if (n.k === 'credit') UI.toast('⚑', '#58cfbe', 'Discovery credit!', `A teammate drilled ${n.site || 'a site'} you found. +15 XP`);
     else if (n.k === 'patch') { const pt = MR.PATCHES.find(x => x.id === n.id); UI.toast(pt.icon, '#f0bf5a', `Patch earned: ${pt.name}`, pt.desc); }
-    else if (n.k === 'rank') UI.toast('★', '#58cfbe', `Rank up: ${MR.RANKS[n.rank].name}!`, cadet ? `Next expedition you can plan ${MR.CADET_LEN(n.rank)} pictures.` : 'Check your inventory (I) for new perks.', 6000);
+    else if (n.k === 'rank') UI.toast('★', '#58cfbe', `Rank up: ${MR.RANKS[n.rank].name}!`, MR.GARAGE ? 'You earned a supply crate!' : cadet ? `Next expedition you can plan ${MR.CADET_LEN(n.rank)} pictures.` : 'Check your inventory (I) for new perks.', 6000);
     else if (n.k === 'relay') UI.toast('⌁', '#58cfbe', 'Satellite relay kit unlocked!', p0relay(), 8000);
+    else if (n.k === 'crate') { if (n.id || !cadet) UI.crate(n.id, n.from); }
     else if (n.k === 'perk') { const pk = MR.PERKS[n.id]; UI.toast(pk.icon, '#f0bf5a', `New perk: ${pk.name}`, pk.desc, 6000); }
   });
   UI.renderMe();

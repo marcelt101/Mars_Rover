@@ -44,7 +44,30 @@ MR.Store.db.list.forEach(p => { p.stats = {...blankStats(), ...(p.stats||{})}; p
 MR.rankInfo = p => { const r = MR.rankOf(p.xp), cur = MR.RANKS[r], next = MR.RANKS[r+1];
   return {rank:r, name:cur.name, next: next ? next.name : null, frac: next ? (p.xp - cur.xp)/(next.xp - cur.xp) : 1, toNext: next ? next.xp - p.xp : 0}; };
 MR.ownedPerks = p => p.role === 'cadet' ? [] : Object.keys(MR.PERKS).filter(k => MR.rankOf(p.xp) >= MR.PERKS[k].rank);
-MR.equippedPerks = p => { const own = MR.ownedPerks(p), slots = MR.ROLES[p.role].slots; return (p.perks||[]).filter(k => own.includes(k)).slice(0, slots); };
+MR.equippedPerks = p => { if (MR.GARAGE) { const g = MR.garageOf(p); return MR.slotsFor(p.role).map(sl => g.eq[sl]).filter(k => k && g.own[k]); }
+  const own = MR.ownedPerks(p), slots = MR.ROLES[p.role].slots; return (p.perks||[]).filter(k => own.includes(k)).slice(0, slots); };
+/* Rover Garage: the parts a player owns and has fitted. A player who had rank perks before keeps them as parts. */
+MR.garageOf = p => {
+  if (p.garage && p.garage.role === p.role) return p.garage;
+  const g = {role:p.role, own:{}, eq:{}}, rank = MR.rankOf(p.xp || 0), now = Date.now();
+  if (p.role === 'cadet') { if (rank >= 1) g.own.better_radio = now; if (rank >= 2) g.own.scoop = now; if (rank >= 3) g.own.hg_antenna = now;
+    for (let k = 1; k <= Math.min(3, rank); k++) g.own['memory_' + k] = now; }
+  else MR.ownedPerks(p).forEach(k => { if (MR.partOK(k, p.role)) g.own[k] = now; });
+  (p.perks || []).forEach(k => { if (g.own[k] && !g.eq[MR.PARTS[k].slot]) g.eq[MR.PARTS[k].slot] = k; });
+  Object.keys(g.own).forEach(k => MR.autoFit(g, k));
+  return (p.garage = g);
+};
+/* Fit a part if its slot is empty or it is a better part of the same kind. */
+MR.autoFit = (g, k) => { const P = MR.PARTS[k], cur = g.eq[P.slot]; if (!cur || (MR.PARTS[cur].lvl < P.lvl && cur !== k)) g.eq[P.slot] = k; };
+/* A supply crate: rank-ups give parts in a set order, other crates a random missing part. With every part owned,
+   the crate holds XP and a sticker instead. */
+MR.openCrate = (p, from, out, addXp, sticker) => {
+  const g = MR.garageOf(p), order = MR.PART_ORDER[p.role === 'cadet' ? 'cadet' : 'other'], left = order.filter(k => !g.own[k]);
+  if (!left.length) { addXp(25); out.push({k:'crate', from, id:null}); if (sticker) sticker(.2); return; }
+  const k = from === 'rank' ? left[0] : left[Math.floor(Math.random() * left.length)];
+  g.own[k] = Date.now(); MR.autoFit(g, k); p.perks = MR.equippedPerks(p);
+  out.push({k:'crate', from, id:k});
+};
 MR.playerSummary = p => ({pid:p.id, name:p.name, color:p.color, avatar:p.avatar ?? null, role:p.role, job:p.job, rank:MR.rankOf(p.xp), perks:MR.equippedPerks(p)});
 
 /* Turn the events of one sol into rewards for this player. Returns a list of notices. */
@@ -96,6 +119,7 @@ MR.applyRewards = (p, myPid, events, ctx) => {
       case 'win':
         if (ctx.day) { addXp(40); out.push({k:'win'}); sticker(.15); break; }   // a Mission Log day is not a whole expedition
         s.exp[ctx.map] = (s.exp[ctx.map]||0) + 1; addXp(120);
+        if (MR.GARAGE && s.exp[ctx.map] === 1) MR.openCrate(p, 'win', out, addXp, sticker);   // a crate for the first win on each map
         if (ctx.players > 1) s.teamWins++;
         if (ctx.players >= 3) s.crew3++;
         out.push({k:'win'}); sticker(.15);
@@ -115,7 +139,8 @@ MR.applyRewards = (p, myPid, events, ctx) => {
   if (rank1 > rank0) {
     out.push({k:'rank', rank:rank1});
     if (p.role !== 'cadet' && rank0 < 1 && rank1 >= 1) out.push({k:'relay'});
-    Object.entries(MR.PERKS).forEach(([k, pk]) => { if (p.role !== 'cadet' && pk.rank > rank0 && pk.rank <= rank1) {
+    if (MR.GARAGE) for (let k = rank0; k < rank1; k++) MR.openCrate(p, 'rank', out, addXp, sticker);
+    else Object.entries(MR.PERKS).forEach(([k, pk]) => { if (p.role !== 'cadet' && pk.rank > rank0 && pk.rank <= rank1) {
       out.push({k:'perk', id:k});
       if ((p.perks||[]).length < MR.ROLES[p.role].slots) p.perks = [...(p.perks||[]), k];
     } });
