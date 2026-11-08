@@ -139,7 +139,7 @@ pic.onload = () => { const c = document.createElement('canvas'); c.width = pic.w
   y.fillStyle = gv; y.fillRect(0, 0, m.width, m.height); y.globalCompositeOperation = 'destination-in'; y.fillStyle = gh; y.fillRect(0, 0, m.width, m.height);
   const out = document.createElement('canvas'); out.width = c.width; out.height = c.height; const o = out.getContext('2d'); o.drawImage(pic, 0, 0); o.globalCompositeOperation = 'destination-in'; o.drawImage(m, 0, 0); soft = out; };
 /* ---------- the view ---------- */
-let mode = 'title', ra = 250, dec = -20, fov = 70, vra = 0, vdec = 0, keys = {x:0, y:0}, warnT = 0, doneAt = 0;
+let mode = 'title', ra = 250, dec = -20, fov = 70, vra = 0, vdec = 0, keys = {x:0, y:0}, warnT = 0, doneAt = 0, held = 0, step = {x:0, y:0}, fine = false;
 function basis(){ const f = vec(ra, dec), r0 = [-f[1], f[0], 0], rl = Math.hypot(r0[0], r0[1]) || 1, r = [r0[0]/rl, r0[1]/rl, 0];
   const u = [f[1]*r[2] - f[2]*r[1], f[2]*r[0] - f[0]*r[2], f[0]*r[1] - f[1]*r[0]]; return {f, r:[-r[0], -r[1], 0], u}; }   // r points east; on screen east is to the left
 /* where a sky direction lands on the screen (null when behind) */
@@ -151,11 +151,19 @@ function frame(t){
   const dt = Math.min(.05, (t - last) / 1000); last = t;
   if (mode === 'title') { ra = (ra + dt * 1.2) % 360; dec = -20 + 8 * Math.sin(t / 9000); }
   else {
-    /* Webb is huge and turns slowly: steering speeds it up gently, letting go slows it down, and it never stops dead */
-    const speed = fov * .12, acc = fov * .25;
-    vra += (keys.x * speed - vra) * Math.min(1, dt * (keys.x ? 2.5 : 1.1)); vdec += (keys.y * speed - vdec) * Math.min(1, dt * (keys.y ? 2.5 : 1.1));
-    let nra = ra - vra * dt / Math.max(.2, Math.cos(dec * D2R)), ndec = Math.max(-88, Math.min(88, dec + vdec * dt));
-    nra += dt * .004 * fov;   // the gentle drift of the stars
+    /* Steering made for aiming: holding starts slow and speeds up, letting go stops the turn quickly,
+       and a quick tap moves one small, exact step (a share of the view, so it is finer when zoomed in). */
+    held = keys.x || keys.y ? held + dt : 0;
+    const speed = fov * .08 * (.2 + .8 * Math.min(1, Math.max(0, held - .15) / 1.4));
+    vra += (keys.x * speed - vra) * Math.min(1, dt * 7); vdec += (keys.y * speed - vdec) * Math.min(1, dt * 7);
+    let mra = vra * dt, mdec = vdec * dt;
+    const sx = step.x * Math.min(1, dt * 10), sy = step.y * Math.min(1, dt * 10); step.x -= sx; step.y -= sy; mra += sx; mdec += sy;
+    /* Fine steering: once the target is inside the middle frame and the arrows are let go, the telescope centers it
+       by itself, the way Webb's fine steering mirror does the last, tiny bit of aiming. */
+    const tsep = Math.acos(Math.max(-1, Math.min(1, dot(vec(ra, dec), vec(TARGET.ra, TARGET.dec))))) / D2R;
+    fine = !keys.x && !keys.y && tsep < fov * .14 && tsep > .002;
+    if (fine) { const k = Math.min(1, dt * 1.6); let dra = ((TARGET.ra - ra + 540) % 360) - 180; mra -= dra * Math.cos(dec * D2R) * k; mdec += (TARGET.dec - dec) * k; }
+    let nra = ra - mra / Math.max(.2, Math.cos(dec * D2R)), ndec = Math.max(-88, Math.min(88, dec + mdec));
     /* The sunshield rule: a move into the Sun zone is refused, but a move back out of it is always allowed. */
     const out = x => x < 85 ? 85 - x : x > 135 ? x - 135 : 0, a0 = out(sunAngle(ra, dec)), a1 = out(sunAngle(nra, ndec));
     if (a1 > 0 && a1 >= a0) { vra *= -.2; vdec *= -.2; warnT = t; } else { ra = (nra + 360) % 360; dec = ndec; }
@@ -190,6 +198,7 @@ function drawHud(t, b, tanF){
   const a = sunAngle(ra, dec);
   $('read').innerHTML = `POINTING<br>RA ${(ra / 15).toFixed(2)} h · DEC ${dec.toFixed(1)}°<br>FIELD OF VIEW ${fov < 2 ? fov.toFixed(2) : fov.toFixed(0)}°<br>SUN ANGLE ${a.toFixed(0)}° (allowed 85–135)<br>TARGET ${sep < 1 ? (sep * 60).toFixed(0) + "'" : sep.toFixed(1) + '°'} AWAY`;
   $('warn').style.display = t - warnT < 2500 ? 'block' : 'none';
+  if (fine) { hc.font = `600 ${15 * s}px 'IBM Plex Mono', monospace`; hc.textAlign = 'center'; hc.fillStyle = 'rgba(88,207,190,.95)'; hc.fillText('FINE STEERING: CENTERING THE TARGET', W / 2, H / 2 + Math.min(W, H) * .16 * .6 + 30 * s); }
   /* the corner telescope leans the way it turns, and a Sun marks the side the real Sun is on (always behind the sunshield) */
   const sp = Math.max(.01, fov * .12), lean = Math.max(-1, Math.min(1, vra / sp)), nod = Math.max(-1, Math.min(1, vdec / sp));
   const mimg = $('mini').querySelector('img');
@@ -209,7 +218,7 @@ function drawHud(t, b, tanF){
 }
 /* ---------- controls: arrows, WASD, the pad, drag, zoom ---------- */
 const KX = {ArrowLeft:-1, a:-1, ArrowRight:1, d:1}, KY = {ArrowUp:1, w:1, ArrowDown:-1, s:-1};
-const nudge = (x, y) => { const sp = fov * .12; if (x) vra = x * Math.max(Math.abs(vra), sp * .7); if (y) vdec = y * Math.max(Math.abs(vdec), sp * .7); };
+const nudge = (x, y) => { step.x += x * fov * .025; step.y += y * fov * .025; };   // a tap: one small step
 addEventListener('keydown', e => { if (e.repeat) return; if (KX[e.key] != null) { keys.x = KX[e.key]; nudge(keys.x, 0); } if (KY[e.key] != null) { keys.y = KY[e.key]; nudge(0, keys.y); } if (e.key === '+' || e.key === '=') zoom(.8); if (e.key === '-') zoom(1.25); });
 addEventListener('keyup', e => { if (KX[e.key] != null) keys.x = 0; if (KY[e.key] != null) keys.y = 0; });
 document.querySelectorAll('#pad button').forEach(bt => { const [x, y] = bt.dataset.d.split(',').map(Number);
