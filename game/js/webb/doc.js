@@ -42,7 +42,7 @@ box.innerHTML = `
   <div class="dtalk">
     <div class="dname">DR. ORBIT <small>Mission scientist</small></div>
     <div class="dtext" id="dText"></div>
-    <div class="dbtns"><button id="dVoice" title="Read messages out loud"></button><button id="dNext">OK ▸</button></div>
+    <div class="dbtns"><select id="dVsel" title="Choose Dr. Orbit's voice"></select><button id="dVoice" title="Read messages out loud"></button><button id="dNext">OK ▸</button></div>
   </div>`;
 document.body.appendChild(box);
 const css = document.createElement('style'); css.textContent = `
@@ -66,6 +66,8 @@ const css = document.createElement('style'); css.textContent = `
 #doc .dtext{flex:1;font-size:16px;line-height:1.4;margin:4px 0 6px;min-height:46px}
 #doc .dbtns{display:flex;gap:6px;justify-content:flex-end}
 #doc .dbtns button{font:600 13px 'Chakra Petch',sans-serif;background:rgba(255,255,255,.08);color:var(--fg,#e6ecf1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:4px 10px;cursor:pointer}
+#doc #dVsel{max-width:150px;font:12px 'IBM Plex Sans',sans-serif;background:rgba(255,255,255,.08);color:var(--fg,#e6ecf1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:3px 4px;margin-right:auto}
+#doc #dVsel option,#doc #dVsel optgroup{background:#10161d;color:#e6ecf1}
 #doc #dNext{background:var(--gold,#f0bf5a);color:#140c02;border-color:var(--gold,#f0bf5a)}
 @media (max-width:760px){#doc{top:196px}#doc .dscreen{width:76px;height:76px}#doc .dtext{font-size:14px}}`;
 document.head.appendChild(css);
@@ -93,15 +95,33 @@ const queue = []; let busy = false, typing = null, full = '', onDone = null;
 /* Dr. Orbit is a man: pick a male English voice by name (each computer has different ones). Watch out: "female" contains "male". */
 const MALE = /\b(male|david|mark|guy|ryan|christopher|eric|roger|steffan|brian|andrew|daniel|alex|fred|aaron|arthur|gordon|rishi|oliver|thomas|james|george|tom|lee|rocko|reed|grandpa|ralph|albert)\b/i;
 const FEMALE = /female|zira|samantha|victoria|karen|moira|tessa|fiona|susan|hazel|aria|jenny|michelle|emma|libby|sonia|natasha|catherine|kate|serena|allison|ava|nicky|siri|grandma|flo|sandy|shelley/i;
-const pickVoice = () => { const vs = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
-  const men = vs.filter(v => MALE.test(v.name) && !FEMALE.test(v.name));
-  return {v:men.find(v => /natural|online|google/i.test(v.name)) || men[0] || vs.find(v => !FEMALE.test(v.name)) || vs[0], man:men.length > 0}; };
+// Android names its voices by code; these codes are men's voices in Google's speech engine.
+const MALE_CODE = /x-(iol|iom|tpd|rjs|gbd)/i;
+const vid = v => v.voiceURI || v.name;   // a voice's id (phones can give several voices the same name)
+let VOICES = [], chosen = ''; try { chosen = localStorage.getItem('webb.voiceName') || ''; } catch (e) {}
+const isMan = v => (MALE.test(v.name) || MALE_CODE.test(v.name) || MALE_CODE.test(v.voiceURI || '')) && !FEMALE.test(v.name);
+function loadVoices(){ if (!('speechSynthesis' in root)) return; VOICES = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); fillPicker(); }
+const pickVoice = () => { const own = VOICES.find(v => vid(v) === chosen); if (own) return {v:own, man:true};
+  const men = VOICES.filter(isMan);
+  return {v:men.find(v => /natural|online|google/i.test(v.name)) || men[0] || VOICES.find(v => !FEMALE.test(v.name)) || VOICES[0], man:men.length > 0}; };
 function speak(text){
   if (!voiceOn || !('speechSynthesis' in root)) return false;
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[★☀📸🔭]/g, '')), pv = pickVoice(); if (pv.v) u.voice = pv.v;
-    u.rate = 1.0; u.pitch = pv.man ? .9 : .55;   // a deeper voice; even deeper if this computer only has women's voices
-    u.onend = u.onerror = () => { talking = false; }; speechSynthesis.speak(u); return true; } catch (e) { return false; }
+  const go = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[★☀📸🔭]/g, '')), pv = pickVoice(); if (pv.v) { u.voice = pv.v; u.lang = pv.v.lang; }
+    u.rate = 1.0; u.pitch = pv.man ? .9 : .55;   // a deeper voice; even deeper if this device only has women's voices
+    u.onend = u.onerror = () => { talking = false; }; speechSynthesis.speak(u); } catch (e) {} };
+  if (VOICES.length) go(); else { loadVoices(); if (VOICES.length) go(); else { let done = false; const once = () => { if (done) return; done = true; loadVoices(); go(); };   // Chrome loads its voices a moment after the page
+    speechSynthesis.addEventListener('voiceschanged', once, {once:true}); setTimeout(once, 1200); } }
+  return true;
 }
+/* A picker so a grown-up can choose Dr. Orbit's voice once (remembered on this device). */
+const opt = v => { const same = VOICES.filter(w => w.name === v.name), n = same.length > 1 ? ' ' + (same.indexOf(v) + 1) : '';
+  return `<option value="${vid(v).replace(/"/g, '&quot;')}">${v.name.replace(/</g, '')}${n}</option>`; };
+function fillPicker(){ const sel = $('dVsel'); if (!sel) return;
+  const auto = pickVoice().v, men = VOICES.filter(isMan), rest = VOICES.filter(v => !isMan(v));
+  sel.innerHTML = `<option value="">Voice: automatic${auto ? ' (' + auto.name.replace(/^Microsoft |Google | - .*$| Online.*$/g, '').slice(0, 22) + ')' : ''}</option>` +
+    (men.length ? `<optgroup label="Men's voices">${men.map(opt).join('')}</optgroup>` : '') +
+    `<optgroup label="${men.length ? 'Other voices' : 'Voices on this device'}">${rest.map(opt).join('')}</optgroup>`;
+  sel.value = VOICES.some(v => vid(v) === chosen) ? chosen : ''; sel.style.display = VOICES.length > 1 ? '' : 'none'; }
 function next(){
   if (typing) { clearInterval(typing); typing = null; $('dText').textContent = full; talking = !!(voiceOn && root.speechSynthesis && speechSynthesis.speaking); return; }
   if (!queue.length) { busy = false; box.classList.add('small'); talking = false; try { speechSynthesis.cancel(); } catch (e) {} const f = onDone; onDone = null; if (f) f(); return; }
@@ -117,7 +137,9 @@ box.onclick = () => { if (box.classList.contains('small')) { box.classList.remov
 const setVoiceBtn = () => { $('dVoice').textContent = voiceOn ? '🔊 Voice on' : '🔇 Voice off'; };
 $('dVoice').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; try { localStorage.setItem('webb.voice', voiceOn ? 'on' : 'off'); } catch (er) {} setVoiceBtn(); if (!voiceOn) { try { speechSynthesis.cancel(); } catch (er) {} talking = !!typing; } else speak(full); };
 setVoiceBtn();
-if ('speechSynthesis' in root) speechSynthesis.onvoiceschanged = () => {};
+if ('speechSynthesis' in root) { loadVoices(); speechSynthesis.addEventListener('voiceschanged', loadVoices); }
+$('dVsel').onclick = e => e.stopPropagation();
+$('dVsel').onchange = e => { chosen = e.target.value; try { localStorage.setItem('webb.voiceName', chosen); } catch (er) {} voiceOn = true; setVoiceBtn(); speak("Hello! Is this my voice? I'm Dr. Orbit."); talking = true; };
 
 root.DOC = {
   /* Say one or more lines. A new say() replaces whatever was waiting, so the newest news always wins. */
