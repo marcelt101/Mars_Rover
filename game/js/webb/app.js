@@ -48,9 +48,14 @@ function resize(){ const s = Math.min(2, devicePixelRatio || 1); cv.width = hud.
 addEventListener('resize', resize); resize();
 
 /* where the telescope looks */
-const view = {ra:250, dec:-20, fov:70}; let sunMs = W.WEEKS[0].date, zone = 0;
-function basis(){ const f = W.vec(view.ra, view.dec), e = [-f[1], f[0], 0], l = Math.hypot(e[0], e[1]) || 1, east = [e[0]/l, e[1]/l, 0];
-  const u = [f[1]*east[2] - f[2]*east[1], f[2]*east[0] - f[0]*east[2], f[0]*east[1] - f[1]*east[0]]; return {f, r:[-east[0], -east[1], 0], u}; }   // east is to the left on the sky
+const view = {ra:250, dec:-20, fov:70, upv:null}; let sunMs = W.WEEKS[0].date, zone = 0;
+/* The camera keeps its own "up" as it turns (like a real telescope), so it can turn any way, even over the sky's poles.
+   view.upv is null for north-up. */
+const cross = (a, b) => [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]], norm = a => { const l = Math.hypot(...a) || 1; return a.map(v => v / l); };
+function basis(){ const f = W.vec(view.ra, view.dec), e = norm([-f[1], f[0], 0]), north = cross(f, e);   // east is to the left on the sky
+  let u = north; if (view.upv) { const k = dot(view.upv, f), p = view.upv.map((v, i) => v - f[i] * k); if (Math.hypot(...p) > .2) u = norm(p); }
+  view.upv = u; return {f, r:cross(f, u), u}; }
+function levelUp(k){ if (!view.upv) return; const f = W.vec(view.ra, view.dec), e = norm([-f[1], f[0], 0]), n = cross(f, e); view.upv = norm(view.upv.map((v, i) => v * (1 - k) + n[i] * k)); }
 function project(d, b, tanF){ const z = dot(d, b.f); if (z <= 0) return null; const H = hud.height; return [hud.width/2 + dot(d, b.r) / z / tanF * H/2, H/2 - dot(d, b.u) / z / tanF * H/2]; }
 function drawSky(){ const b = basis(), tanF = Math.tan(view.fov / 2 * D2R);
   gl.uniform2f(U('res'), cv.width, cv.height); gl.uniform3fv(U('fw'), b.f); gl.uniform3fv(U('rt'), b.r); gl.uniform3fv(U('up'), b.u); gl.uniform3fv(U('sun'), W.sunDir(sunMs));
@@ -107,7 +112,7 @@ function weeks(){
 const visible = t => W.inField(t.ra, t.dec, week.date);
 function startPlan(){
   screen = 'plan'; sunMs = week.date; zone = 1;
-  const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 100;
+  const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 100; view.upv = null;
   if (!cards.length || cards.week !== week.id) { cards = []; cards.week = week.id; }
   if (codeMode && !codeText) codeText = starterCode();
   renderPlan(); show('plan', 'mini');
@@ -229,22 +234,20 @@ const tween = (ms, fn) => new Promise(res => { if (toEnd) { fn(1); return res();
   (function f(){ const now = performance.now(); if (!paused) k = Math.min(1, k + (now - last) * speed / ms); last = now; fn(k);
     if (k < 1 && !toEnd) requestAnimationFrame(f); else { fn(1); res(); } })(); });
 const ease = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-function slerp(a, b, k){ const va = W.vec(a[0], a[1]), vb = W.vec(b[0], b[1]), om = Math.acos(Math.max(-1, Math.min(1, dot(va, vb))));
-  if (om < 1e-6) return b; const s = Math.sin(om), p = va.map((v, i) => (Math.sin((1 - k) * om) * v + Math.sin(k * om) * vb[i]) / s);
-  return [((Math.atan2(p[1], p[0]) / D2R) + 360) % 360, Math.asin(p[2]) / D2R]; }
+const slerp = W.slerp;
 const fovFor = t => t.spectrum ? .3 : Math.max(t.w, t.h * hud.width / hud.height) * 1.5;
 async function play(res, from){
   run = {res, from}; screen = 'run'; speed = 1; toEnd = false; logs = []; $('spd').textContent = 'Speed ×1';
   Object.assign(sys, {h:0, mom:15, rec:0, fgs:-1, fgsBad:false, wheels:0, dsn:'Idle'}); Object.assign(ov, {pic:null, exp:0, blurry:false, guide:null, dither:[0, 0], spectrum:null});
-  view.ra = res.start[0]; view.dec = res.start[1]; view.fov = res.fov || 40; renderSys(); show('sys', 'log', 'runbar', 'mini');
+  view.ra = res.start[0]; view.dec = res.start[1]; view.upv = null; view.fov = res.fov || 40; renderSys(); show('sys', 'log', 'runbar', 'mini');
   logLine(`▶ Running your plan for the ${week.name}.`);
   for (const e of res.events) {
     const t = e.id && W.byId(e.id);
     switch (e.type) {
       case 'slew': { ov.pic = null; ov.exp = 0; ov.spectrum = null; sys.fgs = -1; sys.fgsBad = false; logLine(`🛰️ Turning ${e.deg}° to ${t.name} with the reaction wheels…`);
         const a = [view.ra, view.dec], b = [t.ra, t.dec], f0 = view.fov, mid = Math.min(60, Math.max(f0, e.deg * .9 + 10)), f1 = fovFor(t);
-        sys.wheels = 1; await tween(1200 + Math.min(2600, e.deg * 30), k => { const p = slerp(a, b, ease(k)); view.ra = p[0]; view.dec = p[1]; view.fov = k < .5 ? f0 + (mid - f0) * ease(k * 2) : mid + (f1 - mid) * ease(k * 2 - 1);
-          sys.h = lerpH(sys.h, e.h, k); sys.mom = lerpH(sys.mom, e.mom, k); });
+        sys.wheels = 1; await tween(1200 + Math.min(2600, e.deg * 30), (rt => k => { const p = rt(ease(k)); view.ra = p[0]; view.dec = p[1]; view.fov = k < .5 ? f0 + (mid - f0) * ease(k * 2) : mid + (f1 - mid) * ease(k * 2 - 1);
+          sys.h = lerpH(sys.h, e.h, k); sys.mom = lerpH(sys.mom, e.mom, k); })(W.route(a, b, sunMs)));
         sys.wheels = 0; ov.pic = t; ov.cam = sys.cam; break; }
       case 'camera': sys.cam = e.cam; sys.filter = e.filter; if (ov.pic) ov.cam = e.cam; logLine(`🔧 Instrument: ${e.cam}, filter ${e.filter}.`); await tween(350, () => {}); break;
       case 'guide': { logLine(`⭐ Fine Guidance Sensor looking for a guide star…`); sys.fgsBad = false;
@@ -346,7 +349,7 @@ let keys = {x:0, y:0}, vra = 0, vdec = 0, held = 0, step = {x:0, y:0}, fine = fa
 function startSteer(){
   screen = 'steer'; sunMs = week.date; zone = 1;
   const vis = W.TARGETS.filter(visible); steer = steer && vis.includes(steer) ? steer : vis.find(t => week.ids.includes(t.id)) || vis[0];   // start with a target from the week's goal
-  const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 60; vra = vdec = 0;
+  const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 60; view.upv = null; vra = vdec = 0;
   $('card').innerHTML = `<h3>Find: <select id="tsel">${vis.map(t => `<option value="${t.id}" ${t === steer ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></h3>
     <p>${esc(fmtDate(week.date))}. Follow the gold arrow, zoom in, then take the picture.</p><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Weeks</button><button class="btn small" id="sAlb">📔 Album</button></div>`;
   $('tsel').onchange = e => { steer = W.byId(e.target.value); };
@@ -355,22 +358,46 @@ function startSteer(){
 }
 function steerStep(dt, t){
   held = keys.x || keys.y ? held + dt : 0;
-  const sp = view.fov * .08 * (.2 + .8 * Math.min(1, Math.max(0, held - .15) / 1.4));
+  const ramp = Math.min(1, Math.max(0, held - .15) / 1.6), sp = view.fov * (.016 + .2 * ramp * ramp);   // a tap is a small step; holding speeds up for long turns
   vra += (keys.x * sp - vra) * Math.min(1, dt * 7); vdec += (keys.y * sp - vdec) * Math.min(1, dt * 7);
   let mra = vra * dt, mdec = vdec * dt; const sx = step.x * Math.min(1, dt * 10), sy = step.y * Math.min(1, dt * 10); step.x -= sx; step.y -= sy; mra += sx; mdec += sy;
   const tsep = W.sep(view.ra, view.dec, steer.ra, steer.dec);
   fine = !keys.x && !keys.y && tsep < view.fov * .14 && tsep > .001;
-  if (fine) { const k = Math.min(1, dt * 1.6), dra = ((steer.ra - view.ra + 540) % 360) - 180; mra -= dra * Math.cos(view.dec * D2R) * k; mdec += (steer.dec - view.dec) * k; }
-  const nra = view.ra - mra / Math.max(.2, Math.cos(view.dec * D2R)), ndec = Math.max(-88, Math.min(88, view.dec + mdec));
+  const b = basis();
+  if (fine) { const k = Math.min(1, dt * 1.6), tv = W.vec(steer.ra, steer.dec); mra += dot(tv, b.r) / D2R * k; mdec += dot(tv, b.u) / D2R * k; }
+  const nf = norm(b.f.map((v, i) => v + (b.r[i] * mra + b.u[i] * mdec) * D2R)), nra = ((Math.atan2(nf[1], nf[0]) / D2R) + 360) % 360, ndec = Math.asin(Math.max(-1, Math.min(1, nf[2]))) / D2R;
   const out = x => x < 85 ? 85 - x : x > 135 ? x - 135 : 0, a0 = out(W.sunAngle(view.ra, view.dec, sunMs)), a1 = out(W.sunAngle(nra, ndec, sunMs));
-  if (a1 > 0 && a1 >= a0) { vra *= -.2; vdec *= -.2; warnT = t; } else { view.ra = (nra + 360) % 360; view.dec = ndec; }
+  if (a1 > 0 && a1 >= a0) { const p = W.clampToBand(nra, ndec, sunMs); view.ra = p[0]; view.dec = p[1]; warnT = t; }   // slide along the Sun limit: Webb can still spin all the way around the Sun
+  else { view.ra = nra; view.dec = ndec; }
   const ready = tsep < Math.max(.02, fovFor(steer) * .2) && view.fov < fovFor(steer) * 3;
   const zoomed = view.fov < fovFor(steer) * 3, near = tsep < Math.max(.02, fovFor(steer) * .2);
   const tip = ready ? '' : tsep > view.fov * .14 ? '<b>Step 1 of 3:</b> follow the gold arrow to the target' :
     !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> zoom in with <b>+</b> (or the mouse wheel)' : '';
   $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('zin').classList.toggle('pulse', near && !zoomed);
   $('shoot').classList.toggle('hidden', !ready); $('warn').classList.toggle('hidden', t - warnT > 2500);
-  $('read').innerHTML = `POINTING<br>RA ${(view.ra / 15).toFixed(2)} h · DEC ${view.dec.toFixed(1)}°<br>VIEW ${view.fov < 2 ? view.fov.toFixed(2) : view.fov.toFixed(0)}°<br>SUN ANGLE ${W.sunAngle(view.ra, view.dec, sunMs).toFixed(0)}° (allowed 85–135)<br>TARGET ${tsep < 1 ? (tsep * 60).toFixed(0) + "'" : tsep.toFixed(1) + '°'} AWAY`;
+  drawGauge(tsep);
+}
+/* The big Sun gauge: the angle from the Sun must stay 85-135 (green), but Webb may spin all the way around the Sun (0-360). */
+let gaugeHtml = '';
+function drawGauge(tsep){
+  const sa = W.sunAngle(view.ra, view.dec, sunMs), ar = (W.toSun(view.ra, view.dec, sunMs)[1] / D2R + 360) % 360;
+  const ts = W.toSun(steer.ra, steer.dec, sunMs), tar = (ts[1] / D2R + 360) % 360;
+  if (!$('gauge')) $('read').innerHTML = `<canvas id="gauge" width="480" height="270"></canvas><div class="gl"><span>SUN ANGLE</span><b id="gSun"></b><small>stay in the green (85° to 135°)</small></div>
+    <div class="gl"><span>AROUND THE SUN</span><b id="gAr"></b><small>spin all the way (0° to 360°)</small></div><div class="gt" id="gT"></div><div class="gs" id="gS"></div>`;
+  const cv2 = $('gauge'), x = cv2.getContext('2d'), cx = 240, cy = 236, R = 190, A = d => Math.PI + d / 180 * Math.PI;
+  x.clearRect(0, 0, 480, 270); x.lineWidth = 26;
+  [[0, 85, '#a8432f'], [85, 135, '#3fae7a'], [135, 180, '#a8432f']].forEach(([a, b, c]) => { x.strokeStyle = c; x.beginPath(); x.arc(cx, cy, R, A(a), A(b)); x.stroke(); });
+  x.fillStyle = '#fff'; x.font = '600 22px "IBM Plex Mono", monospace'; x.textAlign = 'center';
+  [0, 85, 135, 180].forEach(d => { const a = A(d); x.fillText(d + '°', cx + Math.cos(a) * (R - 44), cy + Math.sin(a) * (R - 44) + 8); });
+  x.font = '30px sans-serif'; x.fillText('☀', cx - R - 2, cy + 36);
+  const tick = (d, col, len, w) => { const a = A(Math.max(0, Math.min(180, d))); x.strokeStyle = col; x.lineWidth = w; x.beginPath(); x.moveTo(cx + Math.cos(a) * (R - len), cy + Math.sin(a) * (R - len)); x.lineTo(cx + Math.cos(a) * (R + 18), cy + Math.sin(a) * (R + 18)); x.stroke(); };
+  tick(ts[0], '#f0bf5a', 30, 8);
+  const a = A(sa); x.strokeStyle = '#fff'; x.lineWidth = 7; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a) * (R + 8), cy + Math.sin(a) * (R + 8)); x.stroke(); x.lineCap = 'butt';
+  x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, cy, 12, 0, 7); x.fill();
+  const ok = sa >= 84.5 && sa <= 135.5;
+  $('gSun').textContent = sa.toFixed(0) + '°'; $('gSun').style.color = ok ? '#7fe0a8' : '#ff8a6a'; $('gAr').textContent = ar.toFixed(0) + '°';
+  $('gT').innerHTML = `<span style="color:var(--gold)">▮ ${esc(steer.name)}</span>: sun ${ts[0].toFixed(0)}°, around ${tar.toFixed(0)}° · ${tsep < 1 ? (tsep * 60).toFixed(0) + "'" : tsep.toFixed(0) + '°'} away`;
+  $('gS').textContent = `RA ${(view.ra / 15).toFixed(2)} h · DEC ${view.dec.toFixed(1)}° · VIEW ${view.fov < 2 ? view.fov.toFixed(2) : view.fov.toFixed(0)}°`;
 }
 $('shoot').onclick = () => { const s = W.newState(week); s.ra = steer.ra; s.dec = steer.dec; const webb = W.api(s);
   webb.slew(steer.id); webb.camera(steer.cam, W.CAMS[steer.cam].filters[steer.cam === 'NIRISS' ? 0 : 1]); if (webb.guideStar()) { webb.dither(4); webb.expose(steer.need); } webb.downlink();
@@ -395,9 +422,10 @@ addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX -
 let last = performance.now(), sysT = 0;
 function frame(t){
   const dt = Math.min(.05, (t - last) / 1000); last = t;
-  if (screen === 'title' || screen === 'weeks') { view.ra = (view.ra + dt * 1.2) % 360; view.dec = -20 + 8 * Math.sin(t / 9000); view.fov = 70; }
-  if (screen === 'plan' && aimTo) { const p = slerp([view.ra, view.dec], [aimTo.ra, aimTo.dec], Math.min(1, dt * 2)); view.ra = p[0]; view.dec = p[1]; view.fov += (60 - view.fov) * Math.min(1, dt * 2); }
+  if (screen === 'title' || screen === 'weeks') { view.ra = (view.ra + dt * 1.2) % 360; view.dec = -20 + 8 * Math.sin(t / 9000); view.fov = 70; view.upv = null; }
+  if (screen === 'plan' && aimTo) { const p = W.route([view.ra, view.dec], [aimTo.ra, aimTo.dec], sunMs)(Math.min(1, dt * 2)); view.ra = p[0]; view.dec = p[1]; view.fov += (60 - view.fov) * Math.min(1, dt * 2); }
   if (screen === 'steer') steerStep(dt, t);
+  if ((screen === 'run' && !sys.wheels) || (screen === 'steer' && steer && W.sep(view.ra, view.dec, steer.ra, steer.dec) < view.fov * .5)) levelUp(Math.min(1, dt * 2));   // near a target, roll gently back to north-up so pictures come out straight
   const g = drawSky(); const W2 = hud.width, H = hud.height, s = H / 900; hc.clearRect(0, 0, W2, H);
   if (screen === 'title') $('webb').style.transform = `translate(-50%,-50%) translate(${Math.sin(t / 3000) * 10}px, ${Math.sin(t / 2300) * 8}px) rotate(${Math.sin(t / 4000) * 1.5}deg)`;
   if (screen === 'plan') markers(g, s);
@@ -418,11 +446,12 @@ function frameBox(s){ const fr = Math.min(hud.width, hud.height) * .16; hc.strok
 function drawTarget(t, cam, g, alpha, blurry, exp){
   const c = project(W.vec(t.ra, t.dec), g.b, g.tanF); if (!c || t.spectrum) return; const im = pic(t.id, cam); if (!im) return;
   const w = t.w * g.ppd * 1.15, h = t.h * g.ppd * 1.15; if (w < 3) return;
-  const x = c[0] - w/2 + ov.dither[0], y = c[1] - h/2 + ov.dither[1];
+  const n = project(W.vec(t.ra, Math.min(89.9, t.dec + .01)), g.b, g.tanF), rot = n ? Math.atan2(n[0] - c[0], c[1] - n[1]) : 0;   // north on the picture follows north on the sky
+  hc.save(); hc.translate(c[0] + ov.dither[0], c[1] + ov.dither[1]); hc.rotate(rot); const x = -w/2, y = -h/2;
   if (blurry) { hc.globalAlpha = alpha * .22; for (let k = 0; k < 6; k++) hc.drawImage(im, x + Math.cos(k) * 9, y + Math.sin(k * 1.7) * 7, w, h); }
   else { hc.globalAlpha = alpha; hc.drawImage(im, x, y, w, h); }
   if (exp != null && exp < 1) { hc.globalAlpha = (1 - exp) * .75 * alpha; hc.drawImage(noiseCv, x, y, w, h); }
-  hc.globalAlpha = 1;
+  hc.restore(); hc.globalAlpha = 1;
 }
 function runHud(g, s, t){
   frameBox(s);
@@ -443,8 +472,9 @@ function steerHud(g, s, t){
   const c = project(W.vec(steer.ra, steer.dec), g.b, g.tanF), on = c && c[0] > 0 && c[0] < hud.width && c[1] > 0 && c[1] < hud.height;
   if (on && view.fov > fovFor(steer) * 6) { hc.strokeStyle = `rgba(240,191,90,${.6 + .3 * Math.sin(t / 300)})`; hc.lineWidth = 3 * s; hc.beginPath(); hc.arc(c[0], c[1], 26 * s, 0, 7); hc.stroke();
     hc.fillStyle = '#f0bf5a'; hc.font = `600 ${15 * s}px 'IBM Plex Mono', monospace`; hc.textAlign = 'center'; hc.fillText(steer.name.toUpperCase(), c[0], c[1] - 36 * s); }
-  if (!on) { const v = W.vec(steer.ra, steer.dec), a = Math.atan2(-dot(v, g.b.u), dot(v, g.b.r)), R = Math.min(hud.width, hud.height) * .42, x = hud.width/2 + Math.cos(a) * R, y = hud.height/2 + Math.sin(a) * R;
-    hc.save(); hc.translate(x, y); hc.rotate(a); hc.fillStyle = '#f0bf5a'; hc.beginPath(); hc.moveTo(18*s, 0); hc.lineTo(-12*s, -12*s); hc.lineTo(-6*s, 0); hc.lineTo(-12*s, 12*s); hc.closePath(); hc.fill(); hc.restore(); }
+  if (W.debug) W.debug.arrow = null;
+  if (!on) { const sep = W.sep(view.ra, view.dec, steer.ra, steer.dec), wp = W.route([view.ra, view.dec], [steer.ra, steer.dec], sunMs)(Math.min(1, Math.max(.5, view.fov * .3) / Math.max(sep, 1e-6))), v = W.vec(wp[0], wp[1]), a = Math.atan2(-dot(v, g.b.u), dot(v, g.b.r)), R = Math.min(hud.width, hud.height) * .36, x = hud.width/2 + Math.cos(a) * R, y = hud.height/2 + Math.sin(a) * R;
+    if (W.debug) W.debug.arrow = a; hc.save(); hc.translate(x, y); hc.rotate(a); hc.fillStyle = '#f0bf5a'; hc.beginPath(); hc.moveTo(18*s, 0); hc.lineTo(-12*s, -12*s); hc.lineTo(-6*s, 0); hc.lineTo(-12*s, 12*s); hc.closePath(); hc.fill(); hc.restore(); }
   if (fine) { hc.font = `600 ${15 * s}px 'IBM Plex Mono', monospace`; hc.textAlign = 'center'; hc.fillStyle = 'rgba(88,207,190,.95)'; hc.fillText('FINE STEERING: CENTERING THE TARGET', hud.width/2, hud.height/2 + Math.min(hud.width, hud.height) * .16 * .6 + 30 * s); }
 }
 /* the little Webb in the corner: leans when it turns, looks at the middle, the Sun under its shield */

@@ -95,9 +95,18 @@ h1,h2,h3{font-family:'Chakra Petch',sans-serif;margin:0}
 #photo .credit{font-size:12px;color:var(--muted)}
 .stars{color:var(--gold);letter-spacing:2px}
 /* hand steering */
-#card{left:16px;top:16px;max-width:360px}
+#lcol{position:fixed;left:16px;top:16px;display:flex;flex-direction:column;gap:10px;width:300px;z-index:1}
+#lcol .panel{position:static}
+#card{max-width:360px}
 #card p{margin:4px 0 0;font-size:14px;color:var(--muted)}
-#read{right:16px;top:16px;font-size:13px;line-height:1.6;text-align:right}
+#read{text-align:center;padding:10px 12px}
+#gauge{width:100%;height:auto;display:block}
+#read .gl{display:grid;grid-template-columns:1fr auto;align-items:baseline;text-align:left;margin-top:4px}
+#read .gl span{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+#read .gl b{font:700 30px 'Chakra Petch',sans-serif;grid-row:span 2;color:var(--fg)}
+#read .gl small{font-size:11px;color:var(--muted)}
+#read .gt{font-size:12px;margin-top:6px;text-align:left}
+#read .gs{font-size:10px;color:var(--muted);margin-top:4px;text-align:left}
 #warn{left:50%;top:18%;transform:translateX(-50%);border-color:var(--warn);color:var(--warn);font-weight:600;text-align:center}
 #pad{right:16px;bottom:16px;display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:6px;padding:10px}
 #pad button,#zoom button{font-size:22px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(20,28,38,.85);color:var(--fg);cursor:pointer;touch-action:none}
@@ -112,7 +121,7 @@ h1,h2,h3{font-family:'Chakra Petch',sans-serif;margin:0}
 #mini img{position:absolute;left:50%;top:55%;width:236px;transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px rgba(0,0,0,.7))}
 #credit{position:fixed;right:10px;bottom:3px;font-size:10.5px;color:rgba(195,206,216,.55);pointer-events:none}
 select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:3px 6px;font:inherit}
-@media (max-width:760px){#next{top:150px;bottom:auto;font-size:14px;white-space:normal;width:max-content;max-width:88vw;text-align:center}#read{top:auto;bottom:200px;right:12px;font-size:10px;line-height:1.4;padding:6px 8px}#card{max-width:calc(100vw - 32px)}#log{bottom:60px;font-size:12px}#sys{width:170px;font-size:11px}#mini{width:150px;height:110px}#mini img{width:140px}#zoom{right:170px}#pad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px)}#zoom button{width:44px;height:44px}#plan{width:calc(100vw - 24px)}}
+@media (max-width:760px){#next{top:150px;bottom:auto;font-size:14px;white-space:normal;width:max-content;max-width:88vw;text-align:center}#lcol{width:calc(100vw - 32px)}#lcol #read{position:fixed;top:auto;bottom:200px;right:12px;width:170px;padding:6px 8px}#read .gl b{font-size:20px}#read .gl small,#read .gs{display:none}#read .gt{font-size:10px}#card{max-width:calc(100vw - 32px)}#log{bottom:60px;font-size:12px}#sys{width:170px;font-size:11px}#mini{width:150px;height:110px}#mini img{width:140px}#zoom{right:170px}#pad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px)}#zoom button{width:44px;height:44px}#plan{width:calc(100vw - 24px)}}
 </style>
 </head>
 <body>
@@ -134,8 +143,7 @@ select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);
 <div class="panel hidden" id="album"></div>
 <div class="panel hidden" id="photo"></div>
 <!-- hand steering -->
-<div class="panel hidden" id="card"></div>
-<div class="panel mono hidden" id="read"></div>
+<div id="lcol"><div class="panel mono hidden" id="read"></div><div class="panel hidden" id="card"></div></div>
 <div class="panel hidden" id="warn">☀ SUNSHIELD LIMIT<br><span style="font-weight:400;color:var(--fg)">Webb can't point there: the Sun would shine on its mirror.</span></div>
 <div class="panel hidden" id="pad">
   <span></span><button data-d="0,1" aria-label="Up">▲</button><span></span>

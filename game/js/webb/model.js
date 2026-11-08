@@ -19,6 +19,29 @@ W.sunDir = ms => { const n = (ms - Date.UTC(2000, 0, 1, 12)) / 864e5, L = 280.46
   const lam = (L + 1.915 * Math.sin(g) + .02 * Math.sin(2 * g)) * D2R, e = 23.439 * D2R; return [Math.cos(lam), Math.cos(e) * Math.sin(lam), Math.sin(e) * Math.sin(lam)]; };
 W.sunAngle = (ra, dec, ms) => Math.acos(Math.max(-1, Math.min(1, dot(W.vec(ra, dec), W.sunDir(ms))))) / D2R;
 W.inField = (ra, dec, ms) => { const a = W.sunAngle(ra, dec, ms); return a >= 85 && a <= 135; };
+/* Sun-centered coordinates: th = angle from the Sun (the allowed band is 85-135), ph = the angle around the Sun.
+   Webb can turn freely around the Sun inside that band, so paths between targets go around the ring. */
+const sunFrame = ms => { const S = W.sunDir(ms), t = Math.abs(S[2]) < .9 ? [0, 0, 1] : [1, 0, 0];
+  let X = [t[1]*S[2] - t[2]*S[1], t[2]*S[0] - t[0]*S[2], t[0]*S[1] - t[1]*S[0]]; const l = Math.hypot(...X); X = X.map(v => v / l);
+  return {S, X, Y:[S[1]*X[2] - S[2]*X[1], S[2]*X[0] - S[0]*X[2], S[0]*X[1] - S[1]*X[0]]}; };
+W.toSun = (ra, dec, ms) => { const f = sunFrame(ms), v = W.vec(ra, dec); return [Math.acos(Math.max(-1, Math.min(1, dot(v, f.S)))) / D2R, Math.atan2(dot(v, f.Y), dot(v, f.X))]; };
+W.fromSun = (th, ph, ms) => { const f = sunFrame(ms), ct = Math.cos(th * D2R), st = Math.sin(th * D2R), c = Math.cos(ph), sn = Math.sin(ph);
+  const v = [0, 1, 2].map(i => f.S[i] * ct + (f.X[i] * c + f.Y[i] * sn) * st);
+  return [((Math.atan2(v[1], v[0]) / D2R) + 360) % 360, Math.asin(Math.max(-1, Math.min(1, v[2]))) / D2R]; };
+W.slerp = (a, b, k) => { const va = W.vec(a[0], a[1]), vb = W.vec(b[0], b[1]), om = Math.acos(Math.max(-1, Math.min(1, dot(va, vb))));
+  if (om < 1e-6) return [b[0], b[1]]; const s = Math.sin(om), p = va.map((v, i) => (Math.sin((1 - k) * om) * v + Math.sin(k * om) * vb[i]) / s);
+  return [((Math.atan2(p[1], p[0]) / D2R) + 360) % 360, Math.asin(Math.max(-1, Math.min(1, p[2]))) / D2R]; };
+/* The way Webb turns from a to b ([ra, dec]): straight if that stays out of the Sun, otherwise around the Sun inside the band.
+   Returns a function of k (0 to 1) giving [ra, dec]. */
+W.route = (a, b, ms) => {
+  const straight = k => W.slerp(a, b, k); let ok = true;
+  for (let i = 1; i < 24 && ok; i++) { const p = straight(i / 24), x = W.sunAngle(p[0], p[1], ms); ok = x >= 84.5 && x <= 135.5; }
+  if (ok) return straight;
+  const A = W.toSun(a[0], a[1], ms), B = W.toSun(b[0], b[1], ms), dph = ((B[1] - A[1] + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
+  return k => k >= 1 ? [b[0], b[1]] : W.fromSun(A[0] + (B[0] - A[0]) * k, A[1] + dph * k, ms);
+};
+/* Keep a pointing inside the band: slide along the edge instead of stopping. */
+W.clampToBand = (ra, dec, ms) => { const [th, ph] = W.toSun(ra, dec, ms); return th >= 85 && th <= 135 ? [ra, dec] : W.fromSun(Math.max(85.02, Math.min(134.98, th)), ph, ms); };
 /* The next date (from ms) when a target can be seen, to tell kids when to come back. */
 W.nextVisible = (t, ms) => { for (let d = 0; d < 400; d++) { const m = ms + d * 864e5; if (W.inField(t.ra, t.dec, m)) return m; } return null; };
 class Stop extends Error {}

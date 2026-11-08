@@ -88,7 +88,10 @@ picture teaches one thing: galaxies, clouds of dust and gas, star formation, bla
   First Deep Field, Stephan's Quintet (black hole), WASP-96 b (water, needs NIRISS), Cartwheel, Pillars of
   Creation, Phantom Galaxy, Crab Nebula, Rho Ophiuchi, Sagittarius C (heart of the Milky Way), Messier 106
   (hungry black hole), the Jewelled Ring quasar. A fourth week: Black Hole Week (January 2024).
-- Steering shows the next step (follow the arrow, let go, zoom in) until the Take the picture button appears. Week goals (First Light: the 5 pictures of July 12, 2022).
+- Steering shows the next step (follow the arrow, let go, zoom in) until the Take the picture button appears.
+- Webb turns freely, 360 degrees around the Sun and over the sky's poles; at the Sun limit it slides along the edge.
+  The gold arrow (and planned slews) go around the Sun when the straight way is blocked. A big Sun gauge (top left)
+  shows the Sun angle (keep it 85-135) and the angle around the Sun (0-360). Week goals (First Light: the 5 pictures of July 12, 2022).
 - Three ways to fly: steer by hand (fine steering centers the target, then Take the picture), plan with
   observation cards (like NASA's APT forms), or write JavaScript (like Webb's onboard scripts; runs in a worker).
 - Webb's rules in js/webb/model.js: slews with reaction wheels, guide star lock, momentum from sunlight on the
