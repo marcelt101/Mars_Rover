@@ -150,11 +150,12 @@ function frame(t){
   else {
     /* Webb is huge and turns slowly: steering speeds it up gently, letting go slows it down, and it never stops dead */
     const speed = fov * .12, acc = fov * .25;
-    vra += (keys.x * speed - vra) * Math.min(1, dt * (keys.x ? 1.2 : .9)) ; vdec += (keys.y * speed - vdec) * Math.min(1, dt * (keys.y ? 1.2 : .9));
+    vra += (keys.x * speed - vra) * Math.min(1, dt * (keys.x ? 2.5 : 1.1)); vdec += (keys.y * speed - vdec) * Math.min(1, dt * (keys.y ? 2.5 : 1.1));
     let nra = ra - vra * dt / Math.max(.2, Math.cos(dec * D2R)), ndec = Math.max(-88, Math.min(88, dec + vdec * dt));
     nra += dt * .004 * fov;   // the gentle drift of the stars
-    const a = sunAngle(nra, ndec);
-    if (a < 85 || a > 135) { vra *= -.2; vdec *= -.2; warnT = t; } else { ra = (nra + 360) % 360; dec = ndec; }
+    /* The sunshield rule: a move into the Sun zone is refused, but a move back out of it is always allowed. */
+    const out = x => x < 85 ? 85 - x : x > 135 ? x - 135 : 0, a0 = out(sunAngle(ra, dec)), a1 = out(sunAngle(nra, ndec));
+    if (a1 > 0 && a1 >= a0) { vra *= -.2; vdec *= -.2; warnT = t; } else { ra = (nra + 360) % 360; dec = ndec; }
   }
   const b = basis(), tanF = Math.tan(fov / 2 * D2R);
   gl.uniform2f(U('res'), cv.width, cv.height); gl.uniform3fv(U('fw'), b.f); gl.uniform3fv(U('rt'), b.r); gl.uniform3fv(U('up'), b.u); gl.uniform3fv(U('sun'), SUN);
@@ -191,17 +192,18 @@ function drawHud(t, b, tanF){
 }
 /* ---------- controls: arrows, WASD, the pad, drag, zoom ---------- */
 const KX = {ArrowLeft:-1, a:-1, ArrowRight:1, d:1}, KY = {ArrowUp:1, w:1, ArrowDown:-1, s:-1};
-addEventListener('keydown', e => { if (KX[e.key] != null) keys.x = KX[e.key]; if (KY[e.key] != null) keys.y = KY[e.key]; if (e.key === '+' || e.key === '=') zoom(.8); if (e.key === '-') zoom(1.25); });
+const nudge = (x, y) => { const sp = fov * .12; if (x) vra = x * Math.max(Math.abs(vra), sp * .7); if (y) vdec = y * Math.max(Math.abs(vdec), sp * .7); };
+addEventListener('keydown', e => { if (e.repeat) return; if (KX[e.key] != null) { keys.x = KX[e.key]; nudge(keys.x, 0); } if (KY[e.key] != null) { keys.y = KY[e.key]; nudge(0, keys.y); } if (e.key === '+' || e.key === '=') zoom(.8); if (e.key === '-') zoom(1.25); });
 addEventListener('keyup', e => { if (KX[e.key] != null) keys.x = 0; if (KY[e.key] != null) keys.y = 0; });
 document.querySelectorAll('#pad button').forEach(bt => { const [x, y] = bt.dataset.d.split(',').map(Number);
-  bt.onpointerdown = e => { e.preventDefault(); keys.x = x; keys.y = y; }; bt.onpointerup = bt.onpointerleave = () => { keys.x = 0; keys.y = 0; }; });
+  bt.onpointerdown = e => { e.preventDefault(); keys.x = x; keys.y = y; nudge(x, y); }; bt.onpointerup = bt.onpointerleave = () => { keys.x = 0; keys.y = 0; }; });
 const zoom = k => { fov = Math.max(.3, Math.min(70, fov * k)); };
 $('zin').onclick = () => zoom(.7); $('zout').onclick = () => zoom(1.43);
 addEventListener('wheel', e => { if (mode !== 'title') zoom(e.deltaY > 0 ? 1.12 : .89); }, {passive:true});
 let drag = null; cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; });
 addEventListener('pointerup', () => { drag = null; keys.x = keys.y = 0; });
 addEventListener('pointermove', e => { if (!drag || mode === 'title') return; const dx = e.clientX - drag[0], dy = e.clientY - drag[1]; keys.x = Math.max(-1, Math.min(1, -dx / 60)); keys.y = Math.max(-1, Math.min(1, dy / 60)); });
-$('go').onclick = () => { mode = 'observe'; ra = 110; dec = -30; fov = 60; $('title').classList.add('hidden'); $('webb').style.opacity = 0; ['card', 'read', 'pad', 'zoom'].forEach(id => $(id).classList.remove('hidden')); };
+$('go').onclick = () => { mode = 'observe'; ra = 185; dec = -25; fov = 60; $('title').classList.add('hidden'); $('webb').style.opacity = 0; ['card', 'read', 'pad', 'zoom'].forEach(id => $(id).classList.remove('hidden')); };
 /* ?view=observe&ra=..&dec=..&fov=.. jumps straight in (for screenshots) */
 const q = new URLSearchParams(location.search);
 if (q.get('view') === 'observe') { $('go').onclick(); ra = +(q.get('ra') || ra); dec = +(q.get('dec') || dec); fov = +(q.get('fov') || fov); }
