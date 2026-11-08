@@ -1,9 +1,9 @@
-/* Dr. Orbit: the mission scientist who calls in from a little screen. Types messages and can read them out loud
-   with the browser's own voice (speechSynthesis), so young kids who can't read yet can follow.
+/* Dr. Orbit: the mission scientist who calls in from a little screen. A chime says a message is coming, then
+   the text types out with little blips while his mouth moves.
    Usage: DOC.say('text', {mood:'happy' | 'wow' | 'worried' | 'think'}). Messages queue up. */
 (function (root) {
 const $ = id => document.getElementById(id);
-let voiceOn = true; try { voiceOn = localStorage.getItem('webb.voice') !== 'off'; } catch (e) {}
+let soundOn = true; try { soundOn = localStorage.getItem('webb.voice') !== 'off'; } catch (e) {}
 const box = document.createElement('div'); box.id = 'doc'; box.className = 'hidden';
 box.innerHTML = `
   <div class="dscreen" id="dHead" title="Dr. Orbit">
@@ -42,7 +42,7 @@ box.innerHTML = `
   <div class="dtalk">
     <div class="dname">DR. ORBIT <small>Mission scientist</small></div>
     <div class="dtext" id="dText"></div>
-    <div class="dbtns"><select id="dVsel" title="Choose Dr. Orbit's voice"></select><button id="dVoice" title="Read messages out loud"></button><button id="dNext">OK ▸</button></div>
+    <div class="dbtns"><button id="dVoice" title="Message beeps on or off"></button><button id="dNext">OK ▸</button></div>
   </div>`;
 document.body.appendChild(box);
 const css = document.createElement('style'); css.textContent = `
@@ -66,8 +66,6 @@ const css = document.createElement('style'); css.textContent = `
 #doc .dtext{flex:1;font-size:16px;line-height:1.4;margin:4px 0 6px;min-height:46px}
 #doc .dbtns{display:flex;gap:6px;justify-content:flex-end}
 #doc .dbtns button{font:600 13px 'Chakra Petch',sans-serif;background:rgba(255,255,255,.08);color:var(--fg,#e6ecf1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:4px 10px;cursor:pointer}
-#doc #dVsel{max-width:150px;font:12px 'IBM Plex Sans',sans-serif;background:rgba(255,255,255,.08);color:var(--fg,#e6ecf1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:3px 4px;margin-right:auto}
-#doc #dVsel option,#doc #dVsel optgroup{background:#10161d;color:#e6ecf1}
 #doc #dNext{background:var(--gold,#f0bf5a);color:#140c02;border-color:var(--gold,#f0bf5a)}
 @media (max-width:760px){#doc{top:196px}#doc .dscreen{width:76px;height:76px}#doc .dtext{font-size:14px}}`;
 document.head.appendChild(css);
@@ -91,61 +89,43 @@ function face(t){
 requestAnimationFrame(face);
 
 /* --- talking --- */
-const queue = []; let busy = false, typing = null, full = '', onDone = null;
-/* Dr. Orbit is a man: pick a male English voice by name (each computer has different ones). Watch out: "female" contains "male". */
-const MALE = /\b(male|david|mark|guy|ryan|christopher|eric|roger|steffan|brian|andrew|daniel|alex|fred|aaron|arthur|gordon|rishi|oliver|thomas|james|george|tom|lee|rocko|reed|grandpa|ralph|albert)\b/i;
-const FEMALE = /female|zira|samantha|victoria|karen|moira|tessa|fiona|susan|hazel|aria|jenny|michelle|emma|libby|sonia|natasha|catherine|kate|serena|allison|ava|nicky|siri|grandma|flo|sandy|shelley/i;
-// Android names its voices by code; these codes are men's voices in Google's speech engine.
-const MALE_CODE = /x-(iol|iom|tpd|rjs|gbd)/i;
-const vid = v => v.voiceURI || v.name;   // a voice's id (phones can give several voices the same name)
-let VOICES = [], chosen = ''; try { chosen = localStorage.getItem('webb.voiceName') || ''; } catch (e) {}
-const isMan = v => (MALE.test(v.name) || MALE_CODE.test(v.name) || MALE_CODE.test(v.voiceURI || '')) && !FEMALE.test(v.name);
-function loadVoices(){ if (!('speechSynthesis' in root)) return; VOICES = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); fillPicker(); }
-const pickVoice = () => { const own = VOICES.find(v => vid(v) === chosen); if (own) return {v:own, man:true};
-  const men = VOICES.filter(isMan);
-  return {v:men.find(v => /natural|online|google/i.test(v.name)) || men[0] || VOICES.find(v => !FEMALE.test(v.name)) || VOICES[0], man:men.length > 0}; };
-function speak(text){
-  if (!voiceOn || !('speechSynthesis' in root)) return false;
-  const go = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[★☀📸🔭]/g, '')), pv = pickVoice(); if (pv.v) { u.voice = pv.v; u.lang = pv.v.lang; }
-    u.rate = 1.0; u.pitch = pv.man ? .9 : .55;   // a deeper voice; even deeper if this device only has women's voices
-    u.onend = u.onerror = () => { talking = false; }; speechSynthesis.speak(u); } catch (e) {} };
-  if (VOICES.length) go(); else { loadVoices(); if (VOICES.length) go(); else { let done = false; const once = () => { if (done) return; done = true; loadVoices(); go(); };   // Chrome loads its voices a moment after the page
-    speechSynthesis.addEventListener('voiceschanged', once, {once:true}); setTimeout(once, 1200); } }
-  return true;
-}
-/* A picker so a grown-up can choose Dr. Orbit's voice once (remembered on this device). */
-const opt = v => { const same = VOICES.filter(w => w.name === v.name), n = same.length > 1 ? ' ' + (same.indexOf(v) + 1) : '';
-  return `<option value="${vid(v).replace(/"/g, '&quot;')}">${v.name.replace(/</g, '')}${n}</option>`; };
-function fillPicker(){ const sel = $('dVsel'); if (!sel) return;
-  const auto = pickVoice().v, men = VOICES.filter(isMan), rest = VOICES.filter(v => !isMan(v));
-  sel.innerHTML = `<option value="">Voice: automatic${auto ? ' (' + auto.name.replace(/^Microsoft |Google | - .*$| Online.*$/g, '').slice(0, 22) + ')' : ''}</option>` +
-    (men.length ? `<optgroup label="Men's voices">${men.map(opt).join('')}</optgroup>` : '') +
-    `<optgroup label="${men.length ? 'Other voices' : 'Voices on this device'}">${rest.map(opt).join('')}</optgroup>`;
-  sel.value = VOICES.some(v => vid(v) === chosen) ? chosen : ''; sel.style.display = VOICES.length > 1 ? '' : 'none'; }
+const queue = []; let busy = false, typing = null, startT = null, full = '', onDone = null;
+const stopTyping = () => { clearTimeout(startT); startT = null; clearInterval(typing); typing = null; };
+/* Sound: no voice, just pleasant beeps (Web Audio, made in code). A soft two-note chime says "message coming",
+   then little blips while the text types, like a radio from space. */
+let ac = null;
+const audio = () => { if (!soundOn) return null; try { ac = ac || new (root.AudioContext || root.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; } return ac; };
+addEventListener('pointerdown', () => { if (ac && ac.state === 'suspended') ac.resume(); else audio(); }, {once:true});   // browsers allow sound after the first tap
+function tone(freq, at, dur, vol, type = 'sine'){ const a = audio(); if (!a || a.state !== 'running') return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + at; o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .02); }
+const chime = () => { tone(659.3, 0, .32, .07, 'triangle'); tone(987.8, .12, .45, .07, 'triangle'); tone(1975.5, .12, .3, .012); };   // E5 then B5, with a soft sparkle
+let bn = 0; const SCALE = [523.3, 587.3, 659.3, 784, 880, 1046.5];   // a happy pentatonic scale (C D E G A C), so blips never sound wrong
+const blip = (ch, mood) => { const lift = mood === 'wow' ? 1 : mood === 'worried' ? -1 : 0, i = Math.max(0, Math.min(SCALE.length - 1, (ch.toLowerCase().charCodeAt(0) * 7 + bn++) % 5 + lift));
+  tone(SCALE[i] * (mood === 'worried' ? .75 : 1), 0, .07, .035, 'sine'); };
 function next(){
-  if (typing) { clearInterval(typing); typing = null; $('dText').textContent = full; talking = !!(voiceOn && root.speechSynthesis && speechSynthesis.speaking); return; }
-  if (!queue.length) { busy = false; box.classList.add('small'); talking = false; try { speechSynthesis.cancel(); } catch (e) {} const f = onDone; onDone = null; if (f) f(); return; }
+  if (typing || startT) { stopTyping(); $('dText').textContent = full; talking = false; return; }   // a tap shows the whole message at once
+  if (!queue.length) { busy = false; box.classList.add('small'); talking = false; const f = onDone; onDone = null; if (f) f(); return; }
   const m = queue.shift(); busy = true; full = m.text; mood = m.mood || 'happy'; box.classList.remove('hidden', 'small');
   $('dNext').textContent = queue.length ? 'Next ▸' : 'OK ✓';
-  const spoke = speak(m.text); talking = true; let i = 0; $('dText').textContent = '';
-  typing = setInterval(() => { i += 1; $('dText').textContent = full.slice(0, i);
-    if (i >= full.length) { clearInterval(typing); typing = null; if (!spoke) setTimeout(() => { if (!typing) talking = false; }, 200); } }, spoke ? 45 : 28);
-  if (spoke) { const poll = setInterval(() => { if (!speechSynthesis.speaking && !typing) { talking = false; clearInterval(poll); } }, 200); }
+  chime(); talking = false; let i = 0, n = 0; $('dText').textContent = '';
+  startT = setTimeout(() => { startT = null; talking = true;
+    typing = setInterval(() => { const ch = full[i]; i += 1; $('dText').textContent = full.slice(0, i);
+      if (ch && /[a-z0-9]/i.test(ch) && (n++ % 2 === 0)) blip(ch, mood);          // a blip every other letter
+      if (i >= full.length) { clearInterval(typing); typing = null; talking = false; } }, 34); }, 380);
 }
 $('dNext').onclick = e => { e.stopPropagation(); next(); };
 box.onclick = () => { if (box.classList.contains('small')) { box.classList.remove('small'); if (!busy && full) { queue.push({text:full, mood}); next(); } } };
-const setVoiceBtn = () => { $('dVoice').textContent = voiceOn ? '🔊 Voice on' : '🔇 Voice off'; };
-$('dVoice').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; try { localStorage.setItem('webb.voice', voiceOn ? 'on' : 'off'); } catch (er) {} setVoiceBtn(); if (!voiceOn) { try { speechSynthesis.cancel(); } catch (er) {} talking = !!typing; } else speak(full); };
+const setVoiceBtn = () => { $('dVoice').textContent = soundOn ? '🔊 Sound on' : '🔇 Sound off'; };
+$('dVoice').onclick = e => { e.stopPropagation(); soundOn = !soundOn; try { localStorage.setItem('webb.voice', soundOn ? 'on' : 'off'); } catch (er) {} setVoiceBtn(); if (soundOn) chime(); };
 setVoiceBtn();
-if ('speechSynthesis' in root) { loadVoices(); speechSynthesis.addEventListener('voiceschanged', loadVoices); }
-$('dVsel').onclick = e => e.stopPropagation();
-$('dVsel').onchange = e => { chosen = e.target.value; try { localStorage.setItem('webb.voiceName', chosen); } catch (er) {} voiceOn = true; setVoiceBtn(); speak("Hello! Is this my voice? I'm Dr. Orbit."); talking = true; };
 
 root.DOC = {
   /* Say one or more lines. A new say() replaces whatever was waiting, so the newest news always wins. */
   say(lines, opts = {}){ const arr = (Array.isArray(lines) ? lines : [lines]).map(l => typeof l === 'string' ? {text:l, mood:opts.mood} : l);
-    queue.length = 0; queue.push(...arr); onDone = opts.done || null; if (typing) { clearInterval(typing); typing = null; } next(); },
-  hide(){ queue.length = 0; if (typing) { clearInterval(typing); typing = null; } try { speechSynthesis.cancel(); } catch (e) {} talking = false; box.classList.add('hidden'); },
+    queue.length = 0; queue.push(...arr); onDone = opts.done || null; stopTyping(); next(); },
+  hide(){ queue.length = 0; stopTyping(); talking = false; box.classList.add('hidden'); },
   get busy(){ return busy; },
 };
 })(window);
