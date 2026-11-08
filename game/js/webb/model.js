@@ -57,8 +57,11 @@ W.grade = p => { const t = W.byId(p.id), checks = [
     {ok:p.locked, label:'Locked on a guide star (sharp, not blurry)'},
     {ok:p.minutes >= t.need, label:`Long enough exposure (${t.need >= 120 ? (t.need / 60).toFixed(1) + ' hours' : t.need + ' minutes'} for this one)`},
     {ok:p.cam === t.cam || (t.ok || []).includes(p.cam), label:`A good instrument for it (Webb used ${(t.ok || [t.cam]).join(' and ')})`},
-    {ok:p.dither >= 4, label:'Dithered 4 times (fills the gaps between detectors)'}];
-  const n = checks.filter(c => c.ok).length; return {checks, stars:Math.max(p.locked || p.minutes ? 1 : 0, Math.round(n * 3 / 4))}; };
+    {ok:p.dither >= 4, label:'Dithered 4 times (fills the gaps between detectors)'},
+    ...(t.spectrum ? [] : [{ok:W.inColor(p), label:'3 or more filters (each filter becomes a color)'}])];
+  const n = checks.filter(c => c.ok).length; return {checks, stars:Math.max(p.locked || p.minutes ? 1 : 0, Math.round(n * 3 / checks.length))}; };
+/* A color picture needs 3 or more filters; with fewer it comes out black and white. */
+W.inColor = p => !!p && (p.filters || [p.filter]).filter(Boolean).length >= 3;
 /* The plan's commands. Each one moves the clock, adds momentum and records an event for the animation. */
 W.api = s => {
   const ev = e => { s.events.push({...e, h:+s.h.toFixed(2), mom:Math.round(s.mom), rec:+s.rec.toFixed(1), ra:s.ra, dec:s.dec}); };
@@ -104,8 +107,8 @@ W.api = s => {
       tick(minutes / 60); s.rec += gb; s.mom = Math.min(100, s.mom + minutes / 60 * .4);
       s.obs.minutes += minutes;
       const p = s.recorder.find(q => q.id === s.obs.id && q.cam === s.obs.cam);
-      if (p) Object.assign(p, {minutes:s.obs.minutes, locked:p.locked || s.obs.locked, dither:Math.max(p.dither, s.obs.dither), gb:p.gb + gb});
-      else s.recorder.push({id:s.obs.id, cam:s.obs.cam, filter:s.obs.filter, minutes:s.obs.minutes, locked:s.obs.locked, dither:s.obs.dither, gb});
+      if (p) Object.assign(p, {minutes:p.minutes + minutes, locked:p.locked || s.obs.locked, dither:Math.max(p.dither, s.obs.dither), gb:p.gb + gb, filters:[...new Set([...(p.filters || []), s.obs.filter])]});
+      else s.recorder.push({id:s.obs.id, cam:s.obs.cam, filter:s.obs.filter, filters:[s.obs.filter], minutes, locked:s.obs.locked, dither:s.obs.dither, gb});
       ev({type:'expose', id:s.obs.id, minutes, gb:+gb.toFixed(1), locked:s.obs.locked, cam:s.obs.cam}); return true;
     },
     downlink() {
@@ -130,7 +133,10 @@ W.newStart = week => { const s = W.newState(week); return [s.ra, s.dec]; };
 W.cardsToCode = cards => cards.map(c => {
   if (c.type === 'downlink') return 'webb.downlink();           // send the pictures home through the Deep Space Network';
   if (c.type === 'unload') return 'webb.unload();             // fire the thrusters to unload momentum';
-  return [`// ${W.byId(c.id).name}`, `if (webb.slew("${c.id}")) {`, `  webb.camera("${c.cam}", "${c.filter}");`,
-    `  if (webb.guideStar()) {`, ...(c.dither > 1 ? [`    webb.dither(${c.dither});`] : []), `    webb.expose(${c.minutes});`, `  } else webb.skip();       // no guide star: skip it, like the real Webb`, `}`].join('\n');
+  const fl = c.filters && c.filters.length ? c.filters : [c.filter], per = Math.max(1, Math.ceil(c.minutes / fl.length));
+  return [`// ${W.byId(c.id).name} (${W.byId(c.id).cat})`, `if (webb.slew("${c.id}")) {`, `  webb.camera("${c.cam}", "${fl[0]}");`,
+    `  if (webb.guideStar()) {`, ...(c.dither > 1 ? [`    webb.dither(${c.dither});`] : []),
+    ...(fl.length > 1 ? [`    for (const f of ${JSON.stringify(fl)}) {   // one exposure per filter: each filter becomes a color`, `      webb.camera("${c.cam}", f);`, `      webb.expose(${per});`, `    }`] : [`    webb.expose(${c.minutes});`]),
+    `  } else webb.skip();       // no guide star: skip it, like the real Webb`, `}`].join('\n');
 }).join('\n');
 })(typeof window !== 'undefined' ? window : self);

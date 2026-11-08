@@ -79,9 +79,9 @@ const noiseCv = (() => { const c = document.createElement('canvas'); c.width = c
 
 /* ================= the screens ================= */
 let screen = 'weeks', week = W.WEEKS[0], cards = [], codeMode = false, codeText = '', run = null, steer = null;
-const show0 = (...ids) => ['weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini', 'exitBtn']
+const show0 = (...ids) => ['weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini', 'exitBtn', 'proc']
   .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id)));
-const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result')) DOC.hide();
+const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result') && !ids.includes('proc')) DOC.hide();
   if (['card', 'plan', 'result', 'album', 'photo'].some(id => ids.includes(id))) ids.push('exitBtn');   // a way out to the level list on every screen but the run
   show0(...ids); };
 const album = W.load('album', {});
@@ -94,6 +94,9 @@ const goalHtml = w => { const d = goalDone(w); return `<div style="font-size:12.
 /* Inside Crater Crew: the way back to the main game, and the free demo's limits (First Light week, Training day). */
 const DEMO = !!(window.MR && MR.ED && MR.ED.demo), ccHome = 'index.html' + (W.slot ? '?slot=' + W.slot : '') + '#levels';   // back to Crater Crew's level list
 if (DEMO) W.WEEKS = W.WEEKS.filter(w => w.id === 'first');
+/* Who is playing: the Crater Crew role decides how Webb plays. Cadet: fast and helped. Explorer: a bit more to do.
+   Specialist: the thorough version with the real pipeline names and no hints. (?tier= for testing) */
+const TIER = (() => { const t = new URLSearchParams(location.search).get('tier') || (W.player && W.player.role) || 'cadet'; return ['cadet', 'explorer', 'specialist'].includes(t) ? t : 'cadet'; })();
 /* Dr. Orbit greets the player by name when Webb is opened from Crater Crew. */
 const hi = t => W.player && W.player.name ? t.replace('Hello, cadet!', `Hello, cadet ${W.player.name}!`) : t;
 /* Your choices on the weeks screen, and where you were (so coming back from the level list puts you in the same spot). */
@@ -210,7 +213,7 @@ function startPlan(){
 function starterCode(){ const vis = W.TARGETS.filter(visible).slice(0, 3);
   return `// Your plan for the ${week.name} (${fmtDate(week.date)}).
 // Webb runs JavaScript on board, too! Commands:
-//   webb.slew("id")  webb.camera("NIRCam" | "MIRI" | "NIRISS", "filter")
+//   webb.slew("id" or "NGC 3324")  webb.camera("NIRCam" | "MIRI" | "NIRISS", "F200W")
 //   webb.guideStar()  webb.dither(4)  webb.expose(minutes)
 //   webb.downlink()  webb.unload()  webb.skip()  webb.log("text")
 //   webb.visible("id")  webb.momentum()  webb.recorder()  webb.hours()
@@ -220,10 +223,13 @@ const plan = ${JSON.stringify(vis.map(t => t.id))};
 for (const id of plan) {
   if (!webb.slew(id)) continue;          // not in view this week: try the next one
   if (webb.momentum() > 80) webb.unload();
-  webb.camera("NIRCam", "F200W");
+  webb.camera("NIRCam", "F090W");
   if (webb.guideStar()) {
     webb.dither(4);
-    webb.expose(60);
+    for (const f of ["F090W", "F200W", "F444W"]) {   // 3 filters = a color picture
+      webb.camera("NIRCam", f);
+      webb.expose(20);
+    }
   } else {
     webb.skip();                         // event-driven, like the real Webb
   }
@@ -232,6 +238,9 @@ for (const id of plan) {
 webb.downlink();
 `; }
 function cardCode(){ return W.cardsToCode(cards); }
+/* Filters: a good set of 3 for a color picture, and a color for each (shortest wavelength blue, longest red). */
+const defFilters = cam => cam === 'NIRISS' ? ['SOSS'] : cam === 'MIRI' ? ['F770W', 'F1130W', 'F2100W'] : ['F090W', 'F200W', 'F444W'];
+const fColor = (cam, f) => { const L = W.CAMS[cam].filters, i = L.indexOf(f); return L.length < 2 ? '#c9a8ff' : `hsl(${Math.round(230 - 230 * i / (L.length - 1))} 80% 62%)`; };
 function renderPlan(){
   const est = codeMode ? null : W.runCode(cardCode(), week);
   const homeN = est ? new Set(est.home.map(p => p.id)).size : 0;
@@ -251,14 +260,16 @@ function renderPlan(){
   document.querySelectorAll('.tchip').forEach(b => b.onclick = () => { const t = W.byId(b.dataset.t);
     if (!visible(t)) { const nv = W.nextVisible(t, week.date); logLine(`☀ ${t.name} is in the Sun zone this week.${nv ? ' It comes back into view on ' + fmtDate(nv) + '.' : ''}`, 'sun'); show('plan', 'mini', 'log'); return; }
     if (codeMode) { const ta = $('code'), at = ta.selectionStart; ta.setRangeText(`"${t.id}"`, at, ta.selectionEnd, 'end'); codeText = ta.value; ta.focus(); return; }
-    cards.push({type:'obs', id:t.id, cam:t.cam, filter:W.CAMS[t.cam].filters[t.cam === 'MIRI' ? 1 : t.cam === 'NIRCam' ? 1 : 0], minutes:t.need, dither:4}); renderPlan(); aim(t); });
+    cards.push({type:'obs', id:t.id, cam:t.cam, filters:defFilters(t.cam), minutes:t.need, dither:4}); renderPlan(); aim(t); });
   if (codeMode) $('code').oninput = e => { codeText = e.target.value; };
   else {
     $('addDL').onclick = () => { cards.push({type:'downlink'}); renderPlan(); };
     $('addUL').onclick = () => { cards.push({type:'unload'}); renderPlan(); };
     document.querySelectorAll('.card').forEach(el => { const i = +el.dataset.i, c = cards[i];
       el.querySelectorAll('[data-k]').forEach(inp => inp.onchange = () => { const k = inp.dataset.k; c[k] = k === 'minutes' || k === 'dither' ? +inp.value : inp.value;
-        if (k === 'cam') c.filter = W.CAMS[c.cam].filters[0]; renderPlan(); });
+        if (k === 'cam') c.filters = defFilters(c.cam); renderPlan(); });
+      el.querySelectorAll('.fchip').forEach(b => b.onclick = () => { const f = b.dataset.f, L = c.filters || (c.filters = [c.filter]);
+        if (L.includes(f)) { if (L.length > 1) L.splice(L.indexOf(f), 1); } else L.push(f); L.sort((a, b2) => W.CAMS[c.cam].filters.indexOf(a) - W.CAMS[c.cam].filters.indexOf(b2)); renderPlan(); });
       el.querySelector('.x').onclick = () => { cards.splice(i, 1); renderPlan(); };
       const up = el.querySelector('.up'); if (up) up.onclick = () => { if (i) { [cards[i - 1], cards[i]] = [cards[i], cards[i - 1]]; renderPlan(); } };
       if (c.type === 'obs') el.onmouseenter = () => aim(W.byId(c.id)); });
@@ -268,11 +279,14 @@ function renderPlan(){
 function cardHtml(c, i){
   if (c.type !== 'obs') return `<div class="card op" data-i="${i}"><div class="ct"><span>${c.type === 'downlink' ? '📡 Send pictures home (Deep Space Network)' : '🔥 Unload momentum (fire thrusters)'}</span><span><button class="x up" aria-label="Move up">↑</button><button class="x" aria-label="Remove">×</button></span></div></div>`;
   const t = W.byId(c.id), cam = W.CAMS[c.cam];
-  return `<div class="card" data-i="${i}"><div class="ct"><span>🔭 ${esc(t.name)} <small class="est">${esc(t.kind)}</small></span><span><button class="x up" aria-label="Move up">↑</button><button class="x" aria-label="Remove">×</button></span></div>
+  const fl = c.filters || (c.filters = c.filter ? [c.filter] : defFilters(c.cam));
+  return `<div class="card" data-i="${i}"><div class="ct"><span>🔭 ${esc(t.name)} <small class="est">${esc(t.cat)} · ${esc(t.kind)}</small></span><span><button class="x up" aria-label="Move up">↑</button><button class="x" aria-label="Remove">×</button></span></div>
     <div class="f"><label>Camera <select data-k="cam">${Object.keys(W.CAMS).map(k => `<option ${k === c.cam ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
-      <label>Filter <select data-k="filter">${cam.filters.map(f => `<option ${f === c.filter ? 'selected' : ''}>${f}</option>`).join('')}</select></label>
+      
       <label>Minutes <input data-k="minutes" type="number" min="5" max="900" step="5" value="${c.minutes}" style="width:64px"></label>
-      <label>Dithers <select data-k="dither">${[1, 2, 4, 8].map(n => `<option ${n === c.dither ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div></div>`;
+      <label>Dithers <select data-k="dither">${[1, 2, 4, 8].map(n => `<option ${n === c.dither ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
+    <div class="fl"><span class="est">Filters:</span>${cam.filters.map(f => `<button class="fchip ${fl.includes(f) ? 'on' : ''}" data-f="${f}" style="--c:${fColor(c.cam, f)}">${f}</button>`).join('')}
+      <span class="est">${c.cam === 'NIRISS' ? 'splits light into a spectrum' : fl.length >= 3 ? '🎨 color picture' : '⚫ black and white (pick 3 or more for color)'}</span></div></div>`;
 }
 /* while planning, glide the view toward a target so kids see where it is on the sky */
 let aimTo = null; const aim = t => { aimTo = t; };
@@ -281,7 +295,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=29'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=31'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -373,14 +387,15 @@ $('toEnd').onclick = () => { toEnd = true; };
 function results(res, from){
   screen = 'result'; ov.pic = null; ov.spectrum = null;
   const got = res.home.map(p => ({p, t:W.byId(p.id), g:W.grade(p)}));
-  got.forEach(({p, g}) => { const k = p.id + '|' + p.cam, old = album[k]; if (!old || old.stars < g.stars) album[k] = {id:p.id, cam:p.cam, filter:p.filter, stars:g.stars, minutes:p.minutes, dither:p.dither, locked:p.locked, week:week.id}; });
+  if (got.length && !res.processed) return processPics(got, () => { res.processed = true; results(res, from); });   // science credit only after the data is processed
+  got.forEach(({p, t, g}) => { const k = p.id + '|' + p.cam, old = album[k]; if (!old || old.stars < g.stars) album[k] = {id:p.id, cam:p.cam, filter:p.filter, filters:p.filters, bw:!t.spectrum && !W.inColor(p), stars:g.stars, minutes:p.minutes, dither:p.dither, locked:p.locked, week:week.id}; });
   saveAlbum();
   const skipped = res.events.filter(e => e.type === 'skip' && e.why === 'sun').length, left = res.recorder.length, gd = goalDone(week);
   if (got.length && MR.music) MR.music.find();   // the little find chime, like on Mars
   $('result').innerHTML = `<h2>${got.length ? 'Pictures from Webb!' : 'No pictures reached Earth'}</h2>
     <p class="est">The plan took ${Math.round(res.h)} of 168 hours.${skipped ? ` ${skipped} target(s) were in the Sun zone.` : ''}${left ? ` ⚠ ${left} picture(s) stayed on the recorder: they never reached Earth. Add "Send pictures home" at the end.` : ''}</p>
     ${gd.length === week.ids.length ? `<p style="color:#8fe3a0;font-weight:600">🎯 Week goal complete: ${esc(week.goal)}! ✅</p>` : `<p class="est">🎯 Week goal: ${esc(week.goal)} (${gd.length}/${week.ids.length}).</p>`}
-    <div class="pics">${got.map(({p, t, g}) => `<button class="pic" data-k="${p.id}|${p.cam}"><img src="${thumb(t, p.cam)}" alt=""><b>${esc(t.name)}</b><small class="stars">${'★'.repeat(g.stars)}${'☆'.repeat(3 - g.stars)}</small></button>`).join('')}</div>
+    <div class="pics">${got.map(({p, t, g}) => `<button class="pic" data-k="${p.id}|${p.cam}"><img src="${thumb(t, p.cam)}" alt="" ${!t.spectrum && !W.inColor(p) ? 'class="bwimg"' : ''}><b>${esc(t.name)}</b><small class="cat">${esc(t.cat)}</small><small class="stars">${'★'.repeat(g.stars)}${'☆'.repeat(3 - g.stars)}</small></button>`).join('')}</div>
     <div class="row" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">${from === 'plan' ? '<button class="btn gold" id="again">◀ Change the plan</button>' : '<button class="btn gold" id="again">🕹️ Steer to another target</button>'}<button class="btn" id="other">Other week</button><button class="btn" id="alb">📔 Album</button></div>`;
   show('result', 'mini');
   { const best = got[0], tip = best && best.g.checks.find(c => !c.ok);
@@ -393,11 +408,62 @@ function results(res, from){
   if (acad && from === 'steer') { const S = W.ACADEMY[acad.s]; $('again').textContent = acad.i + 1 < S.ids.length ? '▶ Next target' : '🎓 Finish the session'; $('other').textContent = '◀ Academy'; }
   $('other').onclick = weeks; $('alb').onclick = () => openAlbum(() => results(res, from));
 }
+/* ================= processing: raw data -> a science picture -> a science question ================= */
+const PIPE = {
+  img:[{k:'clean', e:'🧹 Clean: remove cosmic-ray hits', s:'calwebb_detector1 — fit the ramps, flag cosmic-ray jumps'},
+       {k:'cal', e:'📏 Calibrate: even out the detectors and set the brightness', s:'calwebb_image2 — flat field and flux calibration'},
+       {k:'comb', e:'🧩 Combine the dithers into one picture', s:'calwebb_image3 — align, resample and combine the dithers'},
+       {k:'color', e:'🎨 Color: give each filter its own color', s:'Color composite — map the filters to blue, green and red'}],
+  spec:[{k:'clean', e:'🧹 Clean: remove cosmic-ray hits', s:'calwebb_detector1 — fit the ramps, flag cosmic-ray jumps'},
+       {k:'cal', e:'📏 Calibrate the light', s:'calwebb_spec2 — wavelength and flux calibration'},
+       {k:'comb', e:'🌈 Spread the starlight into a spectrum', s:'calwebb_tso3 — extract the spectrum from the time series'},
+       {k:'color', e:'🔍 Compare with the colors of gases', s:'Fit atmosphere models to the spectrum'}]};
+const shuffle = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(x => x[1]);
+function processPics(got, done){
+  let i = 0;
+  const next = () => { if (i >= got.length) { show('result', 'mini'); return done(); } const g = got[i++]; (TIER === 'cadet' ? develop : processOne)(g, next); };
+  next();
+}
+const procImg = (t, cam, stage, color) => `<div class="pimg s${stage} ${color ? '' : 'bw'}"><img src="${thumb(t, cam)}" alt=""><i class="pnoise" style="background-image:url(${noiseCv.toDataURL()})"></i>
+  <i class="rays">${Array.from({length:9}, () => `<b style="left:${(Math.random() * 90).toFixed(0)}%;top:${(Math.random() * 90).toFixed(0)}%;transform:rotate(${(Math.random() * 180).toFixed(0)}deg)"></b>`).join('')}</i></div>`;
+/* Cadet: about two seconds of "developing", no questions. */
+function develop({p, t}, next){
+  const col = t.spectrum || W.inColor(p);
+  $('proc').innerHTML = `<h2>Developing your picture…</h2><div class="psub">${esc(t.name)}</div>${procImg(t, p.cam, 0, col)}<div class="pstage" id="pst">🧹 Cleaning…</div>`;
+  show('proc', 'mini'); const el = $('proc').querySelector('.pimg'), words = ['📏 Calibrating…', '🧩 Combining…', col ? '🎨 Coloring…' : '⚫ Black and white…', '✨ Done!'];
+  words.forEach((w, k) => setTimeout(() => { el.className = `pimg s${k + 1} ${col ? '' : 'bw'}`; $('pst').textContent = w; if (k === 3) setTimeout(next, 600); }, 450 * (k + 1)));
+}
+/* Explorer and Specialist: put the steps in the right order, then answer a science question about the picture. */
+function processOne({p, t}, next){
+  const steps = PIPE[t.spectrum ? 'spec' : 'img'], spec = TIER === 'specialist', col = t.spectrum || W.inColor(p);
+  let stage = 0, hinted = false;
+  const quiz = spec ? {q:t.quiz.s, a:t.quiz.sa} : {q:t.quiz.e, a:t.quiz.ea}, opts = shuffle(quiz.a.slice());
+  const render = () => {
+    const doneSteps = steps.slice(0, stage);
+    $('proc').innerHTML = `<div class="phead"><h2>${stage < 4 ? '🧪 Process the data' : '🔬 Science check'}</h2><span class="est">${esc(t.name)} · ${esc(t.cat)} · ${esc(p.cam)}, ${t.spectrum ? 'spectrum' : (p.filters || [p.filter]).length + ' filter' + ((p.filters || [p.filter]).length === 1 ? '' : 's')}</span></div>
+      <div class="pbody">${procImg(t, p.cam, stage, col)}
+      <div class="pside">${stage < 4 ? `<p class="est">${spec ? 'Run the pipeline stages in order.' : 'Raw data from Webb is messy. Tap the steps in the right order to make the picture.'}</p>
+        <ol class="pdone">${doneSteps.map(s2 => `<li>✓ ${esc(spec ? s2.s : s2.e)}</li>`).join('')}</ol>
+        <div class="psteps">${shuffle(steps.filter(s2 => !doneSteps.includes(s2))).map(s2 => `<button class="btn pstep" data-k="${s2.k}">${esc(spec ? s2.s : s2.e)}</button>`).join('')}</div>`
+      : `${!col ? '<p class="est">⚫ Only ' + (p.filters || [p.filter]).length + ' filter(s), so this picture stays black and white. Use 3 or more filters for color.</p>' : ''}
+        <p class="pq">${esc(quiz.q)}</p><div class="psteps">${opts.map((o, k) => `<button class="btn pans" data-k="${k}">${esc(o)}</button>`).join('')}</div><p class="est" id="pmsg"></p>`}</div></div>`;
+    show('proc', 'mini');
+    $('proc').querySelectorAll('.pstep').forEach(b => b.onclick = () => {
+      if (b.dataset.k === steps[stage].k) { stage++; render(); if (stage === 4 && !spec) DOC.say({text:'Now the science! Look closely at your picture and answer.', mood:'think'}); }
+      else { b.classList.add('wrong'); setTimeout(() => b.classList.remove('wrong'), 500);
+        if (!spec && !hinted) { hinted = true; DOC.say({text:`Hmm, not yet. First: ${steps[stage].e.replace(/^\S+ /, '').split(':')[0].toLowerCase()}.`, mood:'think'}); } } });
+    $('proc').querySelectorAll('.pans').forEach(b => b.onclick = () => {
+      if (opts[+b.dataset.k] === quiz.a[0]) { b.classList.add('right'); $('proc').querySelectorAll('.pans').forEach(x => x.disabled = true);
+        $('pmsg').innerHTML = `<b style="color:#8fe3a0">✓ Correct! Science credited.</b> <button class="btn gold small" id="pnext">Continue ▶</button>`; $('pnext').onclick = next; }
+      else { b.classList.add('wrong'); b.disabled = true; $('pmsg').textContent = spec ? 'Not quite. Check the picture and the target notes.' : 'Not quite. Try another answer!'; } });
+  };
+  render();
+}
 function openAlbum(back){
   $('album').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2>📔 Your Webb Album</h2><button class="btn small" id="albBack">◀ Back</button></div>
     <p class="est">${Object.keys(album).length} of ${W.TARGETS.length + 1} pictures. Some targets can only be seen in certain weeks, and the Southern Ring looks different with each camera.</p>
     <div class="pics">${[...W.TARGETS.flatMap(t => Object.keys(t.img).map(cam => [t, cam]))].map(([t, cam]) => { const a = album[t.id + '|' + cam];
-      return a ? `<button class="pic" data-k="${t.id}|${cam}"><img src="${thumb(t, cam)}" alt=""><b>${esc(t.name)}${Object.keys(t.img).length > 1 ? ' · ' + cam : ''}</b><small class="stars">${'★'.repeat(a.stars)}${'☆'.repeat(3 - a.stars)}</small></button>`
+      return a ? `<button class="pic" data-k="${t.id}|${cam}"><img src="${thumb(t, cam)}" alt="" ${a.bw ? 'class="bwimg"' : ''}><b>${esc(t.name)}${Object.keys(t.img).length > 1 ? ' · ' + cam : ''}</b><small class="stars">${'★'.repeat(a.stars)}${'☆'.repeat(3 - a.stars)}</small></button>`
         : `<div class="pic lock"><div style="aspect-ratio:4/3;border-radius:7px;background:#0b1015;display:grid;place-items:center;font-size:30px">?</div><b>${esc(t.kind)}</b><small style="color:var(--muted)">${esc(t.when)}</small></div>`; }).join('')}</div>`;
   show('album', 'mini'); $('albBack').onclick = back;
   document.querySelectorAll('#album .pic[data-k]').forEach(b => b.onclick = () => openPhoto(b.dataset.k, () => openAlbum(back)));
@@ -405,8 +471,8 @@ function openAlbum(back){
 function openPhoto(key, back){
   const a = album[key] || {}, [id, cam] = key.split('|'), t = W.byId(id), g = a.id ? W.grade(a) : {checks:[], stars:0};
   const noWater = t.spectrum && cam !== 'NIRISS';
-  $('photo').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2>${esc(t.name)}</h2><button class="btn small" id="phBack">◀ Back</button></div>
-    <img class="big" src="${IMG + (t.img[cam] || Object.values(t.img)[0])}" alt="${esc(t.name)}">
+  $('photo').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2>${esc(t.name)} <small class="cat">${esc(t.cat)}</small></h2><button class="btn small" id="phBack">◀ Back</button></div>
+    <img class="big ${a.bw ? 'bwimg' : ''}" src="${IMG + (t.img[cam] || Object.values(t.img)[0])}" alt="${esc(t.name)}">${a.bw ? '<p class="est">⚫ Black and white: taken with fewer than 3 filters. Take it again with 3 or more for color.</p>' : ''}
     <p><b>${esc(t.where)}</b> · ${esc(t.kind)} · ${esc(t.far)} away · Webb took it in ${esc(t.when)} with ${esc(t.cam)}.</p>
     ${noWater ? '<p style="color:var(--warn)">You photographed the star, but to find water in the planet\'s air you need NIRISS, which splits the light into its colors.</p>' : ''}
     <p>${esc(t.kid)}</p><p class="est">${esc(t.more)}</p>
@@ -455,7 +521,7 @@ function startSteer(){
   screen = 'steer'; sunMs = week.date; zone = 1;
   const vis = W.TARGETS.filter(visible); steer = acad ? acadT() : steer && vis.includes(steer) ? steer : vis.find(t => week.ids.includes(t.id)) || vis[0];   // start with a target from the week's goal
   const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 60; view.upv = null; vra = vdec = 0;
-  $('card').innerHTML = `<h3>Find: <select id="tsel">${vis.map(t => `<option value="${t.id}" ${t === steer ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></h3>
+  $('card').innerHTML = `<h3>Find: <select id="tsel">${vis.map(t => `<option value="${t.id}" ${t === steer ? 'selected' : ''}>${esc(TIER === 'specialist' ? t.cat + ' · ' + t.name : TIER === 'explorer' ? t.name + ' (' + t.cat + ')' : t.name)}</option>`).join('')}</select></h3>
     <p>${esc(fmtDate(week.date))}. Follow the gold arrow, zoom in, then take the picture.</p><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Weeks</button><button class="btn small" id="sAlb">📔 Album</button></div>`;
   readyOnce = false; zoomSaid = false;
   if (acad) { acadCard(); show('card', 'read', 'console', 'mini'); return; }
@@ -557,7 +623,8 @@ function drawGauge(tsep){
 }
 $('shoot').onclick = () => { DOC.shutter();   // click!
  const s = W.newState(week); s.ra = steer.ra; s.dec = steer.dec; const webb = W.api(s);
-  webb.slew(steer.id); webb.camera(steer.cam, W.CAMS[steer.cam].filters[steer.cam === 'NIRISS' ? 0 : 1]); if (webb.guideStar()) { webb.dither(4); webb.expose(steer.need); } webb.downlink();
+  const fl = defFilters(steer.cam); webb.slew(steer.id); webb.camera(steer.cam, fl[0]);
+  if (webb.guideStar()) { webb.dither(4); fl.forEach(f => { webb.camera(steer.cam, f); webb.expose(Math.ceil(steer.need / fl.length)); }); } webb.downlink();
   play({events:s.events.filter(e => e.type !== 'slew'), home:s.home, recorder:s.recorder, h:s.h, start:[steer.ra, steer.dec], fov:fovFor(steer)}, 'steer').then(() => {});
   setTimeout(() => { ov.pic = steer; }, 0); };
 const KX = {ArrowLeft:-1, a:-1, ArrowRight:1, d:1}, KY = {ArrowUp:1, w:1, ArrowDown:-1, s:-1};
