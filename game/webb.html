@@ -135,47 +135,47 @@ h1,h2,h3{font-family:'Chakra Petch',sans-serif;margin:0}
 #read .gt{font-size:12px;margin-top:6px;text-align:left}
 #read .gs{font-size:10px;color:var(--muted);margin-top:4px;text-align:left}
 #warn{left:50%;top:18%;transform:translateX(-50%);border-color:var(--warn);color:var(--warn);font-weight:600;text-align:center}
-#next{position:fixed;left:50%;bottom:214px;transform:translateX(-50%);z-index:2;padding:9px 18px;border-radius:999px;background:rgba(10,14,20,.82);border:1px solid rgba(240,191,90,.5);color:var(--fg);font-weight:600;font-size:16px;white-space:nowrap;pointer-events:none}
+#next{position:fixed;left:50%;bottom:222px;transform:translateX(-50%);z-index:2;padding:9px 18px;border-radius:999px;background:rgba(10,14,20,.82);border:1px solid rgba(240,191,90,.5);color:var(--fg);font-weight:600;font-size:16px;white-space:nowrap;pointer-events:none}
 #next b{color:var(--gold)}
 /* the control dashboard: brushed metal, screws, keycaps, a lever, lamps and a big red button */
-#console{position:fixed;right:16px;bottom:12px;display:flex;gap:10px;padding:14px 16px 12px;border-radius:14px;z-index:2;user-select:none;-webkit-user-select:none;
+#console{position:fixed;right:16px;bottom:12px;display:flex;gap:8px;padding:10px 12px 8px;border-radius:14px;z-index:2;user-select:none;-webkit-user-select:none;
   background:repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 4px),linear-gradient(180deg,#363d45,#1b2026 60%,#14181c);
   border:1px solid #4b545e;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.5),0 10px 30px rgba(0,0,0,.6)}
 #console:before,#console:after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;top:6px;left:6px;background:radial-gradient(circle at 35% 35%,#c9d1d8,#59626b 60%,#2a3036);box-shadow:0 1px 0 rgba(0,0,0,.6)}
 #console:after{left:auto;right:6px}
 #console.hidden{display:none}
-#console section{background:linear-gradient(180deg,#0e1216,#151a1f);border:1px solid #2a3138;border-radius:10px;padding:8px 10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center}
-#console h6{margin:0 0 6px;font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#f0bf5a;text-shadow:0 0 6px rgba(240,191,90,.35)}
+#console section{background:linear-gradient(180deg,#0e1216,#151a1f);border:1px solid #2a3138;border-radius:10px;padding:6px 8px;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center}
+#console h6{margin:0 0 4px;font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#f0bf5a;text-shadow:0 0 6px rgba(240,191,90,.35)}
 #console h6 b{color:#7fe0ff}
-#pad8{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px}
-#pad8 button{font-size:20px;border-radius:9px;border:1px solid #5b6570;color:#e8eef3;cursor:pointer;touch-action:none;
+#pad8{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,36px);gap:4px}
+#pad8 button{font-size:17px;border-radius:9px;border:1px solid #5b6570;color:#e8eef3;cursor:pointer;touch-action:none;
   background:linear-gradient(180deg,#4a535d,#2b3239);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 0 #0b0e11,0 4px 6px rgba(0,0,0,.5);transition:transform .05s}
 #pad8 button:active,#pad8 button.on{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 0 0 #0b0e11;background:linear-gradient(180deg,#5a8fa8,#2f5a6e)}
 #pad8 .hold{font:700 11px 'IBM Plex Mono',monospace;background:linear-gradient(180deg,#6b3a35,#3b1f1c);border-color:#8a4b44}
-#lever{display:flex;flex-direction:column;align-items:center;gap:4px;font:700 10px 'IBM Plex Mono',monospace;color:#9fb0c0}
-#ltrack{position:relative;width:26px;height:118px;border-radius:13px;background:linear-gradient(90deg,#05070a,#1a2027,#05070a);border:1px solid #3a434c;box-shadow:inset 0 2px 8px #000;cursor:grab;touch-action:none}
+#lever{display:flex;flex-direction:column;align-items:center;gap:2px;font:700 10px 'IBM Plex Mono',monospace;color:#9fb0c0}
+#ltrack{position:relative;width:24px;height:86px;border-radius:13px;background:linear-gradient(90deg,#05070a,#1a2027,#05070a);border:1px solid #3a434c;box-shadow:inset 0 2px 8px #000;cursor:grab;touch-action:none}
 #ltrack .mk{position:absolute;left:-7px;right:-7px;top:50%;height:2px;background:#f0bf5a;opacity:.6}
-#lknob{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;cursor:grab;z-index:1;
+#lknob{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;cursor:grab;z-index:1;
   background:radial-gradient(circle at 35% 30%,#ff9c8c,#d23a2c 45%,#7a160f);box-shadow:0 4px 8px rgba(0,0,0,.7),inset 0 -3px 6px rgba(0,0,0,.4);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
 #lknob.drag{transition:none;cursor:grabbing}
 #lever.pulse #lknob{animation:lp 1s ease-in-out infinite}
 @keyframes lp{50%{box-shadow:0 0 0 7px rgba(240,191,90,.5),0 4px 8px rgba(0,0,0,.7)}}
-.lcd{margin-top:6px;font:700 13px 'IBM Plex Mono',monospace;color:#9dffb0;background:#04140a;border:1px solid #1d3b26;border-radius:5px;padding:2px 8px;text-shadow:0 0 6px rgba(120,255,150,.6);min-width:58px;text-align:center}
-.lamps{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font:700 10px 'IBM Plex Mono',monospace;color:#b9c6d2;margin-bottom:8px}
+.lcd{margin-top:4px;font:700 13px 'IBM Plex Mono',monospace;color:#9dffb0;background:#04140a;border:1px solid #1d3b26;border-radius:5px;padding:2px 8px;text-shadow:0 0 6px rgba(120,255,150,.6);min-width:58px;text-align:center}
+.lamps{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font:700 10px 'IBM Plex Mono',monospace;color:#b9c6d2;margin-bottom:5px}
 .lamps div{display:flex;align-items:center;gap:6px;white-space:nowrap}
 .lamps i{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#55606a,#1d2329);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
 .lamps i.g{background:radial-gradient(circle at 35% 35%,#d4ffe0,#2fd36a 55%,#0f6b31);box-shadow:0 0 10px #2fd36a}
 .lamps i.r{background:radial-gradient(circle at 35% 35%,#ffd2c8,#ff4a33 55%,#7a160f);box-shadow:0 0 10px #ff4a33;animation:lb .5s steps(2) infinite}
 @keyframes lb{50%{opacity:.35}}
 #rw{width:160px;height:28px}
-.hazard{padding:7px;border-radius:50%;background:repeating-conic-gradient(#f0bf5a 0 15deg,#16191c 15deg 30deg);box-shadow:0 2px 6px rgba(0,0,0,.6)}
-#shoot{width:96px;height:96px;border-radius:50%;border:3px solid #2a0d0a;cursor:pointer;font:800 13px 'Chakra Petch',sans-serif;line-height:1.1;color:#fff;letter-spacing:.04em;
+.hazard{padding:6px;border-radius:50%;background:repeating-conic-gradient(#f0bf5a 0 15deg,#16191c 15deg 30deg);box-shadow:0 2px 6px rgba(0,0,0,.6)}
+#shoot{width:78px;height:78px;border-radius:50%;border:3px solid #2a0d0a;cursor:pointer;font:800 12px 'Chakra Petch',sans-serif;line-height:1.1;color:#fff;letter-spacing:.04em;
   background:radial-gradient(circle at 35% 30%,#ff8e7e,#e0291a 45%,#6d0f08);box-shadow:inset 0 -6px 10px rgba(0,0,0,.45),0 5px 0 #3a0905,0 8px 14px rgba(0,0,0,.6);transition:transform .06s,filter .2s}
 #shoot:disabled{cursor:not-allowed;filter:grayscale(.85) brightness(.55)}
 #shoot.armed{animation:arm 1s ease-in-out infinite}
 #shoot.armed:active{transform:translateY(4px);box-shadow:inset 0 -3px 6px rgba(0,0,0,.45),0 1px 0 #3a0905}
 @keyframes arm{50%{box-shadow:inset 0 -6px 10px rgba(0,0,0,.45),0 5px 0 #3a0905,0 0 26px 8px rgba(255,80,50,.7)}}
-.tog{display:flex;align-items:center;gap:6px;margin-top:8px;font:700 10px 'IBM Plex Mono',monospace;color:#b9c6d2;cursor:pointer}
+.tog{display:flex;align-items:center;gap:6px;margin-top:5px;font:700 10px 'IBM Plex Mono',monospace;color:#b9c6d2;cursor:pointer}
 .tog input{display:none}
 .tog span{width:30px;height:16px;border-radius:8px;background:#0a0d10;border:1px solid #3a434c;position:relative}
 .tog span:after{content:"";position:absolute;left:1px;top:1px;width:12px;height:12px;border-radius:50%;background:linear-gradient(#c9d1d8,#6b757f);transition:left .15s}
@@ -232,11 +232,11 @@ select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);
 <div class="hidden" id="next"></div>
 <button class="btn gold hidden" id="shoot">📸 TAKE THE PICTURE</button>
 <div id="credit">Sky: NASA/Goddard SVS Deep Star Maps 2020, Gaia DR2: ESA/Gaia/DPAC · Webb: NASA GSFC/CIL/Adriana Manrique Gutierrez · Pictures: NASA, ESA, CSA, STScI</div>
-<script src="js/edition.js?v=18"></script>
-<script src="js/webb/data.js?v=18"></script>
-<script src="js/webb/store.js?v=18"></script>
-<script src="js/webb/model.js?v=18"></script>
-<script src="js/webb/doc.js?v=18"></script>
-<script src="js/webb/app.js?v=18"></script>
+<script src="js/edition.js?v=19"></script>
+<script src="js/webb/data.js?v=19"></script>
+<script src="js/webb/store.js?v=19"></script>
+<script src="js/webb/model.js?v=19"></script>
+<script src="js/webb/doc.js?v=19"></script>
+<script src="js/webb/app.js?v=19"></script>
 </body>
 </html>
