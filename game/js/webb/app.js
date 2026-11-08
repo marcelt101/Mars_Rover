@@ -263,7 +263,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=26'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=27'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -537,7 +537,8 @@ function drawGauge(tsep){
   $('gT').innerHTML = secret ? '<span style="color:var(--gold)">▮ Mystery target</span>: use the clues!' : `<span style="color:var(--gold)">▮ ${esc(clueMode() && !readyOnce ? 'Mystery target' : steer.name)}</span>: sun ${ts[0].toFixed(0)}°, around ${tar.toFixed(0)}° · ${tsep < 1 ? (tsep * 60).toFixed(0) + "'" : tsep.toFixed(0) + '°'} away`;
   $('gS').textContent = `RA ${(view.ra / 15).toFixed(2)} h · DEC ${view.dec.toFixed(1)}° · VIEW ${view.fov < 2 ? view.fov.toFixed(2) : view.fov.toFixed(0)}°`;
 }
-$('shoot').onclick = () => { const s = W.newState(week); s.ra = steer.ra; s.dec = steer.dec; const webb = W.api(s);
+$('shoot').onclick = () => { DOC.shutter();   // click!
+ const s = W.newState(week); s.ra = steer.ra; s.dec = steer.dec; const webb = W.api(s);
   webb.slew(steer.id); webb.camera(steer.cam, W.CAMS[steer.cam].filters[steer.cam === 'NIRISS' ? 0 : 1]); if (webb.guideStar()) { webb.dither(4); webb.expose(steer.need); } webb.downlink();
   play({events:s.events.filter(e => e.type !== 'slew'), home:s.home, recorder:s.recorder, h:s.h, start:[steer.ra, steer.dec], fov:fovFor(steer)}, 'steer').then(() => {});
   setTimeout(() => { ov.pic = steer; }, 0); };

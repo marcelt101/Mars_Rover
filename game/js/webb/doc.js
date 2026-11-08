@@ -103,6 +103,12 @@ function tone(freq, at, dur, vol, type = 'sine'){ const a = audio(); if (!a || a
   const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + at; o.type = type; o.frequency.setValueAtTime(freq, t);
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .02); }
+/* A camera shutter: two short clicks of filtered noise ("ka-chick") over a soft thump. */
+function shutter(){ const a = audio(); if (!a || a.state !== 'running') return;
+  const n = a.createBuffer(1, Math.floor(a.sampleRate * .05), a.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+  [[0, 3200, .32], [.075, 2200, .24]].forEach(([at, f, v]) => { const src = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + at;
+    src.buffer = n; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 1.2; g.gain.value = v; src.connect(bp).connect(g).connect(a.destination); src.start(t); });
+  tone(140, 0, .09, .08, 'sine'); }
 const chime = () => { tone(659.3, 0, .32, .07, 'triangle'); tone(987.8, .12, .45, .07, 'triangle'); tone(1975.5, .12, .3, .012); };   // E5 then B5, with a soft sparkle
 let bn = 0; const SCALE = [523.3, 587.3, 659.3, 784, 880, 1046.5];   // a happy pentatonic scale (C D E G A C), so blips never sound wrong
 const blip = (ch, mood) => { const lift = mood === 'wow' ? 1 : mood === 'worried' ? -1 : 0, i = Math.max(0, Math.min(SCALE.length - 1, (ch.toLowerCase().charCodeAt(0) * 7 + bn++) % 5 + lift));
@@ -134,6 +140,7 @@ root.DOC = {
     queue.length = 0; queue.push(...arr); onDone = opts.done || null; stopTyping(); next(); },
   hide(){ queue.length = 0; stopTyping(); unfocus(); talking = false; box.classList.add('hidden'); },
   get busy(){ return busy; },
+  shutter(){ shutter(); },
   get sound(){ return soundOn; },
   set sound(v){ soundOn = !!v; try { localStorage.setItem('webb.voice', soundOn ? 'on' : 'off'); } catch (er) {} setVoiceBtn(); if (soundOn) chime(); },
   /* still typing, or more lines waiting: don't interrupt with a new hint */
