@@ -78,9 +78,9 @@ const noiseCv = (() => { const c = document.createElement('canvas'); c.width = c
   for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i+1] = d.data[i+2] = v; d.data[i+3] = 255; } x.putImageData(d, 0, 0); return c; })();
 
 /* ================= the screens ================= */
-let screen = 'title', week = W.WEEKS[0], cards = [], codeMode = false, codeText = '', run = null, steer = null;
-const show0 = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini', 'toCC']
-  .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id))) || ($('webb').style.opacity = ids.includes('title') ? 1 : 0);
+let screen = 'weeks', week = W.WEEKS[0], cards = [], codeMode = false, codeText = '', run = null, steer = null;
+const show0 = (...ids) => ['weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini']
+  .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id)));
 const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result')) DOC.hide(); show0(...ids); };
 const album = W.load('album', {});
 const saveAlbum = () => W.save('album', album);
@@ -92,7 +92,6 @@ const goalHtml = w => { const d = goalDone(w); return `<div style="font-size:12.
 /* Inside Crater Crew: the way back to the main game, and the free demo's limits (First Light week, Training day). */
 const DEMO = !!(window.MR && MR.ED && MR.ED.demo), ccHome = 'index.html' + (W.slot ? '?slot=' + W.slot : '') + '#levels';   // back to Crater Crew's level list
 if (DEMO) W.WEEKS = W.WEEKS.filter(w => w.id === 'first');
-$('toCC').href = ccHome;
 /* Dr. Orbit greets the player by name when Webb is opened from Crater Crew. */
 const hi = t => W.player && W.player.name ? t.replace('Hello, cadet!', `Hello, cadet ${W.player.name}!`) : t;
 /* --- Webb Academy: Dr. Orbit's campaign --- */
@@ -160,7 +159,7 @@ function showBadge(b){
 
 /* --- the week picker --- */
 function weeks(){
-  acad = null; screen = 'weeks'; zone = 0; $('webb').style.opacity = 0;
+  acad = null; screen = 'weeks'; zone = 0;
   $('weeks').innerHTML = `${acadHtml()}<h2>Or choose your own observing week</h2><p class="est" style="margin:4px 0 0">Webb's sunshield must always face the Sun, so each week only part of the sky can be seen. These are real dates.</p>
     <div class="grid">${W.WEEKS.map(w => { const vis = W.TARGETS.filter(t => W.inField(t.ra, t.dec, w.date));
       return `<button class="week ${w === week ? 'sel' : ''}" data-w="${w.id}"><b>${esc(w.name)}</b><small>${fmtDate(w.date)}</small><div style="font-size:13px;margin-top:4px">${esc(w.note)}</div>
@@ -264,7 +263,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=22'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=24'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -580,12 +579,11 @@ addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX -
 let last = performance.now(), sysT = 0;
 function frame(t){
   const dt = Math.min(.05, (t - last) / 1000); last = t;
-  if (screen === 'title' || screen === 'weeks') { view.ra = (view.ra + dt * 1.2) % 360; view.dec = -20 + 8 * Math.sin(t / 9000); view.fov = 70; view.upv = null; }
+  if (screen === 'weeks') { view.ra = (view.ra + dt * 1.2) % 360; view.dec = -20 + 8 * Math.sin(t / 9000); view.fov = 70; view.upv = null; }
   if (screen === 'plan' && aimTo) { const p = W.route([view.ra, view.dec], [aimTo.ra, aimTo.dec], sunMs)(Math.min(1, dt * 2)); view.ra = p[0]; view.dec = p[1]; view.fov += (60 - view.fov) * Math.min(1, dt * 2); }
   if (screen === 'steer') steerStep(dt, t);
   if ((screen === 'run' && !sys.wheels) || (screen === 'steer' && steer && W.sep(view.ra, view.dec, steer.ra, steer.dec) < view.fov * .5)) levelUp(Math.min(1, dt * 2));   // near a target, roll gently back to north-up so pictures come out straight
   const g = drawSky(); const W2 = hud.width, H = hud.height, s = H / 900; hc.clearRect(0, 0, W2, H);
-  if (screen === 'title') $('webb').style.transform = `translate(-50%,-50%) translate(${Math.sin(t / 3000) * 10}px, ${Math.sin(t / 2300) * 8}px) rotate(${Math.sin(t / 4000) * 1.5}deg)`;
   if (screen === 'plan') markers(g, s);
   if (screen === 'steer') steerHud(g, s, t);
   if (screen === 'run' || screen === 'result') runHud(g, s, t);
@@ -653,7 +651,7 @@ function clueHud(g, s, t){
 }
 /* the little Webb in the corner: leans when it turns, looks at the middle, the Sun under its shield */
 function miniHud(g, s, t){
-  const mimg = $('mini').querySelector('img'), lean = screen === 'steer' ? Math.max(-1, Math.min(1, vra / Math.max(.01, view.fov * .08))) : sys.wheels * Math.sin(t / 400) * .5;
+  const mimg = $('mini').querySelector('.mbody'), lean = screen === 'steer' ? Math.max(-1, Math.min(1, vra / Math.max(.01, view.fov * .08))) : sys.wheels * Math.sin(t / 400) * .5;
   mimg.style.transform = `translate(-50%,-50%) translate(${-lean * 8}px, 0) rotate(${-lean * 7}deg)`;
   const ib = mimg.getBoundingClientRect(), k = hud.width / innerWidth;
   const mx = (ib.left + ib.width * .66) * k, my = (ib.top + ib.height * .14) * k, ex = hud.width / 2, ey = hud.height / 2, len = Math.hypot(ex - mx, ey - my), n = Math.floor(len / (22 * s));
@@ -663,11 +661,10 @@ function miniHud(g, s, t){
   hc.font = `600 ${10 * k}px 'IBM Plex Mono', monospace`; hc.fillStyle = 'rgba(255,214,140,.95)'; hc.textAlign = 'center'; hc.fillText('☀ SUN THIS WAY', px, Math.min(hud.height - 8 * k, py + 4 * k));
   if (puff) { const tx = (ib.left + ib.width * .3) * k, ty = (ib.top + ib.height * .8) * k; for (let i = 0; i < 6; i++) { const a = Math.random() * 6.28, d = Math.random() * 30 * s; hc.fillStyle = 'rgba(220,230,255,.5)'; hc.beginPath(); hc.arc(tx + Math.cos(a) * d, ty + Math.sin(a) * d, 4 * s, 0, 7); hc.fill(); } }
 }
-$('go').onclick = weeks;
 W.debug = {view};   // for tests: lets a test point the telescope directly
 /* ?screen=plan|code|steer&week=first jumps straight in (for testing) */
 const q = new URLSearchParams(location.search);
 if (q.get('week')) { week = W.WEEKS.find(w => w.id === q.get('week')) || week; sunMs = week.date; }
-if (q.get('screen') === 'weeks') weeks(); else if (q.get('screen') === 'plan') { startPlan(); } else if (q.get('screen') === 'code') { codeMode = true; startPlan(); } else if (q.get('screen') === 'steer') startSteer();
+if (q.get('screen') === 'weeks') weeks(); else if (q.get('screen') === 'plan') { startPlan(); } else if (q.get('screen') === 'code') { codeMode = true; startPlan(); } else if (q.get('screen') === 'steer') startSteer(); else weeks();   // opened from Crater Crew's level list: straight to the Academy and the weeks
 requestAnimationFrame(frame);
 })();
