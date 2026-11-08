@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Webb Sky Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<!-- Webb mission test: the real sky (NASA SVS Deep Star Maps 2020) drawn on a sphere with WebGL, NASA's Webb
+     rendering flying over it, and the telescope's view: steer to the Carina Nebula, mind the Sun zone, zoom in
+     and the real Webb picture appears. Not linked from the game yet. -->
+<style>
+:root{--fg:#e6ecf1;--muted:#9fb0c0;--gold:#f0bf5a;--teal:#58cfbe;--warn:#ff9a5a}
+html,body{margin:0;height:100%;background:#000;color:var(--fg);font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hud{position:fixed;inset:0;pointer-events:none}
+.panel{position:fixed;background:rgba(6,10,16,.72);border:1px solid rgba(88,207,190,.35);border-radius:10px;padding:10px 14px;pointer-events:auto}
+.mono{font-family:'IBM Plex Mono',monospace}
+#title{position:fixed;left:0;right:0;bottom:0;display:grid;place-items:center;gap:12px;text-align:center;padding:60px 16px 6vh;background:linear-gradient(transparent,rgba(0,0,0,.82) 45%)}
+#webb{position:fixed;left:50%;top:38%;width:min(62vw,64vh,820px);transform:translate(-50%,-50%);filter:drop-shadow(0 20px 40px rgba(0,0,0,.6));pointer-events:none;transition:opacity .8s}
+#title h1{margin:0;font-family:'Chakra Petch',sans-serif;font-size:clamp(28px,5vw,54px);letter-spacing:.06em;text-shadow:0 2px 18px rgba(0,0,0,.9)}
+#title p{margin:0;color:var(--muted);max-width:60ch;text-shadow:0 1px 8px #000}
+.btn{font:700 18px 'Chakra Petch',sans-serif;letter-spacing:.06em;background:var(--gold);color:#140c02;border:0;border-radius:10px;padding:12px 28px;cursor:pointer}
+.btn.ghost{background:rgba(6,10,16,.7);color:var(--fg);border:1px solid rgba(255,255,255,.25)}
+#card{left:16px;top:16px;max-width:340px}
+#card h2{margin:0 0 4px;font:700 18px 'Chakra Petch',sans-serif}
+#card p{margin:0;font-size:14px;color:var(--muted)}
+#read{right:16px;top:16px;font-size:13px;line-height:1.6;text-align:right}
+#warn{left:50%;top:18%;transform:translateX(-50%);border-color:var(--warn);color:var(--warn);font-weight:600;display:none;text-align:center}
+#pad{right:16px;bottom:16px;display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:6px;padding:10px}
+#pad button{font-size:22px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(20,28,38,.85);color:var(--fg);cursor:pointer;touch-action:none}
+#zoom{left:16px;bottom:16px;display:flex;gap:8px;align-items:center}
+#zoom button{width:52px;height:52px;font-size:24px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(20,28,38,.85);color:var(--fg);cursor:pointer}
+#credit{position:fixed;right:10px;bottom:4px;font-size:11px;color:rgba(195,206,216,.6);pointer-events:none}
+#done{left:50%;bottom:16px;transform:translateX(-50%);max-width:560px;display:none}
+#done h2{margin:0 0 6px;font:700 20px 'Chakra Petch',sans-serif;color:var(--gold)}
+#done p{margin:0 0 6px;font-size:14.5px}
+.hidden{display:none!important}
+@media (max-width:640px){#card{max-width:62vw}#read{font-size:11px}#pad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px)}#zoom button{width:44px;height:44px}}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="hud"></canvas>
+<img id="webb" src="img/webb/webb.webp" alt="The James Webb Space Telescope">
+<div id="title">
+  <h1>JAMES WEBB SPACE TELESCOPE</h1>
+  <p>Webb floats 1.5 million kilometers from Earth, always keeping its sunshield between the Sun and its gold mirror. The sky behind it is the real sky, made from 1.7 billion real stars.</p>
+  <button class="btn" id="go">START OBSERVING</button>
+</div>
+<div class="panel hidden" id="card"><h2>Find the Cosmic Cliffs</h2><p>It is June 2022. Steer Webb to the Carina Nebula, deep in the southern sky. Follow the arrow, then zoom in.</p></div>
+<div class="panel mono hidden" id="read"></div>
+<div class="panel hidden" id="warn">☀ SUNSHIELD LIMIT<br><span style="font-weight:400;color:var(--fg)">Webb can't point there: the Sun would shine on its mirror.</span></div>
+<div class="panel hidden" id="pad">
+  <span></span><button data-d="0,1" aria-label="Up">▲</button><span></span>
+  <button data-d="-1,0" aria-label="Left">◀</button><span></span><button data-d="1,0" aria-label="Right">▶</button>
+  <span></span><button data-d="0,-1" aria-label="Down">▼</button><span></span>
+</div>
+<div class="panel hidden" id="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button></div>
+<div class="panel hidden" id="done"><h2>The Cosmic Cliffs</h2>
+  <p>This is the edge of a giant bubble in the Carina Nebula, 7,600 light-years away. Hot young stars blew it open with their light and winds. Webb's infrared camera sees through the dust and reveals hundreds of baby stars that were hidden before.</p>
+  <p class="mono" style="font-size:12px;color:var(--muted)">Image: NASA, ESA, CSA, STScI (NIRCam, 2022)</p></div>
+<div id="credit">Sky: NASA/Goddard SVS Deep Star Maps 2020, Gaia DR2: ESA/Gaia/DPAC · Webb: NASA GSFC/CIL/Adriana Manrique Gutierrez</div>
+<script>
+(function () {
+const $ = id => document.getElementById(id), D2R = Math.PI / 180;
+const cv = $('gl'), gl = cv.getContext('webgl2') || cv.getContext('webgl');
+const hud = $('hud'), hc = hud.getContext('2d');
+/* ---------- where things are (degrees) ---------- */
+const TARGET = {name:'Cosmic Cliffs (NGC 3324)', ra:159.33, dec:-58.63, w:.27, h:.155, src:'img/webb/t_carina.jpg'};
+/* The Sun on 3 June 2022 (when Webb's view of Carina was planned): Webb may only point 85 to 135 degrees from it. */
+function sunDir(date){ const n = (date - Date.UTC(2000, 0, 1, 12)) / 864e5, L = 280.46 + .9856474 * n, g = (357.528 + .9856003 * n) * D2R;
+  const lam = (L + 1.915 * Math.sin(g) + .02 * Math.sin(2 * g)) * D2R, e = 23.439 * D2R; return [Math.cos(lam), Math.cos(e) * Math.sin(lam), Math.sin(e) * Math.sin(lam)]; }
+const SUN = sunDir(Date.UTC(2022, 5, 3));
+const vec = (ra, dec) => [Math.cos(dec * D2R) * Math.cos(ra * D2R), Math.cos(dec * D2R) * Math.sin(ra * D2R), Math.sin(dec * D2R)];
+const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+const sunAngle = (ra, dec) => Math.acos(Math.max(-1, Math.min(1, dot(vec(ra, dec), SUN)))) / D2R;
+/* ---------- the sky sphere: one shader looks up the star map in the direction of each pixel ---------- */
+const V = `attribute vec2 p; void main(){ gl_Position = vec4(p, 0., 1.); }`;
+const F = `precision highp float;
+uniform sampler2D sky; uniform vec2 res; uniform vec3 fw, rt, up, sun; uniform float tanF, expo, zone, deep;
+uniform sampler2D noise; uniform vec2 cen;
+vec4 rnd(vec2 cell){ return texture2D(noise, (mod(cell, 256.) + .5) / 256.); }   // 256 x 256 cells of real random numbers
+void main(){
+  vec2 q = (gl_FragCoord.xy * 2. - res) / res.y;
+  vec3 d = normalize(fw + q.x * tanF * rt + q.y * tanF * up);
+  float ra = atan(d.y, d.x), dec = asin(clamp(d.z, -1., 1.));
+  vec2 uv = vec2(fract(.5 - ra / 6.2831853), .5 - dec / 3.1415927);
+  vec3 c = texture2D(sky, uv).rgb * expo;
+  /* Zoomed in past what the star map can show: fade it and draw fine stars, each fixed at its own spot in the sky. */
+  if (deep > 0.) {
+    c *= 1. - deep * .93;
+    /* arcminutes on the sky: the view's center comes exactly from JavaScript, the rest from the flat tangent plane
+       (the GPU's own atan/asin are not precise enough this far in) */
+    float z = dot(d, fw); vec2 g = cen + vec2(-dot(d, rt), dot(d, up)) / z * 3437.747;
+    float px = 60. * tanF * 2. / res.y * 57.29578;   // arcminutes per pixel
+    for (int k = 0; k < 4; k++) {   // this cell and its neighbors, so stars near a cell's edge are drawn whole
+      vec2 cell = floor(g - .5) + vec2(float(k - (k / 2) * 2), float(k / 2));   // the 4 cells nearest this pixel
+      vec4 n = rnd(cell);
+      if (n.x > .78) { vec2 at = cell + n.yz; float r = length(g - at);
+        float size = px * (1.1 + 2.6 * pow(n.w, 10.)), b = pow(n.w, 7.) * 2.2 + .12;
+        c += deep * b * smoothstep(size, 0., r) * mix(vec3(1., .85, .7), vec3(.75, .85, 1.), fract(n.x * 7.)); }
+    }
+  }
+  float a = degrees(acos(clamp(dot(d, sun), -1., 1.)));
+  float near = smoothstep(88., 80., a), far = smoothstep(132., 140., a);
+  c += zone * (near * vec3(.42, .2, .05) + far * vec3(.22, .1, .03));
+  gl_FragColor = vec4(c, 1.);
+}`;
+function sh(type, src){ const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s; }
+const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, V)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, F)); gl.linkProgram(pr); gl.useProgram(pr);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(pr, n);
+const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0]));
+[gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.LINEAR));
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+/* Phones get the 4K sky, computers the 8K one. */
+const big = gl.getParameter(gl.MAX_TEXTURE_SIZE) >= 8192 && !matchMedia('(pointer:coarse)').matches;
+const load = src => { const im = new Image(); im.onload = () => { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, im); }; im.src = src; };
+load('img/webb/sky4k.jpg'); if (big) setTimeout(() => load('img/webb/sky8k.jpg'), 400);
+const ntex = gl.createTexture(); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, ntex);
+{ const a = new Uint8Array(256 * 256 * 4); let sd = 12345; for (let i = 0; i < a.length; i++) { sd = (sd * 1103515245 + 12345) >>> 0; a[i] = sd >>> 24; }   // the same stars every time
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, a);
+  [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.NEAREST)); }
+gl.activeTexture(gl.TEXTURE0); gl.uniform1i(U('sky'), 0); gl.uniform1i(U('noise'), 1);
+const pic = new Image(); let soft = null; pic.src = TARGET.src;
+pic.onload = () => { const c = document.createElement('canvas'); c.width = pic.width; c.height = pic.height; const x = c.getContext('2d'); x.drawImage(pic, 0, 0);
+  x.globalCompositeOperation = 'destination-in'; const e = Math.min(c.width, c.height) * .12;
+  [[0, 0, e, 0], [c.width, 0, c.width - e, 0]].forEach(([x0, , x1]) => { const g = x.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, '#000'); x.fillStyle = g; x.fillRect(Math.min(x0, x1), 0, e, c.height); });
+  x.fillStyle = '#000'; const m = document.createElement('canvas'); m.width = c.width; m.height = c.height; const y = m.getContext('2d');
+  const gv = y.createLinearGradient(0, 0, 0, c.height); gv.addColorStop(0, 'rgba(0,0,0,0)'); gv.addColorStop(e / c.height, '#000'); gv.addColorStop(1 - e / c.height, '#000'); gv.addColorStop(1, 'rgba(0,0,0,0)');
+  const gh = y.createLinearGradient(0, 0, c.width, 0); gh.addColorStop(0, 'rgba(0,0,0,0)'); gh.addColorStop(e / c.width, '#000'); gh.addColorStop(1 - e / c.width, '#000'); gh.addColorStop(1, 'rgba(0,0,0,0)');
+  y.fillStyle = gv; y.fillRect(0, 0, m.width, m.height); y.globalCompositeOperation = 'destination-in'; y.fillStyle = gh; y.fillRect(0, 0, m.width, m.height);
+  const out = document.createElement('canvas'); out.width = c.width; out.height = c.height; const o = out.getContext('2d'); o.drawImage(pic, 0, 0); o.globalCompositeOperation = 'destination-in'; o.drawImage(m, 0, 0); soft = out; };
+/* ---------- the view ---------- */
+let mode = 'title', ra = 250, dec = -20, fov = 70, vra = 0, vdec = 0, keys = {x:0, y:0}, warnT = 0, doneAt = 0;
+function basis(){ const f = vec(ra, dec), r0 = [-f[1], f[0], 0], rl = Math.hypot(r0[0], r0[1]) || 1, r = [r0[0]/rl, r0[1]/rl, 0];
+  const u = [f[1]*r[2] - f[2]*r[1], f[2]*r[0] - f[0]*r[2], f[0]*r[1] - f[1]*r[0]]; return {f, r:[-r[0], -r[1], 0], u}; }   // r points east; on screen east is to the left
+/* where a sky direction lands on the screen (null when behind) */
+function project(d, b, w, h, tanF){ const z = dot(d, b.f); if (z <= 0) return null; return [w/2 + dot(d, b.r) / z / tanF * h/2, h/2 - dot(d, b.u) / z / tanF * h/2]; }
+function resize(){ const s = Math.min(2, devicePixelRatio || 1); cv.width = hud.width = innerWidth * s; cv.height = hud.height = innerHeight * s; gl.viewport(0, 0, cv.width, cv.height); }
+addEventListener('resize', resize); resize();
+let last = performance.now();
+function frame(t){
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  if (mode === 'title') { ra = (ra + dt * 1.2) % 360; dec = -20 + 8 * Math.sin(t / 9000); }
+  else {
+    /* Webb is huge and turns slowly: steering speeds it up gently, letting go slows it down, and it never stops dead */
+    const speed = fov * .12, acc = fov * .25;
+    vra += (keys.x * speed - vra) * Math.min(1, dt * (keys.x ? 1.2 : .9)) ; vdec += (keys.y * speed - vdec) * Math.min(1, dt * (keys.y ? 1.2 : .9));
+    let nra = ra - vra * dt / Math.max(.2, Math.cos(dec * D2R)), ndec = Math.max(-88, Math.min(88, dec + vdec * dt));
+    nra += dt * .004 * fov;   // the gentle drift of the stars
+    const a = sunAngle(nra, ndec);
+    if (a < 85 || a > 135) { vra *= -.2; vdec *= -.2; warnT = t; } else { ra = (nra + 360) % 360; dec = ndec; }
+  }
+  const b = basis(), tanF = Math.tan(fov / 2 * D2R);
+  gl.uniform2f(U('res'), cv.width, cv.height); gl.uniform3fv(U('fw'), b.f); gl.uniform3fv(U('rt'), b.r); gl.uniform3fv(U('up'), b.u); gl.uniform3fv(U('sun'), SUN);
+  gl.uniform1f(U('tanF'), tanF); gl.uniform2f(U('cen'), ((ra * Math.cos(dec * D2R) * 60) % 256 + 256) % 256, ((dec * 60) % 256 + 256) % 256); gl.uniform1f(U('deep'), mode === 'title' ? 0 : Math.max(0, Math.min(1, (8 - fov) / 6))); gl.uniform1f(U('expo'), mode === 'title' ? 1.25 : 1.45); gl.uniform1f(U('zone'), mode === 'title' ? 0 : 1);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  drawHud(t, b, tanF);
+  requestAnimationFrame(frame);
+}
+function drawHud(t, b, tanF){
+  const W = hud.width, H = hud.height, s = H / 900; hc.clearRect(0, 0, W, H);
+  if (mode === 'title') { $('webb').style.transform = `translate(-50%,-50%) translate(${Math.sin(t / 3000) * 10}px, ${Math.sin(t / 2300) * 8}px) rotate(${Math.sin(t / 4000) * 1.5}deg)`; return; }
+  // the real Webb picture sits at its true place in the sky and shows once you zoom in close
+  const c = project(vec(TARGET.ra, TARGET.dec), b, W, H, tanF);
+  const ppd = H / (2 * tanF) * D2R;   // pixels per degree at the center
+  if (c && soft) { const w = TARGET.w * ppd * 1.15, h = TARGET.h * ppd * 1.15, show = Math.max(0, Math.min(1, (6 - fov) / 4));
+    if (show > 0 && w > 4) { hc.globalAlpha = show; hc.drawImage(soft, c[0] - w/2, c[1] - h/2, w, h); hc.globalAlpha = 1; } }
+  // the camera frame in the middle
+  const fr = Math.min(W, H) * .16; hc.strokeStyle = 'rgba(88,207,190,.75)'; hc.lineWidth = 2 * s;
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx, sy]) => { hc.beginPath(); hc.moveTo(W/2 + sx*fr, H/2 + sy*fr*.6 - sy*fr*.18); hc.lineTo(W/2 + sx*fr, H/2 + sy*fr*.6); hc.lineTo(W/2 + sx*fr - sx*fr*.18, H/2 + sy*fr*.6); hc.stroke(); });
+  hc.beginPath(); hc.arc(W/2, H/2, 4 * s, 0, 7); hc.stroke();
+  // the target: a ring when on screen, an arrow at the edge when not
+  const sep = Math.acos(Math.max(-1, Math.min(1, dot(b.f, vec(TARGET.ra, TARGET.dec))))) / D2R;
+  const onScr = c && c[0] > 0 && c[0] < W && c[1] > 0 && c[1] < H;
+  if (onScr && fov > 6) { hc.strokeStyle = `rgba(240,191,90,${.6 + .3 * Math.sin(t / 300)})`; hc.lineWidth = 3 * s; hc.beginPath(); hc.arc(c[0], c[1], 26 * s, 0, 7); hc.stroke();
+    hc.fillStyle = '#f0bf5a'; hc.font = `600 ${15 * s}px 'IBM Plex Mono', monospace`; hc.textAlign = 'center'; hc.fillText('CARINA NEBULA', c[0], c[1] - 36 * s); }
+  if (!onScr) { const dx = dot(vec(TARGET.ra, TARGET.dec), b.r), dy = -dot(vec(TARGET.ra, TARGET.dec), b.u), a = Math.atan2(dy, dx), R = Math.min(W, H) * .42;
+    const x = W/2 + Math.cos(a) * R, y = H/2 + Math.sin(a) * R; hc.save(); hc.translate(x, y); hc.rotate(a); hc.fillStyle = '#f0bf5a';
+    hc.beginPath(); hc.moveTo(18*s, 0); hc.lineTo(-12*s, -12*s); hc.lineTo(-6*s, 0); hc.lineTo(-12*s, 12*s); hc.closePath(); hc.fill(); hc.restore(); }
+  const a = sunAngle(ra, dec);
+  $('read').innerHTML = `POINTING<br>RA ${(ra / 15).toFixed(2)} h · DEC ${dec.toFixed(1)}°<br>FIELD OF VIEW ${fov < 2 ? fov.toFixed(2) : fov.toFixed(0)}°<br>SUN ANGLE ${a.toFixed(0)}° (allowed 85–135)<br>TARGET ${sep < 1 ? (sep * 60).toFixed(0) + "'" : sep.toFixed(1) + '°'} AWAY`;
+  $('warn').style.display = t - warnT < 2500 ? 'block' : 'none';
+  if (fov < 2.2 && sep < .12 && !doneAt) doneAt = t;
+  $('done').style.display = doneAt ? 'block' : 'none';
+}
+/* ---------- controls: arrows, WASD, the pad, drag, zoom ---------- */
+const KX = {ArrowLeft:-1, a:-1, ArrowRight:1, d:1}, KY = {ArrowUp:1, w:1, ArrowDown:-1, s:-1};
+addEventListener('keydown', e => { if (KX[e.key] != null) keys.x = KX[e.key]; if (KY[e.key] != null) keys.y = KY[e.key]; if (e.key === '+' || e.key === '=') zoom(.8); if (e.key === '-') zoom(1.25); });
+addEventListener('keyup', e => { if (KX[e.key] != null) keys.x = 0; if (KY[e.key] != null) keys.y = 0; });
+document.querySelectorAll('#pad button').forEach(bt => { const [x, y] = bt.dataset.d.split(',').map(Number);
+  bt.onpointerdown = e => { e.preventDefault(); keys.x = x; keys.y = y; }; bt.onpointerup = bt.onpointerleave = () => { keys.x = 0; keys.y = 0; }; });
+const zoom = k => { fov = Math.max(.3, Math.min(70, fov * k)); };
+$('zin').onclick = () => zoom(.7); $('zout').onclick = () => zoom(1.43);
+addEventListener('wheel', e => { if (mode !== 'title') zoom(e.deltaY > 0 ? 1.12 : .89); }, {passive:true});
+let drag = null; cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; });
+addEventListener('pointerup', () => { drag = null; keys.x = keys.y = 0; });
+addEventListener('pointermove', e => { if (!drag || mode === 'title') return; const dx = e.clientX - drag[0], dy = e.clientY - drag[1]; keys.x = Math.max(-1, Math.min(1, -dx / 60)); keys.y = Math.max(-1, Math.min(1, dy / 60)); });
+$('go').onclick = () => { mode = 'observe'; ra = 110; dec = -30; fov = 60; $('title').classList.add('hidden'); $('webb').style.opacity = 0; ['card', 'read', 'pad', 'zoom'].forEach(id => $(id).classList.remove('hidden')); };
+/* ?view=observe&ra=..&dec=..&fov=.. jumps straight in (for screenshots) */
+const q = new URLSearchParams(location.search);
+if (q.get('view') === 'observe') { $('go').onclick(); ra = +(q.get('ra') || ra); dec = +(q.get('dec') || dec); fov = +(q.get('fov') || fov); }
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -23,7 +23,8 @@ def build_name():
 def build(edition, name):
     out = os.path.join(DIST, edition)
     shutil.rmtree(out, ignore_errors=True)
-    shutil.copytree(SRC, out)
+    # The Webb mission is still being built: its test page and pictures are not shipped yet.
+    shutil.copytree(SRC, out, ignore=shutil.ignore_patterns('webb-test.html', 'webb'))
     path = os.path.join(out, 'js', 'edition.js')
     js = open(path, encoding='utf-8').read()
     js, n1 = re.subn(r"MR\.EDITION = '[^']*';", f"MR.EDITION = '{edition}';", js)

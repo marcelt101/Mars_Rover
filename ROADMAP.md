@@ -81,8 +81,11 @@ there's no lander, and there's no Mission Log week yet. Clipper starts its Europ
 The user's idea, contemporary and different from driving. Kids point the telescope at chosen spots in the sky and
 take pictures of what Webb really photographed, using Webb's real images (NASA/ESA/CSA/STScI, credited). Each
 picture teaches one thing: galaxies, clouds of dust and gas, star formation, black holes, quasars, and so on.
-To plan later: how aiming works (a sky map, coordinates, filters), what makes it a game (targets, time on the
-telescope, guide stars), and which of Webb's images to use.
+**Status:** a first test is at `game/webb-test.html` (not linked, not shipped): NASA's Webb rendering cut out and
+flying over the real sky (NASA SVS Deep Star Maps 2020, drawn with WebGL), then the telescope's view: steer to
+Carina in June 2022, the Sun zone (85-135 degrees) blocks the way, zoom in and the real Cosmic Cliffs picture
+appears at its true spot. Next, if approved: guide star lock, the exposure building up the picture, the recorder
+and sending pictures home through the Deep Space Network, then more targets and the album.
 
 ## Later ideas (keep in mind)
 - **Titan:** NASA's Dragonfly drone, planned to land in 2034. Fly between landing spots, with methane lakes and dunes.
