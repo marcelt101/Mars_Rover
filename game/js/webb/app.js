@@ -79,9 +79,11 @@ const noiseCv = (() => { const c = document.createElement('canvas'); c.width = c
 
 /* ================= the screens ================= */
 let screen = 'weeks', week = W.WEEKS[0], cards = [], codeMode = false, codeText = '', run = null, steer = null;
-const show0 = (...ids) => ['weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini']
+const show0 = (...ids) => ['weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'console', 'next', 'mini', 'exitBtn']
   .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id)));
-const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result')) DOC.hide(); show0(...ids); };
+const show = (...ids) => { if (window.DOC && !ids.includes('card') && !ids.includes('result')) DOC.hide();
+  if (['card', 'plan', 'result', 'album', 'photo'].some(id => ids.includes(id))) ids.push('exitBtn');   // a way out to the level list on every screen but the run
+  show0(...ids); };
 const album = W.load('album', {});
 const saveAlbum = () => W.save('album', album);
 
@@ -94,6 +96,17 @@ const DEMO = !!(window.MR && MR.ED && MR.ED.demo), ccHome = 'index.html' + (W.sl
 if (DEMO) W.WEEKS = W.WEEKS.filter(w => w.id === 'first');
 /* Dr. Orbit greets the player by name when Webb is opened from Crater Crew. */
 const hi = t => W.player && W.player.name ? t.replace('Hello, cadet!', `Hello, cadet ${W.player.name}!`) : t;
+/* Your choices on the weeks screen, and where you were (so coming back from the level list puts you in the same spot). */
+const pick0 = W.load('pick', {}); let pickMode = pick0.mode || 'steer';
+if (pick0.week && W.WEEKS.find(w => w.id === pick0.week)) week = W.WEEKS.find(w => w.id === pick0.week);
+function saveResume(){
+  const sc = screen === 'run' || screen === 'result' ? (run && run.from) || 'weeks' : screen;
+  W.save('resume', {screen:sc === 'steer' || sc === 'plan' ? sc : 'weeks', week:week.id, steer:steer && steer.id, codeMode, codeText, cards:cards.map(c => ({...c})), cardsWeek:cards.week,
+    view:{ra:view.ra, dec:view.dec, fov:view.fov, upv:view.upv}, acad:acad ? {s:acad.s, i:acad.i, hints:acad.hints, wrong:[...acad.wrong]} : null});
+}
+function exitToLevels(){ saveResume(); location.href = ccHome; }
+$('exitBtn').onclick = exitToLevels;
+addEventListener('pagehide', saveResume);
 /* --- Webb Academy: Dr. Orbit's campaign --- */
 let acad = null;   // the session being played: {s, i, hints, wrong:Set, said:{}}
 const acadData = W.load('academy', {}); acadData.done = acadData.done || 0; acadData.at = acadData.at || {};   // at: where you are in each session
@@ -101,7 +114,7 @@ const acadSave = () => W.save('academy', acadData);
 const acadHtml = () => { const A = W.ACADEMY, n = Math.min(acadData.done, A.length - 1), cur = A[n];
   return `<div class="acad"><div class="acadHead"><b>🎓 Webb Academy</b><small>with Dr. Orbit</small></div>
     <div class="acadRank">Your rank: <b>${W.RANKS[rankNow()].icon} ${esc(W.RANKS[rankNow()].name)}</b></div>
-    <div class="acadBadges">${W.RANKS.map((r, i) => `<div title="${esc(r.name)}: ${esc(r.how)}">${badgeSvg(r, i <= rankNow(), 58)}<small>${i <= rankNow() ? esc(r.name) : esc(r.how)}</small></div>`).join('')}</div>
+    <div class="acadBadges">${W.RANKS.map((r, i) => `<div title="${esc(r.name)}: ${esc(r.how)}">${badgeSvg(r, i <= rankNow(), 46)}<small>${i <= rankNow() ? esc(r.name) : esc(r.how)}</small></div>`).join('')}</div>
     <div class="acadDots">${A.map((a, i) => `<span class="${i < acadData.done ? 'ok' : i === n ? 'cur' : ''}" title="${esc(a.name)}">${i < acadData.done ? '✓' : i + 1}</span>`).join('<i></i>')}</div>
     <div class="acadNow"><div><b>Session ${n + 1}: ${esc(cur.name)}</b><small>${esc(cur.what)}</small></div>
     ${DEMO && n > 0 ? '<button class="btn" disabled>🔒 Full game</button>' : cur.soon ? '<button class="btn" disabled>Coming soon</button>' : `<button class="btn gold" id="acadGo">▶ ${acadData.at[cur.id] ? `Continue (${acadData.at[cur.id] + 1} of ${cur.ids.length})` : 'Start'}</button>`}</div>
@@ -160,21 +173,26 @@ function showBadge(b){
 /* --- the week picker --- */
 function weeks(){
   acad = null; screen = 'weeks'; zone = 0;
-  $('weeks').innerHTML = `${acadHtml()}<h2>Or choose your own observing week</h2><p class="est" style="margin:4px 0 0">Webb's sunshield must always face the Sun, so each week only part of the sky can be seen. These are real dates.</p>
+  const MODES = {steer:['🕹️ Steer it yourself', 'Turn the telescope with the joystick, find the target, take the picture. Great for younger crew.'],
+    cards:['🗂️ Plan the week with cards', 'Fill in observation cards like real astronomers do in NASA\'s planning tool, then watch Webb run them.'],
+    code:['💻 Write the script', 'Webb really runs JavaScript scripts on board. Write your own plan with loops and ifs.']};
+  $('weeks').innerHTML = `<div class="whead"><h2>🔭 James Webb Space Telescope</h2><button class="btn small exitlink">⏏ Exit to levels</button></div>
+    ${acadHtml()}
+    <div class="orown"><span>or fly on your own</span></div>
+    <h3 class="step"><i>1</i> Pick a week <small>Webb's sunshield must always face the Sun, so each week only part of the sky can be seen. These are real dates.</small></h3>
     <div class="grid">${W.WEEKS.map(w => { const vis = W.TARGETS.filter(t => W.inField(t.ra, t.dec, w.date));
-      return `<button class="week ${w === week ? 'sel' : ''}" data-w="${w.id}"><b>${esc(w.name)}</b><small>${fmtDate(w.date)}</small><div style="font-size:13px;margin-top:4px">${esc(w.note)}</div>
+      return `<button class="week ${w === week ? 'sel' : ''}" data-w="${w.id}" aria-pressed="${w === week}">${w === week ? '<em class="tick">✓</em>' : ''}<b>${esc(w.name)}</b><small>${fmtDate(w.date)}</small><div style="font-size:13px;margin-top:4px">${esc(w.note)}</div>
         <div class="thumbs">${vis.map(t => `<img src="${thumb(t, t.cam)}" alt="${esc(t.name)}" title="${esc(t.name)}">`).join('')}</div><small>${vis.length} targets in view</small>${goalHtml(w)}</button>`; }).join('')}</div>
-    <h3 style="margin-top:6px">How do you want to fly Webb?</h3>
-    <div class="modes" style="margin-top:8px">
-      <button class="mode" data-m="steer"><b>🕹️ Steer it yourself</b><small>Turn the telescope with the arrows, find the target, take the picture. Great for younger crew.</small></button>
-      <button class="mode" data-m="cards"><b>🗂️ Plan the week with cards</b><small>Fill in observation cards like real astronomers do in NASA's planning tool, then watch Webb run them.</small></button>
-      <button class="mode" data-m="code"><b>💻 Write the script</b><small>Webb really runs JavaScript scripts on board. Write your own plan with loops and ifs.</small></button>
-    </div>
-    <div class="row" style="margin-top:12px;display:flex;gap:8px"><button class="btn small" id="toAlbum">📔 Album (${Object.keys(album).length})</button><button class="btn small" id="toHow">🛠 How Webb works</button><a class="btn small" href="${ccHome}" style="text-decoration:none;margin-left:auto">◀ Back to the levels</a></div>
+    <h3 class="step"><i>2</i> Pick how to fly Webb</h3>
+    <div class="modes">${Object.entries(MODES).map(([k, [t, d]]) => `<button class="mode ${k === pickMode ? 'sel' : ''}" data-m="${k}" aria-pressed="${k === pickMode}">${k === pickMode ? '<em class="tick">✓</em>' : ''}<b>${t}</b><small>${d}</small></button>`).join('')}</div>
+    <div class="gobar"><span class="step"><i>3</i></span><button class="btn gold big" id="wGo">▶ Start: ${MODES[pickMode][0].replace(/^\S+ /, '')} · ${esc(week.name)}</button></div>
+    <div class="row" style="margin-top:12px;display:flex;gap:8px"><button class="btn small" id="toAlbum">📔 Album (${Object.keys(album).length})</button><button class="btn small" id="toHow">🛠 How Webb works</button></div>
     ${DEMO ? `<p class="est" style="margin-top:10px">Free demo: First Light week and Training day. The full game adds every week, Mystery targets and more Academy sessions. <a href="${esc(MR.ED.buyUrl || '#')}" target="_blank" rel="noopener" style="color:var(--gold)">Get the full game</a></p>` : ''}`;
   show('weeks');
-  document.querySelectorAll('.week').forEach(b => b.onclick = () => { week = W.WEEKS.find(w => w.id === b.dataset.w); sunMs = week.date; weeks(); });
-  document.querySelectorAll('.mode').forEach(b => b.onclick = () => { if (b.dataset.m === 'steer') startSteer(); else { codeMode = b.dataset.m === 'code'; startPlan(); } });
+  document.querySelectorAll('.week').forEach(b => b.onclick = () => { week = W.WEEKS.find(w => w.id === b.dataset.w); sunMs = week.date; W.save('pick', {week:week.id, mode:pickMode}); weeks(); });
+  document.querySelectorAll('.mode').forEach(b => b.onclick = () => { pickMode = b.dataset.m; W.save('pick', {week:week.id, mode:pickMode}); weeks(); });
+  $('wGo').onclick = () => { if (pickMode === 'steer') startSteer(); else { codeMode = pickMode === 'code'; startPlan(); } };
+  document.querySelectorAll('.exitlink').forEach(b => b.onclick = exitToLevels);
   $('toAlbum').onclick = () => openAlbum(weeks); $('toHow').onclick = () => openHow(weeks);
   if ($('acadGo')) $('acadGo').onclick = () => startSession(Math.min(acadData.done, W.ACADEMY.length - 1));
   document.querySelectorAll('.acadAgain button').forEach(b => b.onclick = () => startSession(+b.dataset.s));
@@ -263,7 +281,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=27'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=29'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -583,7 +601,7 @@ function frame(t){
   const dt = Math.min(.05, (t - last) / 1000); last = t;
   if (screen === 'weeks') { view.ra = (view.ra + dt * 1.2) % 360; view.dec = -20 + 8 * Math.sin(t / 9000); view.fov = 70; view.upv = null; }
   if (screen === 'plan' && aimTo) { const p = W.route([view.ra, view.dec], [aimTo.ra, aimTo.dec], sunMs)(Math.min(1, dt * 2)); view.ra = p[0]; view.dec = p[1]; view.fov += (60 - view.fov) * Math.min(1, dt * 2); }
-  if (screen === 'steer') steerStep(dt, t);
+  if (screen === 'steer') { steerStep(dt, t); if (t - (frame.saved || 0) > 3000) { frame.saved = t; saveResume(); } }
   if ((screen === 'run' && !sys.wheels) || (screen === 'steer' && steer && W.sep(view.ra, view.dec, steer.ra, steer.dec) < view.fov * .5)) levelUp(Math.min(1, dt * 2));   // near a target, roll gently back to north-up so pictures come out straight
   const g = drawSky(); const W2 = hud.width, H = hud.height, s = H / 900; hc.clearRect(0, 0, W2, H);
   if (screen === 'plan') markers(g, s);
@@ -667,7 +685,18 @@ W.debug = {view};   // for tests: lets a test point the telescope directly
 /* ?screen=plan|code|steer&week=first jumps straight in (for testing) */
 const q = new URLSearchParams(location.search);
 if (q.get('week')) { week = W.WEEKS.find(w => w.id === q.get('week')) || week; sunMs = week.date; }
-if (q.get('screen') === 'weeks') weeks(); else if (q.get('screen') === 'plan') { startPlan(); } else if (q.get('screen') === 'code') { codeMode = true; startPlan(); } else if (q.get('screen') === 'steer') startSteer(); else weeks();   // opened from Crater Crew's level list: straight to the Academy and the weeks
+if (q.get('screen') === 'weeks') weeks(); else if (q.get('screen') === 'plan') { startPlan(); } else if (q.get('screen') === 'code') { codeMode = true; startPlan(); } else if (q.get('screen') === 'steer') startSteer(); else resume();   // opened from Crater Crew's level list: back where you were, or the Academy and the weeks
+function resume(){
+  const r = W.load('resume', null); if (!r) return weeks();
+  const wk = W.WEEKS.find(w => w.id === r.week); if (!wk) return weeks(); week = wk; sunMs = week.date; docMet = true;
+  if (r.screen === 'steer') {
+    if (r.acad && W.ACADEMY[r.acad.s] && !W.ACADEMY[r.acad.s].soon) { acad = {s:r.acad.s, i:r.acad.i, hints:r.acad.hints || 0, wrong:new Set(r.acad.wrong || []), said:{}}; if (!acadT()) { acad = null; return weeks(); } }
+    else { steer = W.byId(r.steer) || null; }
+    startSteer(); if (r.view) Object.assign(view, r.view);
+    DOC.say({text:acad ? `Welcome back! Let's keep going. ${acadAsk()}` : `Welcome back! We're still looking for ${steer.name}.`, mood:'wow'});
+  } else if (r.screen === 'plan') { codeMode = !!r.codeMode; codeText = r.codeText || ''; cards = (r.cards || []).slice(); cards.week = r.cardsWeek; startPlan(); }
+  else weeks();
+}
 if (MR.music) MR.music.setWorld('deep');   // deep-space music
 requestAnimationFrame(frame);
 })();
