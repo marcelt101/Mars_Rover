@@ -127,5 +127,7 @@ root.DOC = {
     queue.length = 0; queue.push(...arr); onDone = opts.done || null; stopTyping(); next(); },
   hide(){ queue.length = 0; stopTyping(); talking = false; box.classList.add('hidden'); },
   get busy(){ return busy; },
+  /* still typing, or more lines waiting: don't interrupt with a new hint */
+  get pending(){ return !!(typing || startT || queue.length); },
 };
 })(window);

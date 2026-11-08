@@ -101,6 +101,13 @@ picture teaches one thing: galaxies, clouds of dust and gas, star formation, bla
 - Dr. Orbit (js/webb/doc.js): an original, code-drawn funny scientist on a little LIVE screen. A soft chime says a
   message is coming, then the text types with pleasant blips while his mouth moves (no voice; sound can be turned off): hello and target clues, Sun-limit warnings, "take the
   picture", and reactions with facts or tips on the results.
+- Webb Academy (campaign with Dr. Orbit, a one-man science team who needs his cadet's help): 1 Training day
+  (guided: he names targets and explains each step), 2 Mystery targets (clues only, gold ? marks in the sky, wrong
+  guesses get explained, 3 hints: second clue, gauge mark, arrow). Sessions 3-5 (plan a week, you're in charge with
+  breaking news, graduation) are next. Ranks with hexagon badges: Cadet, Junior Space Surveyor, Star Detective,
+  Mission Planner, Deep Space Duty Officer, Principal Investigator, Chief Scientist (graduate + every picture).
+- Future mission idea: the Moon's leftover hardware with NASA's Lunar Reconnaissance Orbiter (Webb can't: the Moon is
+  always too close to the Sun from L2, and Webb's sharpest detail there is about half a kilometer).
 - Planned next (agreed): science requests with hidden targets (clues and gauge numbers, the arrow as a hint),
   spot-the-discovery inside each real picture, collection badges by kind on a sky map; then breaking-news targets
   (DART impact, Jupiter, Neptune) and team roles.

@@ -1,4 +1,4 @@
 /* Runs a kid's JavaScript plan away from the page, so a loop that never ends can't freeze the game.
    The page stops this worker if it takes too long. */
-importScripts('data.js?v=11', 'model.js?v=11');
+importScripts('data.js?v=13', 'model.js?v=13');
 self.onmessage = e => { const {code, week} = e.data; self.postMessage(self.WEBB.runCode(code, week)); };

@@ -32,6 +32,29 @@ h1,h2,h3{font-family:'Chakra Petch',sans-serif;margin:0}
 #title h1{font-size:clamp(28px,5vw,54px);letter-spacing:.06em;text-shadow:0 2px 18px rgba(0,0,0,.9)}
 #title p{margin:0;color:var(--muted);max-width:60ch;text-shadow:0 1px 8px #000}
 #title .btn{font-size:18px;padding:12px 28px}
+/* Webb Academy */
+.acad{background:linear-gradient(135deg,rgba(240,191,90,.14),rgba(88,207,190,.08));border:2px solid rgba(240,191,90,.55);border-radius:14px;padding:12px 14px;margin-bottom:14px}
+.acadHead b{font:700 20px 'Chakra Petch',sans-serif;color:var(--gold)}.acadHead small{color:var(--muted);margin-left:8px}
+.acadDots{display:flex;align-items:center;margin:10px 0}
+.acadDots span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;border:2px solid rgba(255,255,255,.2);color:var(--muted);flex:none}
+.acadDots span.ok{background:#3fae7a;border-color:#3fae7a;color:#fff}.acadDots span.cur{border-color:var(--gold);color:var(--gold);box-shadow:0 0 0 4px rgba(240,191,90,.18)}
+.acadDots i{flex:1;height:2px;background:rgba(255,255,255,.15);margin:0 4px}
+.acadNow{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.acadNow b{display:block;font-size:16px}.acadNow small{color:var(--muted);font-size:13px}
+.acadAgain{margin-top:8px;font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.acadRank{margin-top:6px;font-size:14px;color:var(--muted)}.acadRank b{color:var(--fg)}
+.acadBadges{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.acadBadges div{display:flex;flex-direction:column;align-items:center;width:84px;text-align:center}
+.acadBadges small{font-size:10.5px;line-height:1.2;color:var(--muted);margin-top:2px}
+.bsvg.off{opacity:.7}
+#badgePop{left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;text-align:center;width:min(360px,90vw);border-color:var(--gold);padding:20px;animation:bp .5s cubic-bezier(.2,1.6,.4,1)}
+#badgePop.hidden{display:none}
+#badgePop small{color:var(--gold);letter-spacing:.2em;font-weight:700}
+#badgePop h2{margin:4px 0;font:700 26px 'Chakra Petch',sans-serif}
+#badgePop p{color:var(--muted);margin:0 0 14px}
+#badgePop .bglow{filter:drop-shadow(0 0 22px rgba(240,191,90,.6));animation:bs 3s ease-in-out infinite}
+@keyframes bp{from{transform:translate(-50%,-50%) scale(.4);opacity:0}}
+@keyframes bs{50%{transform:rotate(-4deg) scale(1.04)}}
 /* week picker */
 #weeks{left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,94vw);max-height:92vh;overflow:auto}
 #weeks .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin:12px 0}
@@ -154,9 +177,9 @@ select{background:#0b1015;color:var(--fg);border:1px solid rgba(255,255,255,.2);
 <div class="hidden" id="next"></div>
 <button class="btn gold hidden" id="shoot">📸 TAKE THE PICTURE</button>
 <div id="credit">Sky: NASA/Goddard SVS Deep Star Maps 2020, Gaia DR2: ESA/Gaia/DPAC · Webb: NASA GSFC/CIL/Adriana Manrique Gutierrez · Pictures: NASA, ESA, CSA, STScI</div>
-<script src="js/webb/data.js?v=11"></script>
-<script src="js/webb/model.js?v=11"></script>
-<script src="js/webb/doc.js?v=11"></script>
-<script src="js/webb/app.js?v=11"></script>
+<script src="js/webb/data.js?v=13"></script>
+<script src="js/webb/model.js?v=13"></script>
+<script src="js/webb/doc.js?v=13"></script>
+<script src="js/webb/app.js?v=13"></script>
 </body>
 </html>

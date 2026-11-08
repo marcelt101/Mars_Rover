@@ -89,10 +89,55 @@ const saveAlbum = () => { try { localStorage.setItem('webb.album', JSON.stringif
 const goalDone = w => w.ids.filter(id => Object.values(album).some(a => a.id === id && (id !== 'wasp96' || a.cam === 'NIRISS')));
 const goalHtml = w => { const d = goalDone(w); return `<div style="font-size:12.5px;margin-top:6px">🎯 ${esc(w.goal)}: <b style="color:${d.length === w.ids.length ? '#8fe3a0' : 'var(--gold)'}">${d.length}/${w.ids.length}</b>${d.length === w.ids.length ? ' ✅' : ''}</div>`; };
 
+/* --- Webb Academy: Dr. Orbit's campaign --- */
+let acad = null;   // the session being played: {s, i, hints, wrong:Set, said:{}}
+const acadData = (() => { try { return JSON.parse(localStorage.getItem('webb.academy') || '{}'); } catch (e) { return {}; } })(); acadData.done = acadData.done || 0;
+const acadSave = () => { try { localStorage.setItem('webb.academy', JSON.stringify(acadData)); } catch (e) {} };
+const acadHtml = () => { const A = W.ACADEMY, n = Math.min(acadData.done, A.length - 1), cur = A[n];
+  return `<div class="acad"><div class="acadHead"><b>🎓 Webb Academy</b><small>with Dr. Orbit</small></div>
+    <div class="acadRank">Your rank: <b>${W.RANKS[rankNow()].icon} ${esc(W.RANKS[rankNow()].name)}</b></div>
+    <div class="acadBadges">${W.RANKS.map((r, i) => `<div title="${esc(r.name)}: ${esc(r.how)}">${badgeSvg(r, i <= rankNow(), 40)}<small>${i <= rankNow() ? esc(r.name) : esc(r.how)}</small></div>`).join('')}</div>
+    <div class="acadDots">${A.map((a, i) => `<span class="${i < acadData.done ? 'ok' : i === n ? 'cur' : ''}" title="${esc(a.name)}">${i < acadData.done ? '✓' : i + 1}</span>`).join('<i></i>')}</div>
+    <div class="acadNow"><div><b>Session ${n + 1}: ${esc(cur.name)}</b><small>${esc(cur.what)}</small></div>
+    ${cur.soon ? '<button class="btn" disabled>Coming soon</button>' : `<button class="btn gold" id="acadGo">▶ Start</button>`}</div>
+    ${acadData.done ? `<div class="acadAgain">Play again: ${A.slice(0, acadData.done).filter(a => !a.soon).map(a => `<button class="btn small" data-s="${A.indexOf(a)}">${esc(a.name)}</button>`).join('')}</div>` : ''}</div>`; };
+function startSession(si){
+  const S = W.ACADEMY[si]; acad = {s:si, i:0, hints:0, wrong:new Set(), said:{}};
+  week = W.WEEKS.find(w => w.id === S.week); sunMs = week.date; docMet = true;
+  startSteer(); DOC.say([...S.intro.map((text, i) => ({text, mood:i === 0 ? 'wow' : 'happy'})), {text:acadAsk(), mood:'think'}]);
+}
+const acadT = () => acad && W.byId(W.ACADEMY[acad.s].ids[acad.i]);
+const acadAsk = () => { const S = W.ACADEMY[acad.s], t = acadT(), who = W.RANKS[rankNow()].name;
+  return S.clue ? `${who}, here's mystery target ${acad.i + 1}: ${t.clue[0]}` : `Target ${acad.i + 1}: ${t.name}! ${t.kind}, ${t.far} away. Follow the gold arrow.`; };
+function acadNext(){
+  const S = W.ACADEMY[acad.s], acad_s = acad.s; acad.i++; acad.hints = 0; acad.wrong = new Set(); acad.said = {};
+  if (acad.i < S.ids.length) { startSteer(); DOC.say({text:acadAsk(), mood:'think'}); return; }
+  acadData.done = Math.max(acadData.done, acad.s + 1); acadSave(); acad = null;
+  weeks(); showBadge(W.RANKS[acad_s + 1]); DOC.say(S.done.map((text, i) => ({text, mood:'wow'})));
+}
+
+/* Your rank: one per finished Academy session; Chief Scientist also needs every picture in the album. */
+const allPics = () => W.TARGETS.every(t => Object.keys(t.img).every(cam => album[t.id + '|' + cam]));
+const rankNow = () => Math.min(acadData.done, W.ACADEMY.length) + (acadData.done >= W.ACADEMY.length && allPics() ? 1 : 0);
+/* Badges: a gold hexagon like one of Webb's mirror segments. */
+const badgeSvg = (b, got, size = 64) => `<svg class="bsvg${got ? '' : ' off'}" viewBox="0 0 100 112" width="${size}" height="${size * 1.12}" aria-hidden="true">
+  <defs><linearGradient id="bg${size}${got ? 1 : 0}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${got ? '#ffe9a8' : '#4a535c'}"/><stop offset=".55" stop-color="${got ? '#f0bf5a' : '#2c333a'}"/><stop offset="1" stop-color="${got ? '#b9822a' : '#1d2329'}"/></linearGradient></defs>
+  <path d="M30 86 L22 110 L36 102 L44 112 L48 88 Z M70 86 L78 110 L64 102 L56 112 L52 88 Z" fill="${got ? '#d6493f' : '#353c44'}"/>
+  <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="url(#bg${size}${got ? 1 : 0})" stroke="${got ? '#fff3c8' : '#5a646e'}" stroke-width="3"/>
+  <polygon points="50,16 80,33 80,67 50,84 20,67 20,33" fill="${got ? 'rgba(80,45,0,.25)' : 'rgba(0,0,0,.25)'}"/>
+  <text x="50" y="62" text-anchor="middle" font-size="34">${got ? b.icon : '?'}</text></svg>`;
+function showBadge(b){
+  let el = $('badgePop'); if (!el) { el = document.createElement('div'); el.id = 'badgePop'; el.className = 'panel'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="bglow">${badgeSvg(b, true, 150)}</div><small>NEW BADGE</small><h2>${esc(b.name)}</h2><p>Awarded by Dr. Orbit, Webb Academy</p><button class="btn gold" id="badgeOk">Hooray! ✓</button>`;
+  el.classList.remove('hidden'); $('badgeOk').onclick = () => el.classList.add('hidden');
+  try { const a = new (window.AudioContext || window.webkitAudioContext)(); [523.3, 659.3, 784, 1046.5].forEach((f, i) => { const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + i * .13;
+    o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.08, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .6); o.connect(g).connect(a.destination); o.start(t); o.stop(t + .65); }); } catch (e) {}
+}
+
 /* --- the week picker --- */
 function weeks(){
-  screen = 'weeks'; zone = 0; $('webb').style.opacity = 0;
-  $('weeks').innerHTML = `<h2>Choose your observing week</h2><p class="est" style="margin:4px 0 0">Webb's sunshield must always face the Sun, so each week only part of the sky can be seen. These are real dates.</p>
+  acad = null; screen = 'weeks'; zone = 0; $('webb').style.opacity = 0;
+  $('weeks').innerHTML = `${acadHtml()}<h2>Or choose your own observing week</h2><p class="est" style="margin:4px 0 0">Webb's sunshield must always face the Sun, so each week only part of the sky can be seen. These are real dates.</p>
     <div class="grid">${W.WEEKS.map(w => { const vis = W.TARGETS.filter(t => W.inField(t.ra, t.dec, w.date));
       return `<button class="week ${w === week ? 'sel' : ''}" data-w="${w.id}"><b>${esc(w.name)}</b><small>${fmtDate(w.date)}</small><div style="font-size:13px;margin-top:4px">${esc(w.note)}</div>
         <div class="thumbs">${vis.map(t => `<img src="${thumb(t, t.cam)}" alt="${esc(t.name)}" title="${esc(t.name)}">`).join('')}</div><small>${vis.length} targets in view</small>${goalHtml(w)}</button>`; }).join('')}</div>
@@ -107,6 +152,8 @@ function weeks(){
   document.querySelectorAll('.week').forEach(b => b.onclick = () => { week = W.WEEKS.find(w => w.id === b.dataset.w); sunMs = week.date; weeks(); });
   document.querySelectorAll('.mode').forEach(b => b.onclick = () => { if (b.dataset.m === 'steer') startSteer(); else { codeMode = b.dataset.m === 'code'; startPlan(); } });
   $('toAlbum').onclick = () => openAlbum(weeks); $('toHow').onclick = () => openHow(weeks);
+  if ($('acadGo')) $('acadGo').onclick = () => startSession(Math.min(acadData.done, W.ACADEMY.length - 1));
+  document.querySelectorAll('.acadAgain button').forEach(b => b.onclick = () => startSession(+b.dataset.s));
 }
 
 /* --- the planner --- */
@@ -192,7 +239,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=11'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=13'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -299,7 +346,8 @@ function results(res, from){
     else if (tip) DOC.say([{text:`Nice, a picture of ${best.t.name}! To make it even better: ${tip.label.toLowerCase()}.`, mood:'think'}]);
     else DOC.say([{text:`Wow, look at ${best.t.name}! Three stars!`, mood:'wow'}, {text:`Did you know? ${best.t.more}`}]); }
   document.querySelectorAll('#result .pic').forEach(b => b.onclick = () => openPhoto(b.dataset.k, () => results(res, from)));
-  $('again').onclick = () => from === 'plan' ? startPlan() : startSteer();
+  $('again').onclick = () => from === 'plan' ? startPlan() : acad ? acadNext() : startSteer();
+  if (acad && from === 'steer') { const S = W.ACADEMY[acad.s]; $('again').textContent = acad.i + 1 < S.ids.length ? '▶ Next target' : '🎓 Finish the session'; $('other').textContent = '◀ Academy'; }
   $('other').onclick = weeks; $('alb').onclick = () => openAlbum(() => results(res, from));
 }
 function openAlbum(back){
@@ -358,40 +406,65 @@ const docLine = t => `Can you find ${t.name} for me? ${t.kind}, ${t.far} away. $
 const docTarget = () => DOC.say({text:docLine(steer)});
 function startSteer(){
   screen = 'steer'; sunMs = week.date; zone = 1;
-  const vis = W.TARGETS.filter(visible); steer = steer && vis.includes(steer) ? steer : vis.find(t => week.ids.includes(t.id)) || vis[0];   // start with a target from the week's goal
+  const vis = W.TARGETS.filter(visible); steer = acad ? acadT() : steer && vis.includes(steer) ? steer : vis.find(t => week.ids.includes(t.id)) || vis[0];   // start with a target from the week's goal
   const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 60; view.upv = null; vra = vdec = 0;
   $('card').innerHTML = `<h3>Find: <select id="tsel">${vis.map(t => `<option value="${t.id}" ${t === steer ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></h3>
     <p>${esc(fmtDate(week.date))}. Follow the gold arrow, zoom in, then take the picture.</p><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Weeks</button><button class="btn small" id="sAlb">📔 Album</button></div>`;
-  $('tsel').onchange = e => { steer = W.byId(e.target.value); docTarget(); readyOnce = false; };
   readyOnce = false;
-  if (!docMet) { docMet = true; DOC.say([{text:`Hello, crew! I'm Dr. Orbit, and Webb is all yours today.`, mood:'wow'}, {text:docLine(steer)},
+  if (acad) { acadCard(); show('card', 'read', 'pad', 'zoom', 'mini'); return; }
+  $('tsel').onchange = e => { steer = W.byId(e.target.value); docTarget(); readyOnce = false; };
+  if (!docMet) { docMet = true; DOC.say([{text:`Hello, cadet! I'm Dr. Orbit, Webb's one-man science team. I need your help to find things in space!`, mood:'wow'}, {text:docLine(steer)},
     {text:`Follow the gold arrow. And keep the Sun angle in the green, or the Sun would shine on Webb's mirror!`, mood:'think'}]); }
   else docTarget();
   $('sBack').onclick = weeks; $('sAlb').onclick = () => openAlbum(startSteer);
   show('card', 'read', 'pad', 'zoom', 'mini');
 }
+function acadCard(){
+  const S = W.ACADEMY[acad.s], t = steer, n = S.ids.length;
+  $('card').innerHTML = S.clue
+    ? `<h3>🎓 Mystery target ${acad.i + 1} of ${n}</h3><p>🕵️ ${esc(t.clue[0])}</p>${acad.hints ? `<p>💡 ${esc(t.clue[1])}</p>` : ''}${acad.hints > 1 ? '<p>💡 The gold mark on your gauge shows where it is.</p>' : ''}${acad.hints > 2 ? '<p>💡 The gold arrow points to it.</p>' : ''}
+      <div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Academy</button>${acad.hints < 3 ? `<button class="btn small" id="hint">💡 Hint (${3 - acad.hints} left)</button>` : ''}</div>`
+    : `<h3>🎓 ${esc(S.name)} · ${acad.i + 1} of ${n}</h3><p><b style="color:var(--fg)">${esc(t.name)}</b>: ${esc(t.kind)}, ${esc(t.far)} away.</p><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Academy</button></div>`;
+  $('sBack').onclick = weeks;
+  if ($('hint')) $('hint').onclick = () => { acad.hints++; acadCard();
+    DOC.say({text:acad.hints === 1 ? `Here's another clue: ${t.clue[1]}` : acad.hints === 2 ? `Look at your gauge! I put a gold mark on it. The target is at sun ${W.toSun(t.ra, t.dec, sunMs)[0].toFixed(0)} degrees, around ${((W.toSun(t.ra, t.dec, sunMs)[1] / D2R + 360) % 360).toFixed(0)} degrees.` : 'OK, OK! Follow the gold arrow.', mood:'think'}); };
+}
+const clueMode = () => acad && W.ACADEMY[acad.s].clue;
+/* In clue mode, the "aim" is whichever target is near the middle; otherwise it's the one you were asked for. */
+function aimTarget(){ if (!clueMode()) return steer; let best = null, bd = 1e9;
+  W.TARGETS.filter(visible).forEach(t => { const d = W.sep(view.ra, view.dec, t.ra, t.dec); if (d < bd) { bd = d; best = t; } });
+  return bd < view.fov * .14 ? best : null; }
 function steerStep(dt, t){
   held = keys.x || keys.y ? held + dt : 0;
   const ramp = Math.min(1, Math.max(0, held - .15) / 1.6), sp = view.fov * (.016 + .2 * ramp * ramp);   // a tap is a small step; holding speeds up for long turns
   vra += (keys.x * sp - vra) * Math.min(1, dt * 7); vdec += (keys.y * sp - vdec) * Math.min(1, dt * 7);
   let mra = vra * dt, mdec = vdec * dt; const sx = step.x * Math.min(1, dt * 10), sy = step.y * Math.min(1, dt * 10); step.x -= sx; step.y -= sy; mra += sx; mdec += sy;
-  const tsep = W.sep(view.ra, view.dec, steer.ra, steer.dec);
-  fine = !keys.x && !keys.y && tsep < view.fov * .14 && tsep > .001;
+  const tsep = W.sep(view.ra, view.dec, steer.ra, steer.dec), aim = aimTarget(), asep = aim ? W.sep(view.ra, view.dec, aim.ra, aim.dec) : 1e9;
+  fine = !!aim && !keys.x && !keys.y && asep < view.fov * .14 && asep > .001;
   const b = basis();
-  if (fine) { const k = Math.min(1, dt * 1.6), tv = W.vec(steer.ra, steer.dec); mra += dot(tv, b.r) / D2R * k; mdec += dot(tv, b.u) / D2R * k; }
+  if (fine) { const k = Math.min(1, dt * 1.6), tv = W.vec(aim.ra, aim.dec); mra += dot(tv, b.r) / D2R * k; mdec += dot(tv, b.u) / D2R * k; }
   const nf = norm(b.f.map((v, i) => v + (b.r[i] * mra + b.u[i] * mdec) * D2R)), nra = ((Math.atan2(nf[1], nf[0]) / D2R) + 360) % 360, ndec = Math.asin(Math.max(-1, Math.min(1, nf[2]))) / D2R;
   const out = x => x < 85 ? 85 - x : x > 135 ? x - 135 : 0, a0 = out(W.sunAngle(view.ra, view.dec, sunMs)), a1 = out(W.sunAngle(nra, ndec, sunMs));
-  if (a1 > 0 && a1 >= a0) { const p = W.clampToBand(nra, ndec, sunMs); view.ra = p[0]; view.dec = p[1]; warnT = t;  if (t - docWarnT > 20000 && !DOC.busy) { docWarnT = t; DOC.say({text:'Whoa, whoa! Not that way! The Sun would shine on the mirror. Slide along the edge instead.', mood:'worried'}); } }   // slide along the Sun limit: Webb can still spin all the way around the Sun
+  if (a1 > 0 && a1 >= a0) { const p = W.clampToBand(nra, ndec, sunMs); view.ra = p[0]; view.dec = p[1]; warnT = t;  if (t - docWarnT > 20000 && !DOC.pending) { docWarnT = t; DOC.say({text:'Whoa, whoa! Not that way! The Sun would shine on the mirror. Slide along the edge instead.', mood:'worried'}); } }   // slide along the Sun limit: Webb can still spin all the way around the Sun
   else { view.ra = nra; view.dec = ndec; }
-  const ready = tsep < Math.max(.02, fovFor(steer) * .2) && view.fov < fovFor(steer) * 3;
-  const zoomed = view.fov < fovFor(steer) * 3, near = tsep < Math.max(.02, fovFor(steer) * .2);
-  const tip = ready ? '' : tsep > view.fov * .14 ? '<b>Step 1 of 3:</b> follow the gold arrow to the target' :
+  const A = aim || steer, zoomed = view.fov < fovFor(A) * 3, near = !!aim && asep < Math.max(.02, fovFor(A) * .2), centered = near && zoomed;
+  const ready = centered && aim === steer;
+  if (acad && centered && aim !== steer && !acad.wrong.has(aim.id)) { acad.wrong.add(aim.id);
+    DOC.say({text:`That's ${aim.name}: ${aim.kind.toLowerCase()}. Beautiful, but not the one I mean! Remember: ${steer.clue[0]}`, mood:'think'}); }
+  if (acad && !clueMode()) acadGuide(tsep, near, zoomed, ready);
+  const tip = ready ? '' : (!aim || asep > view.fov * .14) ? (clueMode() ? (acad.hints > 2 ? '<b>Step 1 of 3:</b> follow the gold arrow' : '<b>Step 1 of 3:</b> find a gold <b>?</b> that matches the clue') : '<b>Step 1 of 3:</b> follow the gold arrow to the target') :
+    (clueMode() && acad.wrong.has(aim.id)) ? 'Not this one: look for another gold <b>?</b>' :
     !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> zoom in with <b>+</b> (or the mouse wheel)' : '';
   $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('zin').classList.toggle('pulse', near && !zoomed);
-  if (ready && !readyOnce) { readyOnce = true; DOC.say({text:`Perfect! ${steer.name} is right in the middle. Press TAKE THE PICTURE!`, mood:'wow'}); }
+  if (ready && !readyOnce) { readyOnce = true; DOC.say({text:clueMode() ? `Yes! You found it: ${steer.name}! Press TAKE THE PICTURE!` : `Perfect! ${steer.name} is right in the middle. Press TAKE THE PICTURE!`, mood:'wow'}); }
   $('shoot').classList.toggle('hidden', !ready); $('warn').classList.toggle('hidden', t - warnT > 2500);
   drawGauge(tsep);
 }
+/* Training day: Dr. Orbit explains each step the first time it comes up. */
+function acadGuide(tsep, near, zoomed, ready){ const sd = acad.said, once = (k, text, mood) => { if (!sd[k] && !DOC.busy) { sd[k] = 1; DOC.say({text, mood}); } };
+  if (acad.i > 0) return;   // he explains it all on the first target only
+  if (tsep < view.fov * .45 && !near) once('see', 'There it is, inside the gold circle! Steer toward the middle, then let go of the arrows: Webb\'s fine steering mirror centers it for you.');
+  else if (near && !zoomed) once('zoom', 'Great! Now zoom in with the plus button, so the picture fills the screen.', 'wow'); }
 /* The big Sun gauge: the angle from the Sun must stay 85-135 (green), but Webb may spin all the way around the Sun (0-360). */
 let gaugeHtml = '';
 function drawGauge(tsep){
@@ -406,12 +479,12 @@ function drawGauge(tsep){
   [0, 85, 135, 180].forEach(d => { const a = A(d); x.fillText(d + '°', cx + Math.cos(a) * (R - 44), cy + Math.sin(a) * (R - 44) + 8); });
   x.font = '30px sans-serif'; x.fillText('☀', cx - R - 2, cy + 36);
   const tick = (d, col, len, w) => { const a = A(Math.max(0, Math.min(180, d))); x.strokeStyle = col; x.lineWidth = w; x.beginPath(); x.moveTo(cx + Math.cos(a) * (R - len), cy + Math.sin(a) * (R - len)); x.lineTo(cx + Math.cos(a) * (R + 18), cy + Math.sin(a) * (R + 18)); x.stroke(); };
-  tick(ts[0], '#f0bf5a', 30, 8);
+  const secret = clueMode() && acad.hints < 2; if (!secret) tick(ts[0], '#f0bf5a', 30, 8);
   const a = A(sa); x.strokeStyle = '#fff'; x.lineWidth = 7; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a) * (R + 8), cy + Math.sin(a) * (R + 8)); x.stroke(); x.lineCap = 'butt';
   x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, cy, 12, 0, 7); x.fill();
   const ok = sa >= 84.5 && sa <= 135.5;
   $('gSun').textContent = sa.toFixed(0) + '°'; $('gSun').style.color = ok ? '#7fe0a8' : '#ff8a6a'; $('gAr').textContent = ar.toFixed(0) + '°';
-  $('gT').innerHTML = `<span style="color:var(--gold)">▮ ${esc(steer.name)}</span>: sun ${ts[0].toFixed(0)}°, around ${tar.toFixed(0)}° · ${tsep < 1 ? (tsep * 60).toFixed(0) + "'" : tsep.toFixed(0) + '°'} away`;
+  $('gT').innerHTML = secret ? '<span style="color:var(--gold)">▮ Mystery target</span>: use the clues!' : `<span style="color:var(--gold)">▮ ${esc(clueMode() && !readyOnce ? 'Mystery target' : steer.name)}</span>: sun ${ts[0].toFixed(0)}°, around ${tar.toFixed(0)}° · ${tsep < 1 ? (tsep * 60).toFixed(0) + "'" : tsep.toFixed(0) + '°'} away`;
   $('gS').textContent = `RA ${(view.ra / 15).toFixed(2)} h · DEC ${view.dec.toFixed(1)}° · VIEW ${view.fov < 2 ? view.fov.toFixed(2) : view.fov.toFixed(0)}°`;
 }
 $('shoot').onclick = () => { const s = W.newState(week); s.ra = steer.ra; s.dec = steer.dec; const webb = W.api(s);
@@ -483,14 +556,30 @@ function runHud(g, s, t){
 }
 function steerHud(g, s, t){
   frameBox(s); hc.beginPath(); hc.arc(hud.width/2, hud.height/2, 4 * s, 0, 7); hc.stroke();
+  if (clueMode()) { clueHud(g, s, t); return; }
   drawTarget(steer, steer.cam, g, .35 * Math.max(0, Math.min(1, (fovFor(steer) * 6 - view.fov) / (fovFor(steer) * 4))), true, null);   // a blurry preview: the sharp picture comes when you take it
   const c = project(W.vec(steer.ra, steer.dec), g.b, g.tanF), on = c && c[0] > 0 && c[0] < hud.width && c[1] > 0 && c[1] < hud.height;
   if (on && view.fov > fovFor(steer) * 6) { hc.strokeStyle = `rgba(240,191,90,${.6 + .3 * Math.sin(t / 300)})`; hc.lineWidth = 3 * s; hc.beginPath(); hc.arc(c[0], c[1], 26 * s, 0, 7); hc.stroke();
     hc.fillStyle = '#f0bf5a'; hc.font = `600 ${15 * s}px 'IBM Plex Mono', monospace`; hc.textAlign = 'center'; hc.fillText(steer.name.toUpperCase(), c[0], c[1] - 36 * s); }
   if (W.debug) W.debug.arrow = null;
-  if (!on) { const sep = W.sep(view.ra, view.dec, steer.ra, steer.dec), wp = W.route([view.ra, view.dec], [steer.ra, steer.dec], sunMs)(Math.min(1, Math.max(.5, view.fov * .3) / Math.max(sep, 1e-6))), v = W.vec(wp[0], wp[1]), a = Math.atan2(-dot(v, g.b.u), dot(v, g.b.r)), R = Math.min(hud.width, hud.height) * .36, x = hud.width/2 + Math.cos(a) * R, y = hud.height/2 + Math.sin(a) * R;
-    if (W.debug) W.debug.arrow = a; hc.save(); hc.translate(x, y); hc.rotate(a); hc.fillStyle = '#f0bf5a'; hc.beginPath(); hc.moveTo(18*s, 0); hc.lineTo(-12*s, -12*s); hc.lineTo(-6*s, 0); hc.lineTo(-12*s, 12*s); hc.closePath(); hc.fill(); hc.restore(); }
+  if (!on) steerArrow(g, s);
   if (fine) { hc.font = `600 ${15 * s}px 'IBM Plex Mono', monospace`; hc.textAlign = 'center'; hc.fillStyle = 'rgba(88,207,190,.95)'; hc.fillText('FINE STEERING: CENTERING THE TARGET', hud.width/2, hud.height/2 + Math.min(hud.width, hud.height) * .16 * .6 + 30 * s); }
+}
+function steerArrow(g, s){ const c = project(W.vec(steer.ra, steer.dec), g.b, g.tanF); if (c && c[0] > 0 && c[0] < hud.width && c[1] > 0 && c[1] < hud.height) return;
+  const sep = W.sep(view.ra, view.dec, steer.ra, steer.dec), wp = W.route([view.ra, view.dec], [steer.ra, steer.dec], sunMs)(Math.min(1, Math.max(.5, view.fov * .3) / Math.max(sep, 1e-6))), v = W.vec(wp[0], wp[1]), a = Math.atan2(-dot(v, g.b.u), dot(v, g.b.r)), R = Math.min(hud.width, hud.height) * .36, x = hud.width/2 + Math.cos(a) * R, y = hud.height/2 + Math.sin(a) * R;
+    if (W.debug) W.debug.arrow = a; hc.save(); hc.translate(x, y); hc.rotate(a); hc.fillStyle = '#f0bf5a'; hc.beginPath(); hc.moveTo(18*s, 0); hc.lineTo(-12*s, -12*s); hc.lineTo(-6*s, 0); hc.lineTo(-12*s, 12*s); hc.closePath(); hc.fill(); hc.restore(); }
+/* Clue mode: every target in view is a gold question mark; ones you've checked show their names. */
+function clueHud(g, s, t){
+  const aim = aimTarget();
+  if (aim) drawTarget(aim, aim.cam, g, .35 * Math.max(0, Math.min(1, (fovFor(aim) * 6 - view.fov) / (fovFor(aim) * 4))), true, null);
+  W.TARGETS.filter(visible).forEach(tg => { const c = project(W.vec(tg.ra, tg.dec), g.b, g.tanF); if (!c || c[0] < 0 || c[0] > hud.width || c[1] < 0 || c[1] > hud.height || view.fov < fovFor(tg) * 6) return;
+    const wrong = acad.wrong.has(tg.id); hc.strokeStyle = wrong ? 'rgba(160,175,190,.6)' : `rgba(240,191,90,${.6 + .3 * Math.sin(t / 300)})`; hc.lineWidth = 3 * s; hc.beginPath(); hc.arc(c[0], c[1], 22 * s, 0, 7); hc.stroke();
+    hc.fillStyle = wrong ? 'rgba(160,175,190,.85)' : '#f0bf5a'; hc.textAlign = 'center';
+    if (wrong) { hc.font = `600 ${13 * s}px 'IBM Plex Mono', monospace`; hc.fillText(tg.name.toUpperCase(), c[0], c[1] - 30 * s); }
+    else { hc.font = `700 ${22 * s}px 'Chakra Petch', sans-serif`; hc.fillText('?', c[0], c[1] + 8 * s); } });
+  if (W.debug) W.debug.arrow = null;
+  if (acad.hints > 2) steerArrow(g, s);
+  if (fine) { hc.font = `600 ${15 * s}px 'IBM Plex Mono', monospace`; hc.textAlign = 'center'; hc.fillStyle = 'rgba(88,207,190,.95)'; hc.fillText('FINE STEERING: CENTERING', hud.width/2, hud.height/2 + Math.min(hud.width, hud.height) * .16 * .6 + 30 * s); }
 }
 /* the little Webb in the corner: leans when it turns, looks at the middle, the Sun under its shield */
 function miniHud(g, s, t){
