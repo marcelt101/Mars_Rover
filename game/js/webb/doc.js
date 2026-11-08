@@ -90,10 +90,16 @@ requestAnimationFrame(face);
 
 /* --- talking --- */
 const queue = []; let busy = false, typing = null, full = '', onDone = null;
-const pickVoice = () => { const vs = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); return vs.find(v => /male|daniel|fred|alex|google uk english male/i.test(v.name)) || vs[0]; };
+/* Dr. Orbit is a man: pick a male English voice by name (each computer has different ones). Watch out: "female" contains "male". */
+const MALE = /\b(male|david|mark|guy|ryan|christopher|eric|roger|steffan|brian|andrew|daniel|alex|fred|aaron|arthur|gordon|rishi|oliver|thomas|james|george|tom|lee|rocko|reed|grandpa|ralph|albert)\b/i;
+const FEMALE = /female|zira|samantha|victoria|karen|moira|tessa|fiona|susan|hazel|aria|jenny|michelle|emma|libby|sonia|natasha|catherine|kate|serena|allison|ava|nicky|siri|grandma|flo|sandy|shelley/i;
+const pickVoice = () => { const vs = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  const men = vs.filter(v => MALE.test(v.name) && !FEMALE.test(v.name));
+  return {v:men.find(v => /natural|online|google/i.test(v.name)) || men[0] || vs.find(v => !FEMALE.test(v.name)) || vs[0], man:men.length > 0}; };
 function speak(text){
   if (!voiceOn || !('speechSynthesis' in root)) return false;
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[★☀📸🔭]/g, '')); u.rate = 1.02; u.pitch = 1.25; const v = pickVoice(); if (v) u.voice = v;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[★☀📸🔭]/g, '')), pv = pickVoice(); if (pv.v) u.voice = pv.v;
+    u.rate = 1.0; u.pitch = pv.man ? .9 : .55;   // a deeper voice; even deeper if this computer only has women's voices
     u.onend = u.onerror = () => { talking = false; }; speechSynthesis.speak(u); return true; } catch (e) { return false; }
 }
 function next(){
