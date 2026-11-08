@@ -24,6 +24,9 @@ their campaigns that already exist, based on play-testing. Venera and Europa wai
 - How it adds up: signal = radio × dish × radio tower; night charge = role + solar farm; storm dust = wiper × garage,
   and a rover parked within 2 squares of the station during a storm gets no dust and a full charge.
 - A new part fitted mid-expedition sparkles on the rover with a note.
+- Garage pictures: the user's Explorer rover picture and NASA photos of Sojourner, Ingenuity and Apollo 15's rover
+  (credits on the picture and in `game/img/garage/CREDITS.md`); Zhurong is drawn. Fitted parts glow with labels,
+  empty slots show "?", and some parts change the picture (gold dish, laser, wheel rims).
 - Going live: remove the `MR.GARAGE` preview check in `data.js` and raise `MR.VERSION` (team games send parts).
 - Later ideas: more parts per slot (higher levels), paint colors and flags as cosmetic crate prizes.
 

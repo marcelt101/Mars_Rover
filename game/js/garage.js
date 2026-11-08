@@ -20,12 +20,12 @@ G.barsHtml = r => { const n = G.bars(r); return `<span class="sigbars" aria-labe
 function previewRover(p){
   const st = MR.Game && MR.Game.state, r = st && st.rovers && MR.Game.api && MR.Game.api.myRover && MR.Game.api.myRover();
   const perks = MR.equippedPerks(p);
-  if (r) return {...r, perks, zh:st.map === 'utopia' && !['heli','buggy','lab'].includes(r.job)};
+  if (r) return {...r, perks, zh:st.map === 'utopia' && !['heli','buggy','lab'].includes(r.job), moon:!!MR.MAPS[st.map].airless && !['heli','buggy','lab'].includes(r.job)};
   return {job:p.job || MR.defaultJob(p.role), role:p.role, color:p.color || 'teal', perks, rank:MR.rankOf(p.xp), tubes:[]};
 }
 
 /* ---------- the garage ---------- */
-let pick = null;
+let pick = null, fitAnim = null;
 UI.garage = slot => {
   const p = me(); if (!p) return;
   const g = MR.garageOf(p), kid = kidOf(p), slots = MR.slotsFor(p.role), all = MR.PART_ORDER[kid ? 'cadet' : 'other'];
@@ -45,32 +45,85 @@ UI.garage = slot => {
   else detail = `<div class="gdet"><span class="gbig locked">${MR.SLOTS[selSlot].icon}</span><div><h3>${esc(MR.SLOTS[selSlot].name)}: empty</h3><p>Find a part for this slot in a supply crate.</p></div></div>`;
   const n = all.filter(k => g.own[k]).length;
   UI.openModal(`<div class="sh"><h2>Rover Garage</h2><button class="xbtn" data-close aria-label="Close (Esc)">×</button></div><div class="sb garage">
-    <div class="gtop"><div class="gview"><canvas id="gCv" width="320" height="320" aria-label="Your rover with its parts"></canvas>
+    <div class="gtop"><div class="gview"><canvas id="gCv" width="1280" height="800" aria-label="Your rover with its parts"></canvas>
         <div class="gmeta"><span class="pill">${n} of ${all.length} parts</span><span class="pill">${G.barsHtml({perks:MR.equippedPerks(p), role:p.role, rank:MR.rankOf(p.xp)})} Signal</span></div>
         <p class="muted gnote">${inGame ? 'Changes are fitted on your rover from the next sol.' : 'Your rover takes these parts on every expedition.'}</p></div>
       <div class="gslots">${slots.map(slotRow).join('')}</div></div>
     <h3 class="t">${esc(MR.SLOTS[selSlot].name)}</h3><div class="gparts">${partsFor(selSlot, p.role).map(opt).join('')}</div>
     ${detail}</div>`);
-  const cv = $('gCv'); if (cv && MR.Render && MR.Render.drawPreview) { const pr = previewRover(p); MR.Render.drawPreview(cv, pr, false); callouts(cv, pr, selSlot); }
+  const cv = $('gCv'); if (cv) picture(cv, previewRover(p), selSlot, fitAnim && fitAnim.until > performance.now() ? fitAnim : null, p);
   document.querySelectorAll('.gslot').forEach(b => b.onclick = () => { MR.sfx.click(); pick = b.dataset.slot; UI.garage(); });
   document.querySelectorAll('.gpart').forEach(b => b.onclick = () => { MR.sfx.click(); pick = b.dataset.part; UI.garage(); if (kid && g.own[pick]) say(pick); });
-  if ($('gFit')) $('gFit').onclick = () => { const k = $('gFit').dataset.part; g.eq[MR.PARTS[k].slot] = k; p.perks = MR.equippedPerks(p); MR.Store.save(); MR.sfx.good(); UI.garage(); if (G.onChange) G.onChange(); };
+  if ($('gFit')) $('gFit').onclick = () => { const k = $('gFit').dataset.part; g.eq[MR.PARTS[k].slot] = k; fitAnim = {k, t0:performance.now(), until:performance.now() + 1400}; p.perks = MR.equippedPerks(p); MR.Store.save(); MR.sfx.good(); UI.garage(); if (G.onChange) G.onChange(); };
   if ($('gSay')) $('gSay').onclick = () => say(selPart, true);
 };
-/* Labels around the picture: each fitted part's icon, with a line to where it sits on the rover. */
-const SPOT = {wide_wheels:[.43,.41], sharp_eyes:[.22,-.36], big_battery:[-.22,.09], dust_wiper:[-.13,-.11], better_radio:[-.36,.02], hg_antenna:[.27,.24],
-  supercam:[0,-.4], scoop:[-.44,-.47], memory_1:[0,.24], memory_2:[0,.24], memory_3:[0,.24]};
-function callouts(cv, r, sel){
-  const c = cv.getContext('2d'), W = cv.width, s = W*.62, cx = W/2, cy = W/2;
-  (r.perks || []).forEach(k => { const at = SPOT[k]; if (!at) return;
-    const big = k === 'better_radio' && r.job !== 'heli' && r.job !== 'buggy' && !r.zh ? [.2, .3] : k === 'hg_antenna' && r.job !== 'heli' && r.job !== 'buggy' && !r.zh ? [-.12, .13] : at;
-    const px = cx + big[0]*s, py = cy + big[1]*s, len = Math.hypot(big[0], big[1]) || 1, bx = Math.max(24, Math.min(W - 24, cx + big[0]/len*W*.43)), by = Math.max(24, Math.min(W - 24, cy + big[1]/len*W*.43));
-    const on = MR.PARTS[k].slot === sel;
-    c.strokeStyle = on ? '#f0bf5a' : 'rgba(255,255,255,.75)'; c.lineWidth = on ? 3 : 1.5; c.beginPath(); c.moveTo(px, py); c.lineTo(bx, by); c.stroke();
-    c.fillStyle = on ? '#f0bf5a' : '#fff'; c.beginPath(); c.arc(px, py, 4, 0, Math.PI*2); c.fill();
-    c.fillStyle = 'rgba(14,19,25,.9)'; c.beginPath(); c.arc(bx, by, 20, 0, Math.PI*2); c.fill(); c.strokeStyle = on ? '#f0bf5a' : '#58cfbe'; c.lineWidth = on ? 3 : 2; c.stroke();
-    c.font = '20px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(MR.PARTS[k].icon, bx, by + 1);
+/* ---------- the garage picture ----------
+   Photos: the Explorer rover (the player's own picture), and NASA's photos of Sojourner, Ingenuity and Apollo 15's
+   Lunar Roving Vehicle. Zhurong has no free photo, so it is drawn (garage-art.js). On a photo, each fitted part
+   glows with its label; empty slots show a dim "?", so the rover fills up as parts are collected. Some parts also
+   change the picture: the gold dish, the laser, the glowing wheel rims. Spots are in the 1280 x 800 picture. */
+const PHOTO = {
+  mer:  {src:'img/garage/mer.jpg', credit:'', spots:{sharp_eyes:[556, 40], supercam:[628, 30], hg_antenna:[885, 252], better_radio:[718, 104], big_battery:[560, 505], dust_wiper:[760, 398], wide_wheels:[660, 712]},
+         wheels:[[205, 640, 70], [420, 600, 62], [660, 712, 78], [870, 636, 66], [1015, 566, 56]]},
+  lrv:  {src:'img/garage/lrv.jpg', credit:'Photo: NASA, Apollo 15 (1971)', spots:{hg_antenna:[350, 165], better_radio:[685, 212], sharp_eyes:[412, 226], supercam:[650, 410], big_battery:[300, 548], dust_wiper:[545, 522], wide_wheels:[520, 625]},
+         wheels:[[520, 625, 108], [1120, 598, 98]]},
+  buggy:{src:'img/garage/buggy.jpg', credit:'Photo: NASA/JPL, Sojourner on Mars (1997)', spots:{sharp_eyes:[446, 424], scoop:[420, 482], better_radio:[432, 268], hg_antenna:[820, 220], memory_1:[560, 420], memory_2:[560, 420], memory_3:[560, 420]}},
+  heli: {src:'img/garage/heli.jpg', credit:'Photo: NASA/JPL-Caltech/ASU/MSSS, Ingenuity on Mars (2023)', spots:{sharp_eyes:[612, 562], better_radio:[630, 186], hg_antenna:[708, 470], scoop:[560, 610], memory_1:[612, 500], memory_2:[612, 500], memory_3:[612, 500]}},
+};
+const imgs = {};
+const photoOf = kind => { const P = PHOTO[kind]; if (!P) return null; let im = imgs[kind];
+  if (!im) { im = imgs[kind] = new Image(); im.onload = () => { const cv = $('gCv'); if (cv && cv.isConnected) UI.garage(); }; im.src = P.src; }
+  return im.complete && im.naturalWidth ? im : null; };
+function picture(cv, r, sel, fit, p){
+  const kind = MR.GarageArt.kind(r, {moon:r.moon}), P = PHOTO[kind], im = photoOf(kind), c = cv.getContext('2d');
+  const draw = () => {
+    if (!cv.isConnected) return;
+    const t = performance.now(), live = fit && t < fit.until;
+    let spots = {};
+    if (P && im) {
+      c.drawImage(im, 0, 0, 1280, 800);
+      spots = Object.fromEntries(Object.entries(P.spots).filter(([k]) => MR.partOK(k, p.role)));
+      photoParts(c, kind, r, t);
+    } else { spots = MR.GarageArt.draw(cv, r, {t, fit:live ? fit : null, moon:r.moon});
+      Object.keys(spots).forEach(k => spots[k] = [spots[k][0] * 1280 / cv.width, spots[k][1] * 800 / cv.height]); }
+    labels(c, r, p, spots, sel, live ? fit : null, t);
+    if (P && P.credit) { c.font = '500 18px "IBM Plex Sans", sans-serif'; c.textAlign = 'right'; c.fillStyle = 'rgba(0,0,0,.55)'; const w = c.measureText(P.credit).width; c.fillRect(1268 - w - 12, 766, w + 12, 26); c.fillStyle = '#c3ced8'; c.fillText(P.credit, 1262, 786); }
+    requestAnimationFrame(draw);
+  };
+  draw();
+}
+/* Changes painted on the photos for upgraded parts. */
+function photoParts(c, kind, r, t){
+  const has = k => (r.perks || []).includes(k);
+  if (kind === 'mer' && has('hg_antenna')) { c.save(); c.globalCompositeOperation = 'multiply'; c.fillStyle = '#e8b54a'; c.beginPath(); c.ellipse(885, 252, 70, 58, -.25, 0, Math.PI*2); c.fill(); c.restore();
+    c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(255,215,120,.35)'; c.beginPath(); c.ellipse(870, 240, 40, 30, -.25, 0, Math.PI*2); c.fill(); c.restore(); }
+  if (kind === 'mer' && has('supercam')) { const a = .25 + .2 * Math.sin(t / 220); c.fillStyle = `rgba(255,60,40,${a})`; c.beginPath(); c.moveTo(640, 26); c.lineTo(1280, 120); c.lineTo(1280, 150); c.lineTo(640, 34); c.fill(); circle(c, 640, 30, 9, 'rgba(255,80,60,.9)'); }
+  if (has('wide_wheels') && PHOTO[kind].wheels) PHOTO[kind].wheels.forEach(([x, y, rr]) => { c.strokeStyle = `rgba(240,191,90,${.55 + .25 * Math.sin(t / 300)})`; c.lineWidth = 6; c.beginPath(); c.ellipse(x, y, rr * .62, rr, 0, 0, Math.PI*2); c.stroke(); });
+  if (has('better_radio') || has('hg_antenna')) { const sp = PHOTO[kind].spots.better_radio; if (sp) { const g = c.createRadialGradient(sp[0], sp[1], 0, sp[0], sp[1], 26); g.addColorStop(0, 'rgba(255,110,90,.95)'); g.addColorStop(1, 'rgba(255,110,90,0)'); c.fillStyle = g; c.beginPath(); c.arc(sp[0], sp[1], 26, 0, Math.PI*2); c.fill(); } }
+}
+const circle = (c, x, y, r, fill) => { c.fillStyle = fill; c.beginPath(); c.arc(x, y, r, 0, Math.PI*2); c.fill(); };
+/* A glowing marker on each fitted part with its icon in a badge; a dim "?" where a slot is still empty. */
+function labels(c, r, p, spots, sel, fit, t){
+  const own = r.perks || [], used = [];
+  Object.entries(spots).forEach(([k, [px, py]]) => {
+    const on = own.includes(k), slot = MR.PARTS[k] && MR.PARTS[k].slot; if (!slot) return;
+    if (!on && own.some(o => MR.PARTS[o] && MR.PARTS[o].slot === slot)) return;   // another part fills this slot
+    if (used.some(([x, y]) => Math.hypot(x - px, y - py) < 30)) return; used.push([px, py]);
+    const hi = slot === sel, len = Math.hypot(px - 640, py - 400) || 1;
+    let bx = px + (px - 640) / len * 150, by = py + (py - 400) / len * 110; bx = Math.max(46, Math.min(1234, bx)); by = Math.max(46, Math.min(740, by));
+    const drop = fit && fit.k === k ? Math.max(0, 1 - (t - fit.t0) / 700) : 0;
+    if (on) { const pulse = 16 + 6 * Math.sin(t / 260), g = c.createRadialGradient(px, py, 0, px, py, pulse * 2.4); g.addColorStop(0, hi ? 'rgba(240,191,90,.75)' : 'rgba(88,207,190,.6)'); g.addColorStop(1, 'rgba(88,207,190,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(px, py, pulse * 2.4, 0, Math.PI*2); c.fill(); }
+    c.setLineDash(on ? [] : [6, 8]); c.strokeStyle = on ? (hi ? '#f0bf5a' : 'rgba(255,255,255,.85)') : 'rgba(255,255,255,.35)'; c.lineWidth = on ? (hi ? 4 : 2.5) : 2;
+    c.beginPath(); c.moveTo(px, py); c.lineTo(bx, by - drop * 120); c.stroke(); c.setLineDash([]);
+    circle(c, px, py, on ? 7 : 5, on ? (hi ? '#f0bf5a' : '#fff') : 'rgba(255,255,255,.4)');
+    c.save(); c.translate(bx, by - drop * 120); c.globalAlpha = on ? 1 - drop * .6 : .55;
+    circle(c, 0, 0, 34, 'rgba(10,14,19,.88)'); c.strokeStyle = on ? (hi ? '#f0bf5a' : '#58cfbe') : 'rgba(255,255,255,.35)'; c.lineWidth = on ? 4 : 2; c.setLineDash(on ? [] : [5, 6]); c.beginPath(); c.arc(0, 0, 34, 0, Math.PI*2); c.stroke(); c.setLineDash([]);
+    c.font = on ? '34px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif' : '700 30px "Chakra Petch", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#c3ced8'; c.fillText(on ? MR.PARTS[k].icon : '?', 0, 2);
+    c.restore();
+    if (fit && fit.k === k) { const g2 = Math.min(1, (t - fit.t0) / 1300); if (g2 < 1) { c.strokeStyle = `rgba(255,236,190,${1 - g2})`; c.lineWidth = 5; c.beginPath(); c.arc(px, py, 14 + g2 * 90, 0, Math.PI*2); c.stroke(); } }
   });
+  c.textBaseline = 'alphabetic';
 }
 function say(k, force){
   const s = MR.Store.settings; if ((!s.sound && !force) || !window.speechSynthesis || !k) return;
@@ -94,7 +147,7 @@ function next(){
       <div class="row">${P ? '<button class="btn primary" id="crGarage">See it in the garage</button>' : ''}<button class="btn" id="crOk">${P ? 'Great!' : 'OK'}</button></div></div>`;
   box.hidden = false; MR.sfx.chest();
   if (P && kid) setTimeout(() => say(it.id), 1300);
-  const done = garage => { box.hidden = true; box.innerHTML = ''; if (garage) { pick = it.id; UI.garage(); } next(); };
+  const done = garage => { box.hidden = true; box.innerHTML = ''; if (garage) { pick = it.id; fitAnim = {k:it.id, t0:performance.now(), until:performance.now() + 1400}; UI.garage(); } next(); };
   $('crOk').onclick = () => done(false);
   if ($('crGarage')) $('crGarage').onclick = () => done(true);
 }
