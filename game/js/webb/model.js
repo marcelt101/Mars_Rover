@@ -33,7 +33,7 @@ W.newState = week => {
 W.grade = p => { const t = W.byId(p.id), checks = [
     {ok:p.locked, label:'Locked on a guide star (sharp, not blurry)'},
     {ok:p.minutes >= t.need, label:`Long enough exposure (${t.need >= 120 ? (t.need / 60).toFixed(1) + ' hours' : t.need + ' minutes'} for this one)`},
-    {ok:p.cam === t.cam || (t.img[p.cam] && t.id === 'ring'), label:`A good instrument for it (Webb used ${t.cam})`},
+    {ok:p.cam === t.cam || (t.ok || []).includes(p.cam), label:`A good instrument for it (Webb used ${(t.ok || [t.cam]).join(' and ')})`},
     {ok:p.dither >= 4, label:'Dithered 4 times (fills the gaps between detectors)'}];
   const n = checks.filter(c => c.ok).length; return {checks, stars:Math.max(p.locked || p.minutes ? 1 : 0, Math.round(n * 3 / 4))}; };
 /* The plan's commands. Each one moves the clock, adds momentum and records an event for the animation. */

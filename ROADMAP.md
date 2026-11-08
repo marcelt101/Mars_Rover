@@ -84,9 +84,11 @@ picture teaches one thing: galaxies, clouds of dust and gas, star formation, bla
 **Status:** playable test at `game/webb-test.html` (not linked, not in the itch.io builds), waiting for feedback.
 - Three observing weeks with real dates (June 2022 First Light, August 2022, March 2023); the Sun rule (85-135
   degrees) decides what can be seen, and blocked targets say when they come back into view.
-- Ten real targets with real Webb pictures and kid-level facts: Cosmic Cliffs, Southern Ring (NIRCam and MIRI),
+- Thirteen real targets with real Webb pictures and kid-level facts: Cosmic Cliffs, Southern Ring (NIRCam and MIRI),
   First Deep Field, Stephan's Quintet (black hole), WASP-96 b (water, needs NIRISS), Cartwheel, Pillars of
-  Creation, Phantom Galaxy, Crab Nebula, Rho Ophiuchi. Week goals (First Light: the 5 pictures of July 12, 2022).
+  Creation, Phantom Galaxy, Crab Nebula, Rho Ophiuchi, Sagittarius C (heart of the Milky Way), Messier 106
+  (hungry black hole), the Jewelled Ring quasar. A fourth week: Black Hole Week (January 2024).
+- Steering shows the next step (follow the arrow, let go, zoom in) until the Take the picture button appears. Week goals (First Light: the 5 pictures of July 12, 2022).
 - Three ways to fly: steer by hand (fine steering centers the target, then Take the picture), plan with
   observation cards (like NASA's APT forms), or write JavaScript (like Webb's onboard scripts; runs in a worker).
 - Webb's rules in js/webb/model.js: slews with reaction wheels, guide star lock, momentum from sunlight on the

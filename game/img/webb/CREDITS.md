@@ -19,3 +19,7 @@
     `t_cartwheel.jpg` (weic2211a) NASA, ESA, CSA, STScI. `t_phantom.jpg` (potm2208a) ESA/Webb, NASA & CSA, J. Lee
     and the PHANGS-JWST Team. `t_crab.jpg` (weic2326a) NASA, ESA, CSA, STScI, T. Temim (Princeton University).
     `t_rhooph.jpg` (weic2316a) NASA, ESA, CSA, STScI, K. Pontoppidan (STScI), A. Pagan (STScI).
+  - Black holes and the Milky Way's heart, from ESA/Webb (CC BY 4.0), credits as given there: `t_quasar.jpg`
+    (potm2406a, the "Jewelled Ring" lensed quasar RX J1131-1231) ESA/Webb, NASA & CSA, A. Nierenberg.
+    `t_m106.jpg` (potm2407a, Messier 106) ESA/Webb, NASA & CSA, J. Glenn. `t_sgrc.jpg` (weic2328a, Sagittarius C)
+    NASA, ESA, CSA, STScI, S. Crowe (UVA).

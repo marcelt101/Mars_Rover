@@ -11,7 +11,7 @@ W.TARGETS = [
     more:'Webb\'s infrared light passes through dust, so it shows stars that were hidden from Hubble. The "mountains" are walls of gas lit by very hot, young stars just above the picture.',
     credit:'NASA, ESA, CSA, STScI'},
   {id:'ring', name:'Southern Ring Nebula', where:'NGC 3132', kind:'Dying star', ra:151.76, dec:-40.44, w:.12, h:.11,
-    img:{NIRCam:'t_ring_nircam.jpg', MIRI:'t_ring_miri.jpg'}, cam:'MIRI', need:40, when:'June 2022', far:'2,500 light-years',
+    img:{NIRCam:'t_ring_nircam.jpg', MIRI:'t_ring_miri.jpg'}, cam:'MIRI', ok:['NIRCam', 'MIRI'], need:40, when:'June 2022', far:'2,500 light-years',
     kid:'A dying star puffed its outer layers into space like a giant smoke ring. Try both cameras: MIRI shows something NIRCam can\'t!',
     more:'MIRI\'s view revealed that the star making this nebula is the dimmer one in the middle, wrapped in dust. Stars like our Sun end their lives like this, billions of years from now.',
     credit:'NASA, ESA, CSA, STScI'},
@@ -55,6 +55,21 @@ W.TARGETS = [
     kid:'The closest place to Earth where stars are being born. About 50 young stars live here, some like our Sun.',
     more:'The red streaks are jets of gas shooting out of very young stars. Webb took this picture for its first birthday.',
     credit:'NASA, ESA, CSA, STScI, K. Pontoppidan (STScI), A. Pagan (STScI)'},
+  {id:'sgrc', name:'Sagittarius C', where:'Near the center of our Milky Way', kind:'Star nursery near a black hole', ra:266.17, dec:-29.45, w:.1, h:.038,
+    img:{NIRCam:'t_sgrc.jpg'}, cam:'NIRCam', need:60, when:'November 2023', far:'25,000 light-years',
+    kid:'The very heart of our own galaxy! This cloud is about 300 light-years from Sagittarius A*, the giant black hole in the middle of the Milky Way. About 500,000 stars are in this picture.',
+    more:'Baby stars are being born inside the dark cloud. The blue-green glowing gas has needle-like shapes that scientists still can\'t explain.',
+    credit:'NASA, ESA, CSA, STScI, S. Crowe (UVA)'},
+  {id:'m106', name:'Messier 106', where:'NGC 4258 in Canes Venatici', kind:'Galaxy with a hungry black hole', ra:184.72, dec:47.31, w:.064, h:.081,
+    img:{MIRI:'t_m106.jpg'}, cam:'MIRI', ok:['NIRCam', 'MIRI'], need:60, when:'July 2024', far:'23 million light-years',
+    kid:'The middle of this spiral galaxy has a giant black hole that is gobbling up gas. It is so busy that it makes two extra arms of hot gas!',
+    more:'The black hole is about 40 million times the mass of the Sun. Webb used both NIRCam (stars, in blue) and MIRI (dust, in red and orange). Fun fact: Messier didn\'t find it, his helper Pierre Méchain did.',
+    credit:'ESA/Webb, NASA & CSA, J. Glenn'},
+  {id:'quasar', name:'Jewelled Ring', where:'Quasar RX J1131-1231 in Crater', kind:'Quasar', ra:172.96, dec:-12.53, w:.011, h:.011,
+    img:{MIRI:'t_quasar.jpg'}, cam:'MIRI', need:120, when:'July 2024', far:'6 billion light-years',
+    kid:'A quasar is the bright middle of a faraway galaxy, where a giant black hole swallows gas so fast that the gas glows brighter than all the galaxy\'s stars together. A galaxy in front bends its light into a ring.',
+    more:'The three bright dots at the top are copies of the same quasar, made by the bending of light (gravitational lensing). Its black hole spins at more than half the speed of light!',
+    credit:'ESA/Webb, NASA & CSA, A. Nierenberg'},
 ];
 W.byId = id => W.TARGETS.find(t => t.id === id || t.name.toLowerCase() === String(id).toLowerCase());
 /* Observing weeks with real dates: the Sun decides what Webb may look at that week. */
@@ -64,7 +79,9 @@ W.WEEKS = [
   {id:'summer', name:'Summer Week', date:Date.UTC(2022, 7, 25), note:'August 2022. The sky has turned: the Pillars of Creation come into view.',
     goal:'Photograph the Pillars of Creation and the Phantom Galaxy', ids:['pillars', 'phantom']},
   {id:'spring', name:'Spring Week', date:Date.UTC(2023, 2, 15), note:'March 2023. A star that exploded in 1054 is waiting.',
-    goal:'Photograph the Crab Nebula and the closest star nursery, Rho Ophiuchi', ids:['crab', 'rhooph']},
+    goal:'Photograph the Crab Nebula, the closest star nursery (Rho Ophiuchi) and the heart of the Milky Way', ids:['crab', 'rhooph', 'sgrc']},
+  {id:'black', name:'Black Hole Week', date:Date.UTC(2024, 0, 10), note:'January 2024. Two hungry black holes are in view: one nearby, one 6 billion light-years away.',
+    goal:'Photograph a quasar (the Jewelled Ring) and the black hole galaxy Messier 106', ids:['quasar', 'm106']},
 ];
 /* The instruments and filters kids can pick. GB per hour of pictures fill the recorder. */
 W.CAMS = {

@@ -74,7 +74,7 @@ const noiseCv = (() => { const c = document.createElement('canvas'); c.width = c
 
 /* ================= the screens ================= */
 let screen = 'title', week = W.WEEKS[0], cards = [], codeMode = false, codeText = '', run = null, steer = null;
-const show = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'pad', 'zoom', 'shoot', 'mini']
+const show = (...ids) => ['title', 'weeks', 'plan', 'sys', 'log', 'runbar', 'result', 'album', 'photo', 'card', 'read', 'warn', 'pad', 'zoom', 'shoot', 'next', 'mini']
   .forEach(id => $(id).classList.toggle('hidden', !ids.includes(id))) || ($('webb').style.opacity = ids.includes('title') ? 1 : 0);
 const album = (() => { try { return JSON.parse(localStorage.getItem('webb.album') || '{}'); } catch (e) { return {}; } })();
 const saveAlbum = () => { try { localStorage.setItem('webb.album', JSON.stringify(album)); } catch (e) {} };
@@ -345,7 +345,7 @@ $('sys').onclick = () => { if (screen === 'run') { paused = true; openHow(() => 
 let keys = {x:0, y:0}, vra = 0, vdec = 0, held = 0, step = {x:0, y:0}, fine = false, warnT = -1e9;
 function startSteer(){
   screen = 'steer'; sunMs = week.date; zone = 1;
-  const vis = W.TARGETS.filter(visible); steer = steer && vis.includes(steer) ? steer : vis[0];
+  const vis = W.TARGETS.filter(visible); steer = steer && vis.includes(steer) ? steer : vis.find(t => week.ids.includes(t.id)) || vis[0];   // start with a target from the week's goal
   const s0 = W.newState(week); view.ra = s0.ra; view.dec = s0.dec; view.fov = 60; vra = vdec = 0;
   $('card').innerHTML = `<h3>Find: <select id="tsel">${vis.map(t => `<option value="${t.id}" ${t === steer ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></h3>
     <p>${esc(fmtDate(week.date))}. Follow the gold arrow, zoom in, then take the picture.</p><div class="row" style="display:flex;gap:6px;margin-top:8px"><button class="btn small" id="sBack">◀ Weeks</button><button class="btn small" id="sAlb">📔 Album</button></div>`;
@@ -365,6 +365,10 @@ function steerStep(dt, t){
   const out = x => x < 85 ? 85 - x : x > 135 ? x - 135 : 0, a0 = out(W.sunAngle(view.ra, view.dec, sunMs)), a1 = out(W.sunAngle(nra, ndec, sunMs));
   if (a1 > 0 && a1 >= a0) { vra *= -.2; vdec *= -.2; warnT = t; } else { view.ra = (nra + 360) % 360; view.dec = ndec; }
   const ready = tsep < Math.max(.02, fovFor(steer) * .2) && view.fov < fovFor(steer) * 3;
+  const zoomed = view.fov < fovFor(steer) * 3, near = tsep < Math.max(.02, fovFor(steer) * .2);
+  const tip = ready ? '' : tsep > view.fov * .14 ? '<b>Step 1 of 3:</b> follow the gold arrow to the target' :
+    !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> zoom in with <b>+</b> (or the mouse wheel)' : '';
+  $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('zin').classList.toggle('pulse', near && !zoomed);
   $('shoot').classList.toggle('hidden', !ready); $('warn').classList.toggle('hidden', t - warnT > 2500);
   $('read').innerHTML = `POINTING<br>RA ${(view.ra / 15).toFixed(2)} h · DEC ${view.dec.toFixed(1)}°<br>VIEW ${view.fov < 2 ? view.fov.toFixed(2) : view.fov.toFixed(0)}°<br>SUN ANGLE ${W.sunAngle(view.ra, view.dec, sunMs).toFixed(0)}° (allowed 85–135)<br>TARGET ${tsep < 1 ? (tsep * 60).toFixed(0) + "'" : tsep.toFixed(1) + '°'} AWAY`;
 }
@@ -380,7 +384,7 @@ addEventListener('keydown', e => { if (screen !== 'steer' || e.repeat || e.targe
 addEventListener('keyup', e => { if (KX[e.key] != null) keys.x = 0; if (KY[e.key] != null) keys.y = 0; });
 document.querySelectorAll('#pad button').forEach(bt => { const [x, y] = bt.dataset.d.split(',').map(Number);
   bt.onpointerdown = e => { e.preventDefault(); keys.x = x; keys.y = y; nudge(x, y); }; bt.onpointerup = bt.onpointerleave = () => { keys.x = 0; keys.y = 0; }; });
-const zoomBy = k => { view.fov = Math.max(.3, Math.min(70, view.fov * k)); };
+const zoomBy = k => { const lo = steer ? Math.min(.3, fovFor(steer) * .8) : .3; view.fov = Math.max(lo, Math.min(70, view.fov * k)); };   // tiny targets (the quasar) may zoom in further
 $('zin').onclick = () => zoomBy(.7); $('zout').onclick = () => zoomBy(1.43);
 addEventListener('wheel', e => { if (screen === 'steer') zoomBy(e.deltaY > 0 ? 1.12 : .89); }, {passive:true});
 let drag = null; cv.addEventListener('pointerdown', e => { if (screen === 'steer') drag = [e.clientX, e.clientY]; });
