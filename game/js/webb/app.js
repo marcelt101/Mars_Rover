@@ -264,7 +264,7 @@ let aimTo = null; const aim = t => { aimTo = t; };
 function runPlan(){
   const code = codeMode ? codeText : cardCode();
   if (!code.trim()) { logLine('Add an observation first.', 'bad'); show('plan', 'mini', 'log'); return; }
-  const wk = new Worker('js/webb/worker.js?v=20'); let done = false;
+  const wk = new Worker('js/webb/worker.js?v=22'); let done = false;
   const timer = setTimeout(() => { if (done) return; wk.terminate(); logLine('Your script ran too long. Is there a loop that never ends?', 'bad'); show('plan', 'mini', 'log'); }, 2500);
   wk.onmessage = e => { done = true; clearTimeout(timer); wk.terminate(); play(e.data, 'plan'); };
   wk.onerror = e => { done = true; clearTimeout(timer); wk.terminate(); logLine('Script error: ' + e.message, 'bad'); show('plan', 'mini', 'log'); e.preventDefault(); };
@@ -371,7 +371,7 @@ function results(res, from){
     else if (tip) DOC.say([{text:`Nice, a picture of ${best.t.name}! To make it even better: ${tip.label.toLowerCase()}.`, mood:'think'}]);
     else DOC.say([{text:`Wow, look at ${best.t.name}! Three stars!`, mood:'wow'}, {text:`Did you know? ${best.t.more}`}]); }
   document.querySelectorAll('#result .pic').forEach(b => b.onclick = () => openPhoto(b.dataset.k, () => results(res, from)));
-  $('again').onclick = () => from === 'plan' ? startPlan() : acad ? acadNext() : startSteer();
+  $('again').onclick = () => from === 'plan' ? startPlan() : acad ? acadNext() : (nextSteer(), startSteer());
   if (acad && from === 'steer') { const S = W.ACADEMY[acad.s]; $('again').textContent = acad.i + 1 < S.ids.length ? '▶ Next target' : '🎓 Finish the session'; $('other').textContent = '◀ Academy'; }
   $('other').onclick = weeks; $('alb').onclick = () => openAlbum(() => results(res, from));
 }
@@ -429,6 +429,10 @@ let keys = {x:0, y:0}, vra = 0, vdec = 0, held = 0, step = {x:0, y:0}, fine = fa
 let docMet = false, readyOnce = false, zoomSaid = false, docWarnT = -1e9;
 const docLine = t => `Can you find ${t.name} for me? ${t.kind}, ${t.far} away. ${t.kid}`;
 const docTarget = () => DOC.say({text:docLine(steer)});
+/* After a picture: the next target in view that isn't in the album yet, the week's goal first. */
+function nextSteer(){ const vis = W.TARGETS.filter(visible), have = t => Object.values(album).some(a => a.id === t.id), i = vis.indexOf(steer);
+  const order = [...vis.slice(i + 1), ...vis.slice(0, i + 1)];
+  steer = order.find(t => week.ids.includes(t.id) && !have(t)) || order.find(t => !have(t)) || order[0]; readyOnce = false; zoomSaid = false; }
 function startSteer(){
   screen = 'steer'; sunMs = week.date; zone = 1;
   const vis = W.TARGETS.filter(visible); steer = acad ? acadT() : steer && vis.includes(steer) ? steer : vis.find(t => week.ids.includes(t.id)) || vis[0];   // start with a target from the week's goal
@@ -460,7 +464,7 @@ function aimTarget(){ if (!clueMode()) return steer; let best = null, bd = 1e9;
   W.TARGETS.filter(visible).forEach(t => { const d = W.sep(view.ra, view.dec, t.ra, t.dec); if (d < bd) { bd = d; best = t; } });
   return bd < view.fov * .14 ? best : null; }
 function steerStep(dt, t){
-  if (lev) zoomBy(Math.exp(-lev * Math.abs(lev) * dt * 1.6));   // the further you pull the lever, the faster it zooms
+  if (zoomHold) zoomBy(Math.exp(-zoomHold * dt * 1.5));   // holding + or −
   held = keys.x || keys.y ? held + dt : 0;
   const ramp = Math.min(1, Math.max(0, held - .15) / 1.6), sp = view.fov * (.016 + .2 * ramp * ramp);   // a tap is a small step; holding speeds up for long turns
   vra += (keys.x * sp - vra) * Math.min(1, dt * 7); vdec += (keys.y * sp - vdec) * Math.min(1, dt * 7);
@@ -473,16 +477,17 @@ function steerStep(dt, t){
   const out = x => x < 85 ? 85 - x : x > 135 ? x - 135 : 0, a0 = out(W.sunAngle(view.ra, view.dec, sunMs)), a1 = out(W.sunAngle(nra, ndec, sunMs));
   if (a1 > 0 && a1 >= a0) { const p = W.clampToBand(nra, ndec, sunMs); view.ra = p[0]; view.dec = p[1]; warnT = t;  if (t - docWarnT > 20000 && !DOC.pending) { docWarnT = t; DOC.say({text:'Whoa, whoa! Not that way! The Sun would shine on the mirror. Slide along the edge instead.', mood:'worried'}); } }   // slide along the Sun limit: Webb can still spin all the way around the Sun
   else { view.ra = nra; view.dec = ndec; }
+  if (autoZoom && aim && !keys.x && !keys.y && asep < Math.max(.02, view.fov * .06) && view.fov > fovFor(aim) * 2.2) zoomBy(Math.exp(-dt * 1.3));   // AUTO ZOOM: locked on, so zoom in
   const A = aim || steer, zoomed = view.fov < fovFor(A) * 3, near = !!aim && asep < Math.max(.02, fovFor(A) * .2), centered = near && zoomed;
   const ready = centered && aim === steer;
   if (acad && centered && aim !== steer && !acad.wrong.has(aim.id)) { acad.wrong.add(aim.id);
     DOC.say({text:`That's ${aim.name}: ${aim.kind.toLowerCase()}. Beautiful, but not the one I mean! Remember: ${steer.clue[0]}`, mood:'think'}); }
   if (acad && !clueMode()) acadGuide(tsep, near, zoomed, ready);
-  if (near && !zoomed && !zoomSaid && !DOC.pending) { zoomSaid = true; if (tipOnce('zoom')) DOC.say({text:'Great! Now use the red knob on the ZOOM lever: pull it up to zoom in on the spot!', mood:'wow', focus:'#lknob'}); }
+  if (near && !zoomed && !zoomSaid && !DOC.pending) { zoomSaid = true; if (tipOnce('zoom')) DOC.say(autoZoom ? {text:'Great! AUTO ZOOM is on, so Webb zooms in by itself. Watch!', mood:'wow', focus:'#tAuto + span'} : {text:'Great! Now press the + button to zoom in on the spot. Hold it down to keep zooming!', mood:'wow', focus:'#zin'}); }
   const tip = ready ? '' : (!aim || asep > view.fov * .14) ? (clueMode() ? (acad.hints > 2 ? '<b>Step 1 of 3:</b> follow the gold arrow' : '<b>Step 1 of 3:</b> find a gold <b>?</b> that matches the clue') : '<b>Step 1 of 3:</b> follow the gold arrow to the target') :
     (clueMode() && acad.wrong.has(aim.id)) ? 'Not this one: look for another gold <b>?</b>' :
-    !near ? '<b>Step 2 of 3:</b> let go of the arrows, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> pull the red <b>ZOOM</b> knob up' : '';
-  $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('lever').classList.toggle('pulse', near && !zoomed);
+    !near ? '<b>Step 2 of 3:</b> let go of the joystick, Webb centers it' : !zoomed ? '<b>Step 3 of 3:</b> ' + (autoZoom ? 'hold still, AUTO ZOOM is zooming in' : 'press <b>+</b> to zoom in') : '';
+  $('next').innerHTML = tip; $('next').classList.toggle('hidden', !tip || screen !== 'steer'); $('zin').classList.toggle('pulse', near && !zoomed && !autoZoom);
   dash(t, a1 > 0 || t - warnT < 600, !!aim && asep < view.fov * .14, centered, ready);
   if (ready && !readyOnce) { readyOnce = true; const show = tipOnce('shoot');
     DOC.say({text:(clueMode() ? `Yes! You found it: ${steer.name}!` : `Perfect! ${steer.name} is right in the middle.`) + (show ? ' Now press the big red TAKE PICTURE button!' : ' Take the picture!'), mood:'wow', focus:show ? '#shoot' : null}); }
@@ -492,11 +497,11 @@ function steerStep(dt, t){
 /* The first two times a control is needed, Dr. Orbit names it and it glows on the dashboard. Saved per player. */
 const tipsSeen = W.load('tips', {});
 const tipOnce = k => (tipsSeen[k] || 0) < 2 ? (tipsSeen[k] = (tipsSeen[k] || 0) + 1, W.save('tips', tipsSeen), true) : false;
-const arrowsLine = () => tipOnce('arrows') ? {text:'Use the arrow buttons on the dashboard to turn Webb. Follow the gold arrow on the screen!', focus:'#pad8'} : null;
+const arrowsLine = () => tipOnce('arrows') ? {text:'Grab the red ball in the middle of the arrows and push it like a joystick, or tap the arrows. Follow the gold arrow on the screen!', focus:'#joy'} : null;
 /* Training day: Dr. Orbit explains each step the first time it comes up. */
 function acadGuide(tsep, near, zoomed, ready){ const sd = acad.said, once = (k, text, mood) => { if (!sd[k] && !DOC.busy) { sd[k] = 1; DOC.say({text, mood}); } };
   if (acad.i > 0) return;   // he explains it all on the first target only
-  if (tsep < view.fov * .45 && !near) once('see', 'There it is, inside the gold circle! Steer toward the middle, then let go of the arrows: Webb\'s fine steering mirror centers it for you.');
+  if (tsep < view.fov * .45 && !near) once('see', 'There it is, inside the gold circle! Steer toward the middle, then let go of the joystick: Webb\'s fine steering mirror centers it for you.');
 }
 /* Dashboard lamps, the zoom readout and Webb's six reaction wheels (they spin faster when you turn). */
 let wheelA = 0;
@@ -547,16 +552,23 @@ document.querySelectorAll('#pad8 button').forEach(bt => { const [x, y] = bt.data
   bt.onpointerdown = e => { e.preventDefault(); if (!x && !y) { keys.x = keys.y = 0; vra = vdec = 0; step.x = step.y = 0; return; }
     const k = x && y ? Math.SQRT1_2 : 1; keys.x = x * k; keys.y = y * k; nudge(x * k, y * k); bt.classList.add('on'); };
   bt.onpointerup = bt.onpointerleave = bt.onpointercancel = () => { keys.x = 0; keys.y = 0; bt.classList.remove('on'); }; });
-/* The zoom lever: grab the red knob and pull it up to zoom in, down to zoom out. It springs back to the middle. */
-let lev = 0, levDrag = null;
-const levSet = d => { lev = Math.max(-1, Math.min(1, d)); $('lknob').style.transform = `translateY(${(-lev * ($('ltrack').clientHeight / 2 - 12)).toFixed(1)}px)`; };
-$('ltrack').addEventListener('pointerdown', e => { e.preventDefault(); const r = $('ltrack').getBoundingClientRect(), cy = r.top + r.height / 2;
-  levDrag = {cy, h:r.height / 2 - 12, moved:false}; $('ltrack').setPointerCapture(e.pointerId); $('lknob').classList.add('drag');
-  if (e.target !== $('lknob')) levDrag.tap = (cy - e.clientY) / levDrag.h; });
-$('ltrack').addEventListener('pointermove', e => { if (!levDrag) return; levDrag.moved = true; levSet((levDrag.cy - e.clientY) / levDrag.h); });
-const levUp = () => { if (!levDrag) return; if (!levDrag.moved && levDrag.tap != null) zoomBy(levDrag.tap > 0 ? .7 : 1.43);   // a tap above or below the knob is one zoom step
-  levDrag = null; $('lknob').classList.remove('drag'); levSet(0); };
-$('ltrack').addEventListener('pointerup', levUp); $('ltrack').addEventListener('pointercancel', levUp);
+/* The joystick: grab the red ball in the middle of the arrows and push it. The further you push, the faster
+   Webb turns; let go and it springs back and stops. */
+let joy = null;
+const joySet = (dx, dy) => { const R = 40, l = Math.hypot(dx, dy), k = l > R ? R / l : 1; dx *= k; dy *= k;
+  $('jball').style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`; keys.x = dx / R; keys.y = -dy / R; };
+$('joy').addEventListener('pointerdown', e => { e.preventDefault(); const r = $('joy').getBoundingClientRect(); joy = {cx:r.left + r.width / 2, cy:r.top + r.height / 2};
+  $('joy').setPointerCapture(e.pointerId); $('jball').classList.add('drag'); joySet(e.clientX - joy.cx, e.clientY - joy.cy); });
+$('joy').addEventListener('pointermove', e => { if (joy) joySet(e.clientX - joy.cx, e.clientY - joy.cy); });
+const joyUp = () => { if (!joy) return; joy = null; $('jball').classList.remove('drag'); $('jball').style.transform = ''; keys.x = keys.y = 0; };
+$('joy').addEventListener('pointerup', joyUp); $('joy').addEventListener('pointercancel', joyUp);
+/* Zoom: tap + or − for one step, hold to keep zooming. AUTO ZOOM zooms in by itself once a target is locked in the middle. */
+let zoomHold = 0, zoomHoldT = null, autoZoom = !!W.load('autozoom', false);
+const zbtn = (id, dir) => { const b = $(id);
+  b.onpointerdown = e => { e.preventDefault(); zoomBy(dir > 0 ? .7 : 1.43); b.classList.add('on'); clearTimeout(zoomHoldT); zoomHoldT = setTimeout(() => { zoomHold = dir; }, 280); };
+  b.onpointerup = b.onpointerleave = b.onpointercancel = () => { clearTimeout(zoomHoldT); zoomHold = 0; b.classList.remove('on'); }; };
+zbtn('zin', 1); zbtn('zout', -1);
+$('tAuto').checked = autoZoom; $('tAuto').onchange = e => { autoZoom = e.target.checked; W.save('autozoom', autoZoom); };
 $('tSound').checked = DOC.sound; $('tSound').onchange = e => { DOC.sound = e.target.checked; };
 const zoomBy = k => { const lo = steer ? Math.min(.3, fovFor(steer) * .8) : .3; view.fov = Math.max(lo, Math.min(70, view.fov * k)); };   // tiny targets (the quasar) may zoom in further
 addEventListener('wheel', e => { if (screen === 'steer') zoomBy(e.deltaY > 0 ? 1.12 : .89); }, {passive:true});
