@@ -405,6 +405,15 @@ function pickRover(k){
   if (G.mode === 'client') { G.net.send({type:'job', job:p.job, model:p.model}); const lp = G.lobby.players.find(x => x.pid === G.myPid); if (lp) { lp.job = p.job; lp.model = p.model; } renderLobby(); }
   else { const lp = G.lobby.players.find(x => x.pid === G.myPid); if (lp) lp.model = p.model; hostHandle(G.myPid, {type:'job', job:p.job, model:p.model}); broadcast(lobbyMsg()); renderLobby(); }
   MR.sfx.click();
+  if (MR.ROVERS[k]) roverCard(k);
+}
+/* What, where, why: a box about the real rover, shown when a kid picks it. */
+function roverCard(k){ const R = MR.ROVERS[k];
+  UI.openModal(`<div class="sh"><h2>${esc(R.name)}</h2><button class="xbtn" data-close aria-label="Close">×</button></div>
+    <div class="rinfo"><img src="img/rovers/${R.art}-top-512.webp" alt="${esc(R.name)} seen from above">
+      <div><p><b>What</b>${esc(R.what)}</p><p><b>Where</b>${esc(R.where)}</p><p><b>Why</b>${esc(R.why)}</p>
+      <p class="muted">${esc(R.name)} can do: ${MR.roverJobs(k, me() ? me().role : 'explorer').map(j => esc(MR.JOBS[j].label)).join(', ')}</p></div></div>
+    <div class="row" style="justify-content:flex-end"><button class="btn primary" data-close>Drive ${esc(R.name)} ✓</button></div>`, true);
 }
 function renderNet(){
   const t = G.mode === 'host' ? `Hosting · ${G.lobby.players.filter(x => x.connected).length} connected` : G.mode === 'client' ? (G.lastPing != null ? `Connected · ${G.lastPing} ms` : 'Connecting…') : 'Solo';
