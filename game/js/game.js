@@ -604,7 +604,7 @@ function goalHint(g, r){
     const where = dist < 5 ? 'Scan around here' : `Try ${reg.startsWith('the ') ? reg : 'the ' + reg}, ${Math.round(dist)} squares ${dirWord(r, a.x, a.y)}`;
     return `<span class="hint">${esc(where)}<button class="showb" data-show="${g.res}">Show</button></span>`;
   }
-  if (g.kind === 'deliver') return `<span class="hint">Drive onto the station with full tubes</span>`;
+  if (g.kind === 'deliver') return `<span class="hint">${G.state && G.state.lander ? 'Drive home up the ramp (or use 🅿 Park) with samples in your tubes' : 'Drive onto the station with samples in your tubes'}</span>`;
   if (g.kind === 'sites') return `<span class="hint">Scan to find signals. Each one gets a flag.</span>`;
   const H2 = {reach:`Drive to ${g.region}`, photos:'Add Photo (P) to your plan', smart:'Use an If block, or a sensor in Python', relay:'Turn on Run for 2 sols (or rover.mission(2))', loop:'Use a Repeat block, or a for loop in Python', free:'Add Back 1 to your plan', squares:'Every square driven counts', scans:'Add Scan (Q) to your plan'}[g.kind];
   if (H2) return `<span class="hint">${esc(H2)}</span>`;
@@ -865,7 +865,7 @@ function renderRelay(){
   if (ok && !code) h += `<button class="btn sol2 ${G.relaySols > 1 ? 'on' : ''}" id="sols2" ${canEdit ? '' : 'disabled'} aria-pressed="${G.relaySols > 1}" title="The relay satellite keeps your plan running the next sol too">⌁ Run for 2 sols${G.relaySols > 1 ? ' ✓' : ''}</button>`;
   h += `<button class="btn" id="recipesBtn" ${canEdit ? '' : 'disabled'}>Recipes</button>`;
   if (code) h += `<button class="btn" id="sensorsBtn">Sensors</button>`;
-  if (!ok) { const p = me(); h += `<span class="relaylock">⌁ Satellite relay kit unlocks after this campaign, or at ${esc(MR.RANKS[1].name)}${p ? ` (${Math.max(0, MR.RANKS[1].xp - p.xp)} XP to go)` : ''}</span>`; }
+  if (!ok) { const p = me(); h += `<span class="relaylock">⌁ Satellite relay kit unlocks ${G.state && G.state.free ? 'at' : 'after this campaign, or at'} ${esc(MR.RANKS[1].name)}${p ? ` (${Math.max(0, MR.RANKS[1].xp - p.xp)} XP to go)` : ''}</span>`; }
   h += `</div>`;
   box.innerHTML = h;
 }

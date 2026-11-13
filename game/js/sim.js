@@ -170,13 +170,17 @@ const FREE_POOL = [
   {kind:'scans', t:n => `Scan ${n} times`, base:2, step:1, who:'big'},
   {kind:'sites', t:n => `Flag ${n} mystery signals`, base:2, step:1, who:'big'},
   {kind:'deliver', t:n => `Bring ${n} sample${n === 1 ? '' : 's'} home`, base:1, step:1, who:'big'},
+  {kind:'loops', t:n => `Send ${n} plan${n === 1 ? '' : 's'} with a loop (Repeat block or for loop)`, base:1, step:1, who:'big'},
+  {kind:'smart', t:n => `Send ${n} smart plan${n === 1 ? '' : 's'} with an if or while (rover sensors)`, base:1, step:1, who:'spec'},
 ];
 function startFree(st){
   const tm = st.team, rnd0 = st.free.round++, cad = st.rovers.length ? st.rovers.every(r => r.role === 'cadet') : false, heli = st.rovers.some(r => r.job === 'heli');
-  st.free.base = {treasures:tm.treasures || 0, delivered:tm.delivered || 0, sites:Object.keys(st.sites || {}).length, squares:tm.squares || 0, scans:tm.scans || 0, photos:tm.photos || 0};
-  const ok = FREE_POOL.filter(c => c.who === 'any' || (c.who === 'cadet' && cad) || (c.who === 'heli' && heli) || (c.who === 'big' && !cad));
+  const spec = st.rovers.some(r => r.role === 'specialist'), mult = spec ? 2 : 1;   // Specialists (13+) get bigger challenges and coding ones
+  st.free.base = {treasures:tm.treasures || 0, delivered:tm.delivered || 0, sites:Object.keys(st.sites || {}).length, squares:tm.squares || 0, scans:tm.scans || 0, photos:tm.photos || 0, loops:tm.loops || 0, smart:tm.smart || 0};
+  const ok = FREE_POOL.filter(c => c.who === 'any' || (c.who === 'cadet' && cad) || (c.who === 'heli' && heli) || (c.who === 'big' && !cad) || (c.who === 'spec' && spec));
   const pick = []; const left = ok.slice(); while (pick.length < Math.min(3, ok.length)) pick.push(left.splice(Math.floor(rnd(st) * left.length), 1)[0]);
-  st.goals = pick.map((c, k) => { const n = c.base + c.step * Math.min(rnd0, 5); return {k, t:c.t(n), kid:c.kid ? `${c.kid} (${n})` : undefined, kind:c.kind, of:n, bonus:false, free:true}; });
+  if (spec && !pick.some(c => c.kind === 'smart' || c.kind === 'loops')) pick[pick.length - 1] = ok.find(c => c.kind === 'smart');   // always one coding challenge for Specialists
+  st.goals = pick.map((c, k) => { const n = (c.kind === 'loops' || c.kind === 'smart' ? c.base : c.base * mult) + c.step * Math.min(rnd0, 5); return {k, t:c.t(n), kid:c.kid ? `${c.kid} (${n})` : undefined, kind:c.kind, of:n, bonus:false, free:true}; });
 }
 /* After every tick: when the required objectives are done, the campaign ends; the last one wins the map. */
 function campaignStep(st, evs){
