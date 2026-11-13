@@ -36,6 +36,10 @@ if (!MR.netAvailable()) { $('joinErr').hidden = false; $('joinErr').textContent 
 G.onProfileChanged = () => { if (G.phase === 'lobby') { refreshMyLobbyEntry(); } UI.renderMe(); };
 
 $('homeBtn').onclick = () => { if (G.phase === 'lobby') leave(); };
+/* Free play (?preview=freeplay): the same solo game with every map and rover open and fun challenges instead of campaigns. */
+MR.freeOn = () => (MR.PREVIEW || []).includes('freeplay');
+if (MR.freeOn()) $('freeMode').hidden = false;
+$('freeBtn').onclick = () => { $('soloBtn').click(); if (G.lobby) { G.lobby.free = true; renderLobby(); } };
 $('soloBtn').onclick = () => { if (!me()) return; G.resume = null; G.noSave = false; G.lostCode = null; G.planSum = {}; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()}; enterLobby(); };
 $('hostBtn').onclick = () => { G.resume = null; G.noSave = false; startHost(); };
 $('logBtn').onclick = () => MR.LogUI.calendar();
@@ -348,11 +352,11 @@ function renderLobby(){
   const airless = MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless;
   if (mine && MR.roverOn() && !mine.model && mine.job !== 'lab' && G.mode !== 'client' && me()) { mine.model = me().model = MR.modelFor({...mine, model:null}, lastMars()); MR.Store.save(); }   // start with a Mars rover
   if (mine && MR.roverOn() && mine.model && G.mode !== 'client' && G.lobby.map !== 'webb' && MR.ROVERS[mine.model]) { const mn = !!(MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless);   // the rover decides the map
-    if (MR.ROVERS[mine.model].moon && !mn && MR.Store.unlocked().includes('moon')) G.lobby.map = 'moon'; else if (!MR.ROVERS[mine.model].moon && mn) G.lobby.map = lastMars(); }
+    if (MR.ROVERS[mine.model].moon && !mn && (MR.Store.unlocked().includes('moon') || G.lobby.free)) G.lobby.map = 'moon'; else if (!MR.ROVERS[mine.model].moon && mn) G.lobby.map = lastMars(); }
   $('jobPick').classList.toggle('rpick', !!(mine && MR.roverOn()));
   if (mine && MR.roverOn()) renderRoverPick(mine);
   else if (mine) $('jobPick').innerHTML = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(mine.role) && !(k === 'lab' && G.mode === 'solo')).map(([k, j]) => `<div class="jobw"><button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(airless && k === 'heli' ? 'There is no air on the Moon, so helicopters can not fly there. On this map you drive the Buggy.' : j.desc)}</small></button><button class="jinfo" data-info="${k}" aria-label="About the ${j.label} rover" title="About this rover">i</button></div>`).join('');
-  const unlocked = G.mode === 'client' ? G.lobby.unlocked : MR.Store.unlocked();
+  const unlocked = G.mode === 'client' ? G.lobby.unlocked : G.lobby.free ? MR.MAP_ORDER.filter(k => MR.edMapOk(k)) : MR.Store.unlocked();
   if (G.mode !== 'client') G.lobby.unlocked = unlocked;
   if (G.lobby.map === 'webb' && (G.mode !== 'solo' || !MR.webbOpen(unlocked))) G.lobby.map = 'jezero';   // Webb is a solo level
   const myM = mine && MR.roverOn() && G.mode !== 'client' && mine.job !== 'lab' ? (MR.ROVERS[mine.model] || {}) : null;
@@ -361,6 +365,10 @@ function renderLobby(){
   const roverNo = k => myM && mine.model ? (myM.moon ? !MR.MAPS[k].airless : !!MR.MAPS[k].airless) : false;
   $('mapPick').innerHTML = MR.MAP_ORDER.map(k => { const m = MR.MAPS[k], open = unlocked.includes(k) && !roverNo(k);
     return `<button class="mapcard" data-map="${k}" aria-pressed="${k === G.lobby.map}" ${open && G.mode !== 'client' ? '' : 'disabled'}><b>${m.name}</b><small>${m.rover} · ${m.year}</small><p>${roverNo(k) && unlocked.includes(k) ? (myM.moon ? 'Mars rovers only: pick a Mars rover to go here.' : 'Only the Moon buggy drives here: pick it to go to the Moon.') : open ? esc(m.blurb) : !MR.edMapOk(k) ? 'In the full game.' : `Locked. Finish a ${MR.MAPS[m.unlock].name} expedition to unlock.`}</p></button>` + (k === MR.WEBB_LEVEL.after ? webbCard(unlocked) : ''); }).join('');
+  const mp = $('modePick'); mp.hidden = !MR.freeOn() || !!G.lobby.day || !!G.resume;
+  if (!mp.hidden) { const f = !!G.lobby.free, host = G.mode !== 'client';
+    mp.innerHTML = `<button data-free="0" aria-pressed="${!f}" ${host ? '' : 'disabled'}><b>🏆 Campaign</b><small>Follow real NASA campaigns, unlock new maps</small></button><button data-free="1" aria-pressed="${f}" ${host ? '' : 'disabled'}><b>🎈 Free play</b><small>Any map, any rover, small challenges</small></button>`;
+    mp.onclick = e => { const b = e.target.closest('button[data-free]'); if (!b || b.disabled) return; G.lobby.free = b.dataset.free === '1'; MR.sfx.click(); if (!G.lobby.free && !MR.Store.unlocked().includes(G.lobby.map)) G.lobby.map = MR.Store.unlocked().slice(-1)[0]; broadcast(lobbyMsg()); renderLobby(); }; }
   const dm = G.lobby.day && MR.missionOf(G.lobby.day);
   $('mapNote').textContent = dm ? `Mission Log, day ${dm.day}: ${dm.title} (${MR.MAPS[dm.map].name}).` : G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
   if (G.resume || dm) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);
@@ -381,7 +389,7 @@ function webbCard(unlocked){
    and Mars rovers only to Mars (?preview=roverart). */
 function renderRoverPick(mine){
   const role = mine.role, map = G.lobby.map, moon = !!(MR.MAPS[map] && MR.MAPS[map].airless), cur = MR.modelFor(mine, map), team = G.mode !== 'solo';
-  const moonOpen = MR.Store.unlocked().includes('moon') || G.mode === 'client';
+  const moonOpen = MR.Store.unlocked().includes('moon') || G.mode === 'client' || !!G.lobby.free;
   const cards = MR.roversFor(role).map(k => { const R = MR.ROVERS[k], off = !R.soon && G.mode === 'client' && moon !== !!R.moon, locked = !R.soon && R.moon && !moonOpen;
     const why = R.soon ? 'Coming soon' : R.moon && !moonOpen ? '🔒 Unlocks with the Moon map' : G.mode === 'client' && moon && !R.moon ? 'The host picked the Moon: everyone drives the Moon buggy' : G.mode === 'client' && !moon && R.moon ? 'Only on the Moon' : '';
     return `<button class="rcard ${R.soon ? 'soon' : ''} ${locked ? 'soon locked' : ''}" data-locked="${locked ? 1 : ''}" data-model="${k}" aria-pressed="${k === cur}" ${off ? 'disabled' : ''}><img src="img/rovers/${R.art}-top-256.webp" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'noart',textContent:'${R.soon ? '🪐' : '🚀'}'}))"><b>${esc(R.name)}</b>${why ? `<small>${esc(why)}</small>` : ''}</button>`; });   // only the name: the story is in the box that opens
@@ -391,7 +399,7 @@ function renderRoverPick(mine){
     <div class="rstep"><i>2</i> Pick ${esc(cur === 'lab' ? 'the Lab' : MR.ROVERS[cur].name)}'s job</div>
     <div class="jobs">${jobs.map(k => { const j = MR.JOBS[k]; return `<div class="jobw"><button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(j.desc)}</small></button><button class="jinfo" data-info="${k}" aria-label="About the ${j.label} job" title="About this job">i</button></div>`; }).join('')}</div>`;
 }
-const lastMars = () => { const u = MR.Store.unlocked().filter(k => !MR.MAPS[k].airless); return G.lastMars && u.includes(G.lastMars) ? G.lastMars : u[u.length - 1] || 'jezero'; };
+const lastMars = () => { const u = (G.lobby && G.lobby.free ? MR.MAP_ORDER.filter(k => MR.edMapOk(k)) : MR.Store.unlocked()).filter(k => !MR.MAPS[k].airless); return G.lastMars && u.includes(G.lastMars) ? G.lastMars : u[u.length - 1] || 'jezero'; };
 function pickRover(k){
   const p = me(); if (!p) return;
   if (MR.ROVERS[k] && MR.ROVERS[k].soon) { roverCard(k); MR.sfx.click(); return; }   // not drivable yet: just its story
@@ -434,7 +442,7 @@ $('startBtn').onclick = () => {
   const players = G.lobby.players.filter(x => x.connected), ex = G.resume;
   let st;
   if (ex) { st = MR.stateFromWire(ex.state); players.forEach(p => { if (!st.rovers.some(r => r.pid === p.pid)) MR.addRover(st, p); }); }
-  else st = MR.newGame({map:G.lobby.map, seed:Math.floor(Math.random()*1e9), players, day:G.lobby.day || undefined});
+  else st = MR.newGame({map:G.lobby.map, seed:Math.floor(Math.random()*1e9), players, day:G.lobby.day || undefined, free:!!(G.lobby.free && MR.freeOn())});
   G.resume = null;
   G.plans = {}; G.readyPids = []; G.drafts = {}; G.arrive = {}; G.autoAt = null; G.left = {}; G.autoLeft = null;
   broadcast({type:'start', state:MR.stateToWire(st), lobby:G.lobby, code:G.code});
@@ -577,10 +585,10 @@ function renderHud(){
 function renderSide(){
   const st = G.state, r = myRover(); if (!r) return;
   const C = MR.campaignOf(st), cadet = r.role === 'cadet';
-  $('objTitle').textContent = C ? C.name : 'Objectives';
+  $('objTitle').textContent = st.free ? `🎈 Free play · challenges, set ${st.free.round}` : C ? C.name : 'Objectives';
   $('goals').innerHTML = MR.goalProgress(st).map(g => { const o = MR.objectiveInfo(st, g);
     return `<li class="${g.done ? 'done' : ''} ${g.bonus ? 'bonus' : ''}"><span class="box">${g.done ? '✓' : ''}</span><span class="gt"><span class="t">${esc(cadet && o.kid ? o.kid : g.t)}</span>${!g.done && !cadet && o.what ? `<small class="what">${esc(o.what)}</small>` : ''}${g.done ? '' : goalHint(g, r)}${C && !cadet ? `<button class="whyb" data-why="${g.k}">Why?</button>` : ''}</span><span class="cnt">${Math.min(g.n, g.of)}/${g.of}</span></li>`; }).join('');
-  $('solCount').textContent = `${C ? `${campLabel(st)} · ` : ''}Sol ${st.sol} · 3 stars by sol ${MR.parOf(st)}`;
+  $('solCount').textContent = st.free ? `Sol ${st.sol} · explore anywhere` : `${C ? `${campLabel(st)} · ` : ''}Sol ${st.sol} · 3 stars by sol ${MR.parOf(st)}`;
   renderMission();
   if (r.role === 'cadet') $('tubes').innerHTML = `<span class="lbl">Team treasures: ${st.team.treasures}</span>`;
   else $('tubes').innerHTML = [...Array(MR.tubesOf(r))].map((_, i) => { const id = r.tubes[i]; return `<span class="tube" title="${id ? esc(MR.CARDS[id].name) : 'Empty tube'}">${id ? `<i style="background:${MR.CARDS[id].color}"></i>` : ''}</span>`; }).join('')

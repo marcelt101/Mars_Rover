@@ -243,3 +243,9 @@ body[data-scr="scrGame"] .hudleave{display:inline-flex}
 @media (max-width:560px){.rinfo{grid-template-columns:1fr}.rinfo img{margin:0 auto}}
 .rcard.soon{opacity:.75;border-style:dashed}.rcard.soon small{color:var(--gold,#f0bf5a)}
 .rcard .noart{width:92px;height:92px;display:grid;place-items:center;font-size:52px}
+/* Campaign or Free play (preview) */
+.modepick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px}
+.modepick button{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--raise);color:var(--fg);cursor:pointer;font:inherit}
+.modepick button b{font:700 15px var(--display)}.modepick button small{font-size:12px;color:var(--muted)}
+.modepick button[aria-pressed="true"]{border-color:var(--accent,#58cfbe);background:rgba(88,207,190,.12)}
+.panel.freemode{border-color:rgba(240,191,90,.5)}

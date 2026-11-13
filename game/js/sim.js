@@ -80,7 +80,7 @@ MR.refitRover = (r, perks) => {
   if (max !== r.batMax) { r.bat = max > r.batMax ? r.bat + (max - r.batMax) : Math.min(r.bat, max); r.batMax = max; }
 };
 
-MR.newGame = ({map, seed, players, day}) => {
+MR.newGame = ({map, seed, players, day, free}) => {
   const cadets = players.filter(p => p.role === 'cadet').length, others = players.length - cadets;
   const world = MR.genWorld(map, seed, cadets > 0);
   const lander = (MR.PREVIEW || []).includes('roverart');   // the solid lander: a ramp on Mars, a ladder on the Moon (preview)
@@ -91,9 +91,11 @@ MR.newGame = ({map, seed, players, day}) => {
     goals: MR.cadetGoals(cadets)};
   if (lander) st.lander = true;
   if (day && MR.missionOf(day)) st.day = day;
-  if (others) startCampaign(st, 0, others);
+  if (free && !day) st.free = {round:0};   // free play: no campaign, rotating fun challenges (picked once the rovers are in)
+  else if (others) startCampaign(st, 0, others);
   players.forEach((p, i) => { const r = MR.makeRover(p, cells[i % cells.length], map); if (players.length > 1 && r.job === 'scout') r.tubeAdj = -2; st.rovers.push(r); reveal(world, r.x, r.y, MR.sightOf(r)); });
   st.rovers.forEach(r => { if (r.job === 'lab') { const S2 = MR.MAPS[map].station; r.x = S2.x; r.y = S2.y; } else if (lander && MR.landerKind(st, r.x, r.y)) r.dir = 2; });   // on the lander: facing the ramp
+  if (st.free) startFree(st);
   if (st.day) applyDayRules(st, MR.missionOf(st.day).rules || {});
   rollWeather(st);
   return st;
@@ -148,21 +150,39 @@ MR.campaignCount = st => st.camp && st.camp.day ? 1 : (MR.CAMPAIGNS[st.map] || [
 MR.objectiveInfo = (st, g) => { if (g.code != null && MR.CODE_CHALLENGES) return MR.CODE_CHALLENGES[g.code]; const C = MR.campaignOf(st); return C ? C.obj(st.camp.n)[g.k] : g; };
 /* Older saves had plain goals; give them campaigns (progress already made still counts). */
 MR.ensureCampaign = st => {
-  if (st.camp || st.day || !MR.CAMPAIGNS[st.map] || st.goals.some(g => g.kind === 'treasure')) return st;
+  if (st.camp || st.day || st.free || !MR.CAMPAIGNS[st.map] || st.goals.some(g => g.kind === 'treasure')) return st;
   startCampaign(st, 0, Math.max(1, st.rovers.filter(r => r.role !== 'cadet').length)); return st;
 };
 MR.goalProgress = st => st.goals.map(g => {
-  const b = (st.camp && st.camp.base) || {}, tm = st.team, rel = k => (tm[k] || 0) - (b[k] || 0);
+  const b = (st.camp && st.camp.base) || (st.free && st.free.base) || {}, tm = st.team, rel = k => (tm[k] || 0) - (b[k] || 0);
   const n = g.kind === 'col' ? (tm.col[g.res] || 0) : g.kind === 'ident' ? Math.max((tm.ident || {})[g.res] || 0, tm.col[g.res] || 0)
     : g.kind === 'deliver' ? tm.delivered - (b.delivered || 0) : g.kind === 'sites' ? Object.keys(st.sites || {}).length - (b.sites || 0)
     : g.kind === 'reach' ? ((tm.visited || {})[g.region] ? 1 : 0) : ['squares','scans','photos','smart','relay','loops','freed'].includes(g.kind) ? rel(g.kind)
-    : g.kind === 'free' ? rel('freed') : g.kind === 'loop' ? rel('loops') : tm.treasures;
+    : g.kind === 'free' ? rel('freed') : g.kind === 'loop' ? rel('loops') : g.kind === 'gems' ? rel('treasures') : tm.treasures;
   return {...g, n, done: n >= g.of};
 });
+/* Free play: a few small challenges at a time, picked from what the team's rovers can do. When they're all done,
+   new ones come (a little bigger each round). Nothing is locked, nothing ends: it's for fun. */
+const FREE_POOL = [
+  {kind:'squares', t:n => `Drive ${n} squares`, kid:'Drive around', base:12, step:6, who:'any'},
+  {kind:'gems', t:n => `Find ${n} treasures`, kid:'Find sparkly gems', base:2, step:1, who:'cadet'},
+  {kind:'photos', t:n => `Take ${n} photo${n === 1 ? '' : 's'}`, kid:'Take pictures', base:2, step:1, who:'heli'},
+  {kind:'scans', t:n => `Scan ${n} times`, base:2, step:1, who:'big'},
+  {kind:'sites', t:n => `Flag ${n} mystery signals`, base:2, step:1, who:'big'},
+  {kind:'deliver', t:n => `Bring ${n} sample${n === 1 ? '' : 's'} home`, base:1, step:1, who:'big'},
+];
+function startFree(st){
+  const tm = st.team, rnd0 = st.free.round++, cad = st.rovers.length ? st.rovers.every(r => r.role === 'cadet') : false, heli = st.rovers.some(r => r.job === 'heli');
+  st.free.base = {treasures:tm.treasures || 0, delivered:tm.delivered || 0, sites:Object.keys(st.sites || {}).length, squares:tm.squares || 0, scans:tm.scans || 0, photos:tm.photos || 0};
+  const ok = FREE_POOL.filter(c => c.who === 'any' || (c.who === 'cadet' && cad) || (c.who === 'heli' && heli) || (c.who === 'big' && !cad));
+  const pick = []; const left = ok.slice(); while (pick.length < Math.min(3, ok.length)) pick.push(left.splice(Math.floor(rnd(st) * left.length), 1)[0]);
+  st.goals = pick.map((c, k) => { const n = c.base + c.step * Math.min(rnd0, 5); return {k, t:c.t(n), kid:c.kid ? `${c.kid} (${n})` : undefined, kind:c.kind, of:n, bonus:false, free:true}; });
+}
 /* After every tick: when the required objectives are done, the campaign ends; the last one wins the map. */
 function campaignStep(st, evs){
   const req = MR.goalProgress(st).filter(g => !g.bonus);
   if (!req.every(g => g.done)) return;
+  if (st.free) { const r0 = st.free.round; startFree(st); evs.push({t:'freeround', round:r0 + 1, goals:st.goals, msg:{k:'good', text:`⭐ Challenges done (set ${r0 + 1})! Here are new ones. Keep exploring!`}}); return; }   // free play never ends
   if (!st.camp) { st.won = true; evs.push({t:'win', msg:{k:'good', text:'Expedition complete! Every objective is done.'}}); return; }
   const list = st.camp.day ? [MR.dayCampaign(st.camp.day)] : MR.CAMPAIGNS[st.map], C = list[st.camp.i], last = st.camp.i >= list.length - 1;
   evs.push({t:'campaign', i:st.camp.i, id:C.id, last, msg:{k:'good', text:`Campaign complete: ${C.name}!`}});
