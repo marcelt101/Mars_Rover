@@ -11,3 +11,5 @@ Made by the game's author for Crater Crew. Not NASA images.
 - `perseverance-top-*.webp` (Science and Excavator rovers), `ingenuity-top-*.webp` (the helicopter), `zhurong-top-*.webp`
   (Utopia Planitia): from the author's sprite pack (AI-made game artwork, "not verified engineering-accurate replicas").
   Supplied with transparent backgrounds; centered on squares for the game.
+- `lab-top-*.webp` (the Lab) and `pod-top-*.webp` (the base station on Mars): the author's building pictures, drawn at a slight
+  angle and never rotated. Supplied with transparent backgrounds; centered on squares for the game.

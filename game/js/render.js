@@ -122,6 +122,8 @@ function drawStation(c, t, ts){
   const S = MR.MAPS[R.view.map].station, sx = (S.x-R.cam.x)*ts, sy = (S.y-R.cam.y)*ts, s = ts*2;
   drawUpgrades(c, ts);
   if (MR.MAPS[R.view.map].airless) return drawLM(c, sx, sy, s);
+  const pod = roverArt('pod', ts * 2.6);   // the author's lander pod as the base station (preview); buildings never turn
+  if (pod) { const w = ts * 2.7; c.drawImage(pod, sx + s / 2 - w / 2, sy + s / 2 - w / 2, w, w); return; }
   return drawBase(c, t, sx, sy, s, ts < 20 ? 0 : ts < 32 ? 1 : 2);
   c.fillStyle='rgba(40,14,6,0.35)'; c.fillRect(sx+s*.08, sy+s*.1, s*.92, s*.92);
   c.fillStyle='#9aa3ab'; c.fillRect(sx+s*.06, sy+s*.06, s*.88, s*.88);
@@ -657,7 +659,8 @@ R.drawPreview = (cv, r, moonPic) => {
   if ((r.dust || 0) > 10) { c.fillStyle = `rgba(200,140,90,${Math.min(.5, r.dust/200)})`; c.beginPath(); c.arc(0, 0, s*.45, 0, Math.PI*2); c.fill(); }
   c.restore();
 };
-function drawLab(c, r, s, lod){
+function drawLab(c, r, s, lod, a, t){
+  if (a) { c.save(); c.rotate(-a.ang * Math.PI / 180); const ok = drawArt(c, r, a, t, s, 'lab', 1.25, null); c.restore(); if (ok) return; }   // the author's lab, kept upright (preview)
   const col = MR.colorHex(r.color);
   c.fillStyle = '#dcd6ca'; rr(c, -.3*s, -.3*s, .6*s, .6*s, .08*s); c.fill();
   c.fillStyle = col; c.fillRect(-.3*s, -.06*s, .6*s, .06*s);
@@ -679,7 +682,7 @@ function drawRover(c, r, a, t, ts, ghost){
   c.rotate(a.ang*Math.PI/180);
   if (a.busy || a.wob > 0) c.translate((Math.random()-.5)*s*.03, (Math.random()-.5)*s*.03);
   const moon = R.view && MR.MAPS[R.view.map].airless;
-  if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod); else if (moon) drawLRV(c, r, a, t, s, lod); else if (R.view && R.view.map === 'utopia') drawZhurong(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
+  if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod, a, t); else if (moon) drawLRV(c, r, a, t, s, lod); else if (R.view && R.view.map === 'utopia') drawZhurong(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
   if (r.job !== 'lab') drawParts(c, r, s, lod, !(heli || r.job === 'buggy' || moon || (R.view && R.view.map === 'utopia')));
   if (perse && lod >= 1) { const an = -a.ang*Math.PI/180, ox = .2*s, oy = .25*s; mastShadow(c, r, s, ox*Math.cos(an) - oy*Math.sin(an), ox*Math.sin(an) + oy*Math.cos(an)); }
   c.restore();
