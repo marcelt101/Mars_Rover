@@ -123,3 +123,20 @@ picture teaches one thing: galaxies, clouds of dust and gas, star formation, bla
   to Earth, and water ice in craters that are always dark.
 - **Asteroid Ryugu:** Japan's Hayabusa2 hopping MINERVA rovers. Very low gravity, so you hop instead of roll.
 - **Hard mode replays** and a **daily challenge**, for more play on finished maps.
+
+## itch 1.3 (released to itch.io): rovers by name, the lander, Free play, Webb
+- The author's top-down art for every vehicle and building (img/rovers/, credited in CREDITS.md); rovers drawn
+  1.6 squares wide, the Mars lander 9.6, the Lunar Module 6.
+- Pick the rover by name first (What / Where / Why box), then its job; the Moon buggy goes only to the Moon.
+  Venera is a Coming soon card (no Venus map yet).
+- The solid lander: rovers start on its deck and reach it only up the ramp; Park drives home and sleeps there.
+  On the Moon the buggy parks at the foot of the Lunar Module's ladder.
+- Free play next to campaign mode: every map and rover, rotating challenges by age, never ends.
+- The James Webb level is on for everyone (WEBB_ON).
+
+## Next (agreed)
+- Messages back and forth with the rover (each rover with its own personality, short for Cadets).
+- A picture screen in the control center: real NASA pictures (resized) that the rover "takes".
+- Venus map for Venera. Webb phases 2-4 (Explorer blocks, Specialist code-only steering, badge ladders).
+- Before Steam: a desktop app, Steam's AI-art disclosure, remove the NASA logo from the Lunar Module picture,
+  store images and a trailer.
