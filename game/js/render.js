@@ -122,8 +122,8 @@ function drawStation(c, t, ts){
   const S = MR.MAPS[R.view.map].station, sx = (S.x-R.cam.x)*ts, sy = (S.y-R.cam.y)*ts, s = ts*2;
   drawUpgrades(c, ts);
   if (MR.MAPS[R.view.map].airless) return drawLM(c, sx, sy, s);
-  const pod = roverArt('pod', ts * 2.6);   // the author's lander pod as the base station (preview); buildings never turn
-  if (pod) { const w = ts * 2.7; c.drawImage(pod, sx + s / 2 - w / 2, sy + s / 2 - w / 2, w, w); return; }
+  const pod = roverArt('pod', ts * 2);   // the author's lander pod as the base station (preview); buildings never turn
+  if (pod) { const w = ts * POD_SIZE; c.drawImage(pod, sx + s / 2 - w / 2, sy + s / 2 - w / 2, w, w); return; }
   return drawBase(c, t, sx, sy, s, ts < 20 ? 0 : ts < 32 ? 1 : 2);
   c.fillStyle='rgba(40,14,6,0.35)'; c.fillRect(sx+s*.08, sy+s*.1, s*.92, s*.92);
   c.fillStyle='#9aa3ab'; c.fillRect(sx+s*.06, sy+s*.06, s*.88, s*.88);
@@ -318,6 +318,12 @@ function mastShadow(c, r, s, dx, dy){
 /* Rover pictures drawn top-down by the game's author (img/rovers/). Shown instead of the drawn rover once loaded.
    Waiting for approval: ?preview=roverart. The picture's top is the rover's front, like the drawn rovers. */
 const ROVER_ART = {};
+/* The lander pod (base station) is big next to the rovers: about 9.6 squares across, so its ramp is one rover wide
+   (about 1.6 squares, the size rovers are drawn). The station still works from its 2x2 squares in the middle. */
+const POD_SIZE = 9.6;
+/* The Lab stands on the station's square in the game; with the pictures it is drawn beside the lander pod instead (in squares). */
+const LAB_OFF = [-1.55, .5];
+const labArtOn = r => r.job === 'lab' && !!roverArt('lab', 64);
 /* With the rover pictures, rovers are drawn about 1.6 squares wide so their detail shows (they still stand on one square). */
 const ROVER_BIG = () => (MR.PREVIEW || []).includes('roverart') ? 1.6 : 1;
 const roverArt = (key, ts) => { if (!(MR.PREVIEW || []).includes('roverart')) return null; const n = ts > 70 ? 512 : 256, k = key + n;
@@ -660,7 +666,8 @@ R.drawPreview = (cv, r, moonPic) => {
   c.restore();
 };
 function drawLab(c, r, s, lod, a, t){
-  if (a) { c.save(); c.rotate(-a.ang * Math.PI / 180); const ok = drawArt(c, r, a, t, s, 'lab', 1.25, null); c.restore(); if (ok) return; }   // the author's lab, kept upright (preview)
+  if (a && roverArt('lab', s / .92)) { const k = s / .92 / ROVER_BIG();   // one square, in this (scaled) drawing
+    c.save(); c.rotate(-a.ang * Math.PI / 180); c.translate(LAB_OFF[0] * k, LAB_OFF[1] * k); drawArt(c, r, a, t, s, 'lab', 1.25, null); c.restore(); return; }   // the author's lab, upright, beside the pod (preview)
   const col = MR.colorHex(r.color);
   c.fillStyle = '#dcd6ca'; rr(c, -.3*s, -.3*s, .6*s, .6*s, .08*s); c.fill();
   c.fillStyle = col; c.fillRect(-.3*s, -.06*s, .6*s, .06*s);
@@ -678,7 +685,7 @@ function drawRover(c, r, a, t, ts, ghost){
   if (perse) { c.save(); c.translate(s*.07, s*.09); c.rotate(a.ang*Math.PI/180); roverShadow(c, r, s); c.restore();
  }
   else if (r.job === 'buggy') { c.save(); c.translate(s*.06, s*.08); c.rotate(a.ang*Math.PI/180); c.fillStyle = 'rgba(30,10,3,.34)'; rr(c, -.42*s, -.4*s, .84*s, .72*s, .06*s); c.fill(); c.restore(); }
-  else if (!heli) { c.fillStyle='rgba(40,12,4,0.32)'; c.beginPath(); c.ellipse(s*.06,s*.08,s*.5,s*.5,0,0,Math.PI*2); c.fill(); }
+  else if (!heli && !labArtOn(r)) { c.fillStyle='rgba(40,12,4,0.32)'; c.beginPath(); c.ellipse(s*.06,s*.08,s*.5,s*.5,0,0,Math.PI*2); c.fill(); }
   c.rotate(a.ang*Math.PI/180);
   if (a.busy || a.wob > 0) c.translate((Math.random()-.5)*s*.03, (Math.random()-.5)*s*.03);
   const moon = R.view && MR.MAPS[R.view.map].airless;
@@ -718,7 +725,7 @@ function drawHints(c, t, ts){
   });
 }
 function drawNameFlag(c, r, a, ts){
-  const cx = (a.px-R.cam.x+.5)*ts, top = (a.py-R.cam.y)*ts - (r.job === 'heli' ? ts*.25 : 0) - (ROVER_BIG() - 1)*ts*.5, col = MR.colorHex(r.color);
+  const lo = labArtOn(r) ? LAB_OFF : [0, 0], cx = (a.px-R.cam.x+.5+lo[0])*ts, top = (a.py-R.cam.y+lo[1])*ts - (r.job === 'heli' ? ts*.25 : 0) - (ROVER_BIG() - 1)*ts*.5, col = MR.colorHex(r.color);
   const label = ts >= 22 ? r.name : r.name.slice(0,1).toUpperCase();
   c.font = `600 ${Math.max(10, Math.min(14, Math.round(ts*.34)))}px 'IBM Plex Sans', system-ui, sans-serif`;
   const w = c.measureText(label).width + 10, h = Math.max(15, Math.min(20, ts*.48)), y = top - h - 2;
