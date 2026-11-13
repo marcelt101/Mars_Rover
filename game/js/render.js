@@ -569,6 +569,12 @@ function drawZhurong(c, r, a, t, s, lod){
     c.fillStyle = `rgba(255,220,180,${f})`; c.beginPath(); c.arc(0, -.8*s, s*.05*(1 + f), 0, Math.PI*2); c.fill(); }
 }
 function drawBuggy(c, r, a, t, s, lod){
+  const art = roverArt('sojourner', s / .92);   // the author's top-down Sojourner (preview)
+  if (art) { const w = s * 1.0;
+    c.save(); c.globalAlpha *= .55; c.strokeStyle = MR.colorHex(r.color); c.lineWidth = s * .05; c.beginPath(); c.arc(0, 0, s * .5, 0, Math.PI * 2); c.stroke(); c.restore();
+    c.drawImage(art, -w / 2, -w / 2, w, w);
+    if (a.busy === 'drill' || a.busy === 'dig') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s * .04; c.beginPath(); c.arc(0, -.45 * s, s * .09, t / 60, t / 60 + 4); c.stroke(); }
+    return; }
   const col = MR.colorHex(r.color), ys = [-.28, 0, .28];
   c.strokeStyle = '#2c3035'; c.lineWidth = s*.045; c.lineCap = 'round';
   [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd*.34*s, ys[0]*s); c.lineTo(sd*.3*s, -.06*s); c.lineTo(sd*.34*s, ys[2]*s); c.moveTo(sd*.3*s, .1*s); c.lineTo(sd*.34*s, 0); c.stroke(); });
