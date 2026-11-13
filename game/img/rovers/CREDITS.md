@@ -17,3 +17,5 @@ Made by the game's author for Crater Crew. Not NASA images.
   transparent background; centered on a square for the game.
 - `lm-top-*.webp`: the Apollo Lunar Module seen from above (the Moon's base station). The author's picture, with a transparent
   background. It shows the NASA logo and the US flag as painted on the real spacecraft.
+- `venera-top-*.webp`: a Venera lander (Venus, 1982) seen from above. The author's picture, with a transparent background;
+  centered on a square for the game.
