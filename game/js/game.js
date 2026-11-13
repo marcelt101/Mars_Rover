@@ -384,8 +384,8 @@ function renderRoverPick(mine){
   const moonOpen = MR.Store.unlocked().includes('moon') || G.mode === 'client';
   const cards = MR.roversFor(role).map(k => { const R = MR.ROVERS[k], off = (G.mode === 'client' && moon !== !!R.moon) || (R.moon && !moonOpen);
     const why = R.moon && !moonOpen ? 'Unlocks with the Moon map' : G.mode === 'client' && moon && !R.moon ? 'The host picked the Moon: everyone drives the Moon buggy' : G.mode === 'client' && !moon && R.moon ? 'Only on the Moon' : '';
-    return `<button class="rcard" data-model="${k}" aria-pressed="${k === cur}" ${off ? 'disabled' : ''}><img src="img/rovers/${R.art}-top-256.webp" alt=""><b>${esc(R.name)}</b><small>${esc(why || R.real)}</small></button>`; });
-  if (team && role !== 'cadet') cards.push(`<button class="rcard" data-model="lab" aria-pressed="${cur === 'lab'}"><img src="img/rovers/lab-top-256.webp" alt=""><b>Lab</b><small>Stays at the station and turns samples into building materials</small></button>`);
+    return `<button class="rcard" data-model="${k}" aria-pressed="${k === cur}" ${off ? 'disabled' : ''}><img src="img/rovers/${R.art}-top-256.webp" alt=""><b>${esc(R.name)}</b>${why ? `<small>${esc(why)}</small>` : ''}</button>`; });   // only the name: the story is in the box that opens
+  if (team && role !== 'cadet') cards.push(`<button class="rcard" data-model="lab" aria-pressed="${cur === 'lab'}"><img src="img/rovers/lab-top-256.webp" alt=""><b>Lab</b></button>`);
   const jobs = cur === 'lab' ? ['lab'] : MR.roverJobs(cur, role);
   $('jobPick').innerHTML = `<div class="rstep"><i>1</i> Pick your rover</div><div class="rcards">${cards.join('')}</div>
     <div class="rstep"><i>2</i> Pick ${esc(cur === 'lab' ? 'the Lab' : MR.ROVERS[cur].name)}'s job</div>
