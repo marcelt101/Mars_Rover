@@ -17,10 +17,12 @@ MR.EDITIONS = {
 MR.ED = MR.EDITIONS[MR.EDITION] || MR.EDITIONS.web;
 /* The James Webb level (webb.html): true lists it among the levels (next to Jezero) and ships it in the builds.
    Until then ?preview=webb shows the button on this device. */
-MR.WEBB_ON = false;
+MR.WEBB_ON = true;
 /* Features waiting for approval: ?preview=a,b turns them on, ?preview=off turns them off (remembered on this device). */
 try { const q = new URLSearchParams(location.search).get('preview'); if (q != null) localStorage.setItem('mr2.preview', q === 'off' ? '' : q);
   MR.PREVIEW = (localStorage.getItem('mr2.preview') || '').split(',').filter(Boolean); } catch (e) { MR.PREVIEW = []; }
+/* Approved and on for everyone (itch 1.3): the rover pictures and names with the solid lander and Park, and Free play. */
+MR.PREVIEW = [...new Set([...MR.PREVIEW, 'roverart', 'freeplay'])];
 /* beta:true shows the Beta badge (closed beta and early access); set it to false for the full release. */
 /* Bug reports go to a Google Form: formUrl ends in /formResponse, fields are its entry ids. Without them the
    report can be copied and emailed instead. */

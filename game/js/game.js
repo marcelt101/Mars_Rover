@@ -352,7 +352,7 @@ function renderLobby(){
   const airless = MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless;
   if (mine && MR.roverOn() && !mine.model && mine.job !== 'lab' && G.mode !== 'client' && me()) { mine.model = me().model = MR.modelFor({...mine, model:null}, lastMars()); MR.Store.save(); }   // start with a Mars rover
   if (mine && MR.roverOn() && mine.model && G.mode !== 'client' && G.lobby.map !== 'webb' && MR.ROVERS[mine.model]) { const mn = !!(MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless);   // the rover decides the map
-    if (MR.ROVERS[mine.model].moon && !mn && (MR.Store.unlocked().includes('moon') || G.lobby.free)) G.lobby.map = 'moon'; else if (!MR.ROVERS[mine.model].moon && mn) G.lobby.map = lastMars(); }
+    if (MR.ROVERS[mine.model].moon && !mn && MR.edMapOk('moon') && (MR.Store.unlocked().includes('moon') || G.lobby.free)) G.lobby.map = 'moon'; else if (!MR.ROVERS[mine.model].moon && mn) G.lobby.map = lastMars(); }
   $('jobPick').classList.toggle('rpick', !!(mine && MR.roverOn()));
   if (mine && MR.roverOn()) renderRoverPick(mine);
   else if (mine) $('jobPick').innerHTML = Object.entries(MR.JOBS).filter(([k, j]) => j.roles.includes(mine.role) && !(k === 'lab' && G.mode === 'solo')).map(([k, j]) => `<div class="jobw"><button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(airless && k === 'heli' ? 'There is no air on the Moon, so helicopters can not fly there. On this map you drive the Buggy.' : j.desc)}</small></button><button class="jinfo" data-info="${k}" aria-label="About the ${j.label} rover" title="About this rover">i</button></div>`).join('');
@@ -389,9 +389,9 @@ function webbCard(unlocked){
    and Mars rovers only to Mars (?preview=roverart). */
 function renderRoverPick(mine){
   const role = mine.role, map = G.lobby.map, moon = !!(MR.MAPS[map] && MR.MAPS[map].airless), cur = MR.modelFor(mine, map), team = G.mode !== 'solo';
-  const moonOpen = MR.Store.unlocked().includes('moon') || G.mode === 'client' || !!G.lobby.free;
+  const moonOpen = MR.edMapOk('moon') && (MR.Store.unlocked().includes('moon') || G.mode === 'client' || !!G.lobby.free);   // never in the free demo
   const cards = MR.roversFor(role).map(k => { const R = MR.ROVERS[k], off = !R.soon && G.mode === 'client' && moon !== !!R.moon, locked = !R.soon && R.moon && !moonOpen;
-    const why = R.soon ? 'Coming soon' : R.moon && !moonOpen ? '🔒 Unlocks with the Moon map' : G.mode === 'client' && moon && !R.moon ? 'The host picked the Moon: everyone drives the Moon buggy' : G.mode === 'client' && !moon && R.moon ? 'Only on the Moon' : '';
+    const why = R.soon ? 'Coming soon' : R.moon && !MR.edMapOk('moon') ? '🔒 In the full game' : R.moon && !moonOpen ? '🔒 Unlocks with the Moon map' : G.mode === 'client' && moon && !R.moon ? 'The host picked the Moon: everyone drives the Moon buggy' : G.mode === 'client' && !moon && R.moon ? 'Only on the Moon' : '';
     return `<button class="rcard ${R.soon ? 'soon' : ''} ${locked ? 'soon locked' : ''}" data-locked="${locked ? 1 : ''}" data-model="${k}" aria-pressed="${k === cur}" ${off ? 'disabled' : ''}><img src="img/rovers/${R.art}-top-256.webp" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'noart',textContent:'${R.soon ? '🪐' : '🚀'}'}))"><b>${esc(R.name)}</b>${why ? `<small>${esc(why)}</small>` : ''}</button>`; });   // only the name: the story is in the box that opens
   if (team && role !== 'cadet') cards.push(`<button class="rcard" data-model="lab" aria-pressed="${cur === 'lab'}"><img src="img/rovers/lab-top-256.webp" alt=""><b>Lab</b></button>`);
   const jobs = cur === 'lab' ? ['lab'] : MR.roverJobs(cur, role);
@@ -408,7 +408,7 @@ function pickRover(k){
   MR.Store.save();
   if (G.mode !== 'client' && G.lobby.map !== 'webb' && k !== 'lab') {   // the rover decides where it can go
     const moon = MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless;
-    if (MR.ROVERS[k].moon && !moon) { if (!moon) G.lastMars = G.lobby.map; G.lobby.map = 'moon'; }
+    if (MR.ROVERS[k].moon && !moon) { if (!MR.edMapOk('moon')) return; G.lastMars = G.lobby.map; G.lobby.map = 'moon'; }
     else if (!MR.ROVERS[k].moon && moon) G.lobby.map = lastMars();
   }
   if (G.mode === 'client') { G.net.send({type:'job', job:p.job, model:p.model}); const lp = G.lobby.players.find(x => x.pid === G.myPid); if (lp) { lp.job = p.job; lp.model = p.model; } renderLobby(); }
@@ -421,7 +421,7 @@ function roverCard(k, locked){ const R = MR.ROVERS[k];
   UI.openModal(`<div class="sh"><h2>${esc(R.name)}</h2><button class="xbtn" data-close aria-label="Close">×</button></div>
     <div class="rinfo"><img src="img/rovers/${R.art}-top-512.webp" alt="${esc(R.name)} seen from above" onerror="this.style.visibility='hidden'">
       <div><p><b>What</b>${esc(R.what)}</p><p><b>Where</b>${esc(R.where)}</p><p><b>Why</b>${esc(R.why)}</p>
-      ${R.soon ? '<p class="muted">Coming soon: its own map on Venus.</p>' : locked ? `<p class="muted">🔒 Unlocks with the Moon map: finish a ${esc(MR.MAPS[MR.MAPS.moon.unlock].name)} expedition first. (Parents can unlock every map in Parents and saves.)</p>` : `<p class="muted">${esc(R.name)} can do: ${MR.roverJobs(k, me() ? me().role : 'explorer').map(j => esc(MR.JOBS[j].label)).join(', ')}</p>`}</div></div>
+      ${R.soon ? '<p class="muted">Coming soon: its own map on Venus.</p>' : locked && !MR.edMapOk('moon') ? `<p class="muted">🔒 The Moon is in the full game.</p>` : locked ? `<p class="muted">🔒 Unlocks with the Moon map: finish a ${esc(MR.MAPS[MR.MAPS.moon.unlock].name)} expedition first. (Parents can unlock every map in Parents and saves.)</p>` : `<p class="muted">${esc(R.name)} can do: ${MR.roverJobs(k, me() ? me().role : 'explorer').map(j => esc(MR.JOBS[j].label)).join(', ')}</p>`}</div></div>
     <div class="row" style="justify-content:flex-end"><button class="btn primary" data-close>${R.soon || locked ? 'OK' : `Drive ${esc(R.name)} ✓`}</button></div>`, true);
 }
 function renderNet(){

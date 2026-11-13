@@ -4,7 +4,7 @@
 const MR = window.MR;
 /* Features waiting for approval: ?preview=avatars turns them on, ?preview=off turns them off (remembered). */
 try { const q = new URLSearchParams(location.search).get('preview'); if (q != null) localStorage.setItem('mr2.preview', q === 'off' ? '' : q);
-  MR.PREVIEW = (localStorage.getItem('mr2.preview') || '').split(',').filter(Boolean); } catch (e) { MR.PREVIEW = []; }
+  MR.PREVIEW = [...new Set([...(localStorage.getItem('mr2.preview') || '').split(',').filter(Boolean), 'roverart', 'freeplay'])]; } catch (e) { MR.PREVIEW = ['roverart', 'freeplay']; }   // keep the approved ones (see edition.js)
 MR.avatarsOn = () => true;   /* approved in batch 6 */
 const SKIN = {pale:'#f6dccb', light:'#efc8a8', tan:'#d9a37a', medium:'#b97b52', dark:'#8a5534', deep:'#5e3920',
   alien:'#8ed46b', robot:'#b9c2cc', violet:'#b48ce8', blue:'#7fb2e6'};
