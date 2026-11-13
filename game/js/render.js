@@ -313,7 +313,19 @@ function mastShadow(c, r, s, dx, dy){
   c.strokeStyle = 'rgba(20,8,3,.22)'; c.lineWidth = s*.04; c.lineCap = 'round'; c.beginPath(); c.moveTo(mx, my); c.lineTo(mx + dx, my - up + dy); c.stroke(); c.lineCap = 'butt';
   c.fillStyle = 'rgba(20,8,3,.24)'; rr(c, mx + dx - (mer ? .18 : .1)*s, my - up + dy - .06*s, (mer ? .36 : .2)*s, .11*s, .02*s); c.fill();
 }
+/* Rover pictures drawn top-down by the game's author (img/rovers/). Shown instead of the drawn rover once loaded.
+   Waiting for approval: ?preview=roverart. The picture's top is the rover's front, like the drawn rovers. */
+const ROVER_ART = {};
+const roverArt = (key, ts) => { if (!(MR.PREVIEW || []).includes('roverart')) return null; const n = ts > 70 ? 512 : 256, k = key + n;
+  if (!ROVER_ART[k]) { const im = new Image(); im.src = `img/rovers/${key}-top-${n}.webp`; ROVER_ART[k] = im; }
+  return ROVER_ART[k].complete && ROVER_ART[k].naturalWidth ? ROVER_ART[k] : null; };
 function drawMER(c, r, a, t, s, lod){
+  const art = roverArt('mer', s / .92);
+  if (art) { const w = s * 1.08, col = MR.colorHex(r.color);
+    c.save(); c.globalAlpha *= .55; c.strokeStyle = col; c.lineWidth = s * .05; c.beginPath(); c.arc(0, 0, s * .5, 0, Math.PI * 2); c.stroke(); c.restore();   // the player's color, under the rover
+    c.drawImage(art, -w / 2, -w / 2, w, w);
+    if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s * .04; c.beginPath(); c.arc(.1 * s, .1 * s, s * .09, t / 60, t / 60 + 4); c.stroke(); }
+    return; }
   const col = MR.colorHex(r.color), P = k => (r.perks || []).includes(k);
   const ww = (P('wide_wheels') ? .17 : .13)*s, wh = .2*s;
   // rocker-bogie and the six wheels (front and back wheels stick out past the array)
