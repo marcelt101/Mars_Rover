@@ -382,9 +382,9 @@ function webbCard(unlocked){
 function renderRoverPick(mine){
   const role = mine.role, map = G.lobby.map, moon = !!(MR.MAPS[map] && MR.MAPS[map].airless), cur = MR.modelFor(mine, map), team = G.mode !== 'solo';
   const moonOpen = MR.Store.unlocked().includes('moon') || G.mode === 'client';
-  const cards = MR.roversFor(role).map(k => { const R = MR.ROVERS[k], off = (G.mode === 'client' && moon !== !!R.moon) || (R.moon && !moonOpen);
-    const why = R.moon && !moonOpen ? 'Unlocks with the Moon map' : G.mode === 'client' && moon && !R.moon ? 'The host picked the Moon: everyone drives the Moon buggy' : G.mode === 'client' && !moon && R.moon ? 'Only on the Moon' : '';
-    return `<button class="rcard" data-model="${k}" aria-pressed="${k === cur}" ${off ? 'disabled' : ''}><img src="img/rovers/${R.art}-top-256.webp" alt=""><b>${esc(R.name)}</b>${why ? `<small>${esc(why)}</small>` : ''}</button>`; });   // only the name: the story is in the box that opens
+  const cards = MR.roversFor(role).map(k => { const R = MR.ROVERS[k], off = !R.soon && ((G.mode === 'client' && moon !== !!R.moon) || (R.moon && !moonOpen));
+    const why = R.soon ? 'Coming soon' : R.moon && !moonOpen ? 'Unlocks with the Moon map' : G.mode === 'client' && moon && !R.moon ? 'The host picked the Moon: everyone drives the Moon buggy' : G.mode === 'client' && !moon && R.moon ? 'Only on the Moon' : '';
+    return `<button class="rcard ${R.soon ? 'soon' : ''}" data-model="${k}" aria-pressed="${k === cur}" ${off ? 'disabled' : ''}><img src="img/rovers/${R.art}-top-256.webp" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'noart',textContent:'${R.soon ? '🪐' : '🚀'}'}))"><b>${esc(R.name)}</b>${why ? `<small>${esc(why)}</small>` : ''}</button>`; });   // only the name: the story is in the box that opens
   if (team && role !== 'cadet') cards.push(`<button class="rcard" data-model="lab" aria-pressed="${cur === 'lab'}"><img src="img/rovers/lab-top-256.webp" alt=""><b>Lab</b></button>`);
   const jobs = cur === 'lab' ? ['lab'] : MR.roverJobs(cur, role);
   $('jobPick').innerHTML = `<div class="rstep"><i>1</i> Pick your rover</div><div class="rcards">${cards.join('')}</div>
@@ -394,6 +394,7 @@ function renderRoverPick(mine){
 const lastMars = () => { const u = MR.Store.unlocked().filter(k => !MR.MAPS[k].airless); return G.lastMars && u.includes(G.lastMars) ? G.lastMars : u[u.length - 1] || 'jezero'; };
 function pickRover(k){
   const p = me(); if (!p) return;
+  if (MR.ROVERS[k] && MR.ROVERS[k].soon) { roverCard(k); MR.sfx.click(); return; }   // not drivable yet: just its story
   if (k === 'lab') { p.job = 'lab'; p.model = null; }
   else { p.model = k; const ok = MR.roverJobs(k, p.role); if (!ok.includes(p.job)) p.job = ok[0]; }
   MR.Store.save();
@@ -410,10 +411,10 @@ function pickRover(k){
 /* What, where, why: a box about the real rover, shown when a kid picks it. */
 function roverCard(k){ const R = MR.ROVERS[k];
   UI.openModal(`<div class="sh"><h2>${esc(R.name)}</h2><button class="xbtn" data-close aria-label="Close">×</button></div>
-    <div class="rinfo"><img src="img/rovers/${R.art}-top-512.webp" alt="${esc(R.name)} seen from above">
+    <div class="rinfo"><img src="img/rovers/${R.art}-top-512.webp" alt="${esc(R.name)} seen from above" onerror="this.style.visibility='hidden'">
       <div><p><b>What</b>${esc(R.what)}</p><p><b>Where</b>${esc(R.where)}</p><p><b>Why</b>${esc(R.why)}</p>
-      <p class="muted">${esc(R.name)} can do: ${MR.roverJobs(k, me() ? me().role : 'explorer').map(j => esc(MR.JOBS[j].label)).join(', ')}</p></div></div>
-    <div class="row" style="justify-content:flex-end"><button class="btn primary" data-close>Drive ${esc(R.name)} ✓</button></div>`, true);
+      ${R.soon ? '<p class="muted">Coming soon: its own map on Venus.</p>' : `<p class="muted">${esc(R.name)} can do: ${MR.roverJobs(k, me() ? me().role : 'explorer').map(j => esc(MR.JOBS[j].label)).join(', ')}</p>`}</div></div>
+    <div class="row" style="justify-content:flex-end"><button class="btn primary" data-close>${R.soon ? 'OK' : `Drive ${esc(R.name)} ✓`}</button></div>`, true);
 }
 function renderNet(){
   const t = G.mode === 'host' ? `Hosting · ${G.lobby.players.filter(x => x.connected).length} connected` : G.mode === 'client' ? (G.lastPing != null ? `Connected · ${G.lastPing} ms` : 'Connecting…') : 'Solo';

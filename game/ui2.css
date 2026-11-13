@@ -241,3 +241,5 @@ body[data-scr="scrGame"] .hudleave{display:inline-flex}
 .rinfo img{width:150px;height:150px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.5))}
 .rinfo p{margin:0 0 8px;line-height:1.45}.rinfo p b{display:block;font:700 13px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--accent,#58cfbe)}
 @media (max-width:560px){.rinfo{grid-template-columns:1fr}.rinfo img{margin:0 auto}}
+.rcard.soon{opacity:.75;border-style:dashed}.rcard.soon small{color:var(--gold,#f0bf5a)}
+.rcard .noart{width:92px;height:92px;display:grid;place-items:center;font-size:52px}
