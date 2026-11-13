@@ -17,6 +17,28 @@ MR.tubesOf = r => Math.max(0, MR.ROLES[r.role].tubes + (r.job === 'hauler' ? 4 :
 MR.regionAt = (st, x, y) => MR.nearStation(st.map, x, y, 2) ? 'Base station' : MR.MAPS[st.map].regions[st.world.ter[y*MW+x]];
 
 /* Starting squares around the station: the first 8 as always, then rings farther out for big classes. */
+/* With the lander: nothing may hide under it (finds there move just outside), and the ramp and its foot are clear. */
+function clearLander(map, w){
+  const S = MR.MAPS[map].station, fake = {lander:true, map}, under = [], spots = [];
+  for (let y = S.y - 4; y <= S.y + 7; y++) for (let x = S.x - 4; x <= S.x + 6; x++) { if (!MR.inb(x, y)) continue;
+    const i = y*MW + x, k = MR.landerKind(fake, x, y), foot = x === S.x + 1 && y >= S.y + 5 && y <= S.y + 6;
+    if (k || foot) { if (w.res[i]) under.push([w.res[i], w.obs[i] === 'A', w.kid ? w.kid[i] : 0]); w.res[i] = ''; w.obs[i] = ''; w.trap[i] = 0; if (w.kid) w.kid[i] = 0;
+      if (MR.TER[w.ter[i]].block || k === 'walk' || foot) w.ter[i] = MR.T.FLOOR; } }
+  under.forEach(([id, art, kid]) => { for (let d = 5; d < 12; d++) { let done = false;
+    for (let y = S.y - d; y <= S.y + 1 + d && !done; y++) for (let x = S.x - d; x <= S.x + 1 + d && !done; x++) { if (!MR.inb(x, y)) continue; const i = y*MW + x;
+      if (MR.landerKind(fake, x, y) || w.res[i] || w.obs[i] || w.trap[i] || MR.TER[w.ter[i]].block) continue;
+      w.res[i] = id; if (art) w.obs[i] = 'A'; if (w.kid && kid) w.kid[i] = kid; done = true; }
+    if (done) break; } });
+}
+/* With the lander, rovers start on its deck, then on the ramp, then in front of it. */
+function landerSpawn(map, w){
+  const S = MR.MAPS[map].station, fake = {lander:true, map};
+  const cells = [[S.x+1, S.y+1], [S.x+1, S.y], [S.x, S.y+1], [S.x, S.y], [S.x+1, S.y+2], [S.x+1, S.y+3], [S.x+1, S.y+4]];   // the first rover right at the top of the ramp
+  for (let d = 1; d <= 6 && cells.length < MR.MAX_PLAYERS; d++) for (let y = S.y + 5 - d; y <= S.y + 5 + d; y++) for (let x = S.x + 1 - d; x <= S.x + 1 + d; x++) {
+    if (Math.max(Math.abs(x - S.x - 1), Math.abs(y - S.y - 5)) !== d || !MR.inb(x, y) || MR.landerKind(fake, x, y)) continue;
+    const i = y*MW + x; if (w.obs[i] || MR.TER[w.ter[i]].block || cells.some(c => c[0] === x && c[1] === y)) continue; cells.push([x, y]); }
+  return cells;
+}
 function spawnCells(map, world){
   const S = MR.MAPS[map].station, cells = [[S.x-1,S.y],[S.x+2,S.y],[S.x-1,S.y+1],[S.x+2,S.y+1],[S.x,S.y-1],[S.x+1,S.y+2],[S.x+1,S.y-1],[S.x,S.y+2]];
   if (!world) return cells;
@@ -55,14 +77,17 @@ MR.refitRover = (r, perks) => {
 MR.newGame = ({map, seed, players, day}) => {
   const cadets = players.filter(p => p.role === 'cadet').length, others = players.length - cadets;
   const world = MR.genWorld(map, seed, cadets > 0);
-  const cells = spawnCells(map, world);
+  const lander = !MR.MAPS[map].airless && (MR.PREVIEW || []).includes('roverart');   // the solid lander with a ramp (preview)
+  if (lander) clearLander(map, world);
+  const cells = lander ? landerSpawn(map, world) : spawnCells(map, world);
   const st = {v:MR.VERSION, map, seed, sol:1, won:false, rng:(seed ^ 0x5bd1e995) | 0,
     team:{score:0, delivered:0, treasures:0, col:{}}, rovers:[], world, sites:{}, lab:{inbox:[], catalog:[], mat:{water:0, metal:0, bricks:0, glass:0}, built:{}},
     goals: MR.cadetGoals(cadets)};
+  if (lander) st.lander = true;
   if (day && MR.missionOf(day)) st.day = day;
   if (others) startCampaign(st, 0, others);
   players.forEach((p, i) => { const r = MR.makeRover(p, cells[i % cells.length], map); if (players.length > 1 && r.job === 'scout') r.tubeAdj = -2; st.rovers.push(r); reveal(world, r.x, r.y, MR.sightOf(r)); });
-  st.rovers.forEach(r => { if (r.job === 'lab') { const S2 = MR.MAPS[map].station; r.x = S2.x; r.y = S2.y; } });
+  st.rovers.forEach(r => { if (r.job === 'lab') { const S2 = MR.MAPS[map].station; r.x = S2.x; r.y = S2.y; } else if (lander && MR.landerKind(st, r.x, r.y)) r.dir = 2; });   // on the lander: facing the ramp
   if (st.day) applyDayRules(st, MR.missionOf(st.day).rules || {});
   rollWeather(st);
   return st;
@@ -180,6 +205,7 @@ function blockReason(st, r, nx, ny){
   const i = ny*MW+nx, t = MR.TER[st.world.ter[i]];
   if (t.block) return t.block;
   const o = st.world.obs[i];
+  const ls = MR.landerStep(st, r.x, r.y, nx, ny); if (ls) return ls;
   if (o === 'R') return 'a rock'; if (o === 'C') return 'a crater'; if (o === 'A') return 'a piece of Mars history';
   const other = st.rovers.find(o2 => o2 !== r && o2.job !== 'heli' && o2.job !== 'lab' && o2.x === nx && o2.y === ny);
   if (other) return `${other.name}'s rover`;
@@ -528,7 +554,14 @@ MR.simulateSol = (prev, plans) => {
     const evs = []; let any = false;
     for (const r of st.rovers) {
       const E0 = o => { const e = {pid:r.pid, ...o}; evs.push(e); return e; };
-      const a = r.prog ? (r.prog.halt || r.prog.done || r.prog.pause ? null : progNext(st, r, E0)) : q[r.pid].shift(); if (!a) continue;
+      let a = r.prog ? (r.prog.halt || r.prog.done || r.prog.pause ? null : progNext(st, r, E0)) : q[r.pid].shift(); if (!a) continue;
+      if (a.k === 'park') {   /* Park: find the way home (up the ramp), drive it, and sleep on the deck */
+        const steps = MR.onStation(st.map, r.x, r.y) ? [] : r.job === 'heli' || r.job === 'lab' ? null : macroSteps(st, r, 'go_home');
+        if (!steps) { E0({t:'bump', idx:a.idx, at:[r.x, r.y], msg:{k:'warn', text:`${r.name} can't find a safe way home yet. Drive closer and try Park again.`}}); continue; }
+        const more = [...steps.map(s2 => ({...s2, idx:a.idx})), {k:'parked', idx:a.idx}];
+        if (r.prog) r.prog.queue.unshift(...more); else q[r.pid].unshift(...more);
+        any = true; continue; }
+      if (a.k === 'parked') { any = true; E0({t:'parked', idx:a.idx, at:[r.x, r.y], msg:{k:'good', text:`${r.name} parked ${st.lander ? 'on the lander' : 'at the station'} and went to sleep. Good night, ${r.name}!`}}); continue; }
       any = true;
       const E = o => { const e = {pid:r.pid, idx:a.idx, ...o}; evs.push(e); return e; };
       if (r.prog && isPower(r) && r.bat < 10 && a.k !== 'charge') {
@@ -595,11 +628,12 @@ MR.findPath = (st, r, goal, maxLen = 400) => {
   const W = st.world, start = r.y*MW + r.x, prev = new Map([[start, -1]]), q = [start];
   const open = (x, y) => { if (!MR.inb(x,y)) return false; if (r.job === 'heli') return true; const i = y*MW+x;
     if (!W.seen[i]) return true; if (MR.TER[W.ter[i]].block || W.obs[i] || W.trapSeen[i]) return false;
+    if (st.lander && MR.landerKind(st, x, y) === 'block') return false;
     return !st.rovers.some(o => o !== r && o.job !== 'heli' && o.job !== 'lab' && o.x === x && o.y === y); };
   while (q.length) {
     const c = q.shift(), x = c % MW, y = (c/MW) | 0;
     if (c !== start && goal(x, y)) { const p = []; let k = c; while (k !== start) { p.unshift([k % MW, (k/MW) | 0]); k = prev.get(k); } return p.slice(0, maxLen); }
-    for (const [dx, dy] of DIRS) { const nx = x+dx, ny = y+dy, n = ny*MW+nx; if (!prev.has(n) && open(nx, ny)) { prev.set(n, c); q.push(n); } }
+    for (const [dx, dy] of DIRS) { const nx = x+dx, ny = y+dy, n = ny*MW+nx; if (!prev.has(n) && open(nx, ny) && (r.job === 'heli' || !MR.landerStep(st, x, y, nx, ny))) { prev.set(n, c); q.push(n); } }
   }
   return null;
 };

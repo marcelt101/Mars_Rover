@@ -71,6 +71,7 @@ MR.CMDS = {
   dig:     {label:'Dig', icon:'▲', cat:'build', cost:'6%', py:'dig', jobs:['excavator']},
   charge:  {label:'Charge', icon:'ϟ', cat:'power', cost:'+15%', py:'charge'},
   photo:   {label:'Photo', icon:'▣', cat:'sci', cost:'1%', py:'photo'},
+  park:    {label:'Park', icon:'🅿', cat:'move', cost:'2% / square', py:'park', desc:'Drive home, up the lander ramp, and sleep there'},
   go_signal: {label:'Go to signal', icon:'⌖', cat:'move', cost:'2% / square', py:'go_to_signal', macro:'go_signal', relay:true},
   go_home:   {label:'Go home', icon:'⌂', cat:'move', cost:'2% / square', py:'go_home', macro:'go_home', relay:true},
   catalog: {label:'Catalog samples', icon:'▤', cat:'sci', cost:'free', lab:'catalog', jobs:['lab']},
@@ -122,8 +123,9 @@ MR.UPGRADES = {
 };
 /* The Cadet helicopter takes pictures instead of digging, like Ingenuity. */
 MR.heliCam = r => !!r && r.job === 'heli';
-MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','back','drill'] : job === 'lab' ? Object.keys(MR.CMDS).filter(k => MR.CMDS[k].lab)
-  : Object.keys(MR.CMDS).filter(k => !MR.CMDS[k].jobs || MR.CMDS[k].jobs.includes(job));
+MR.parkOn = () => (MR.PREVIEW || []).includes('roverart');   // the Park command comes with the lander (preview)
+MR.cmdsFor = (role, job) => role === 'cadet' ? ['left','forward','right','back','drill', ...(MR.parkOn() && job !== 'heli' ? ['park'] : [])] : job === 'lab' ? Object.keys(MR.CMDS).filter(k => MR.CMDS[k].lab)
+  : Object.keys(MR.CMDS).filter(k => (!MR.CMDS[k].jobs || MR.CMDS[k].jobs.includes(job)) && (k !== 'park' || (MR.parkOn() && job !== 'lab')));
 
 MR.RARITY = {
   C:{name:'Common', xp:5, col:'#9aa7b3'},

@@ -27,6 +27,20 @@ function blankWorld(map, seed, cadetGems){
     drilled:new Uint8Array(N), trapSeen:new Uint8Array(N), extra:[]};
 }
 MR.onStation = (map, x, y) => { const s = MR.MAPS[map].station; return x>=s.x && x<=s.x+1 && y>=s.y && y<=s.y+1; };
+/* The lander (the base station picture, ?preview=roverart): solid, with a deck and a ramp. Offsets are from the
+   station's top-left square. Rovers reach the deck (the station's 2x2 squares) only up the ramp from its foot. */
+MR.LANDER = {walk:[[0,0],[1,0],[0,1],[1,1],[1,2],[1,3],[1,4]], foot:[1,5], block:[[0, -3], [1, -3], [0, -2], [1, -2], [-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1], [3, -1], [4, -1], [-2, 0], [-1, 0], [2, 0], [3, 0], [4, 0], [-2, 1], [-1, 1], [2, 1], [3, 1], [4, 1], [-1, 2], [0, 2], [2, 2], [3, 2], [0, 3], [2, 3]]};
+MR.landerKind = (st, x, y) => { if (!st || !st.lander) return null; const S = MR.MAPS[st.map].station, dx = x - S.x, dy = y - S.y;
+  if (MR.LANDER.walk.some(([a, b]) => a === dx && b === dy)) return 'walk';
+  if (MR.LANDER.block.some(([a, b]) => a === dx && b === dy)) return 'block'; return null; };
+/* Can a ground rover step from (x,y) to (nx,ny) as far as the lander goes? Returns null or the reason it can't. */
+MR.landerStep = (st, x, y, nx, ny) => { if (!st || !st.lander) return null; const to = MR.landerKind(st, nx, ny), from = MR.landerKind(st, x, y);
+  if (to === 'block') return 'the lander (drive up its ramp, on the south side)';
+  if (to === 'walk' && from === 'walk') return null;
+  if (!to && !from) return null;
+  const S = MR.MAPS[st.map].station, bottom = (a, b) => a === S.x + 1 && b === S.y + 4, foot = (a, b) => a === S.x + 1 && b === S.y + 5;
+  if ((to === 'walk' && bottom(nx, ny) && foot(x, y)) || (from === 'walk' && bottom(x, y) && foot(nx, ny))) return null;
+  return to === 'walk' ? 'the side of the lander (go round to the ramp)' : 'the edge of the ramp'; };
 MR.nearStation = (map, x, y, d) => { const s = MR.MAPS[map].station; return Math.abs(x-(s.x+.5))<=d && Math.abs(y-(s.y+.5))<=d; };
 
 function terJezero(w, seed){

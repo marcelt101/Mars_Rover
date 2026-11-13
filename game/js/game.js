@@ -416,7 +416,7 @@ function setGameState(st){
 function renderGame(){
   if (!G.state) return;
   const r = myRover(), role = r ? r.role : 'explorer', cadet = role === 'cadet', code = isCode(r);
-  $('cadetPanel').hidden = !cadet; $('planPanel').hidden = cadet; document.querySelector('.cbtn.dn').hidden = !MR.cmdsFor('cadet').includes('back');
+  $('cadetPanel').hidden = !cadet; $('planPanel').hidden = cadet; document.querySelector('.cbtn.dn').hidden = !MR.cmdsFor('cadet').includes('back'); document.querySelector('.cbtn.pk').hidden = !cmdsForMe().includes('park');
   if (cadet) { const db = document.querySelector('.cbtn.dig'), cam = MR.heliCam(r); db.firstChild.textContent = cam ? '📷' : '⛏'; db.setAttribute('aria-label', cam ? 'Take a picture of treasure (Space)' : 'Dig for treasure (Space)'); }
   $('tabs').hidden = code; $('editor').hidden = !code; $('prog').hidden = code || G.showCode; $('code').hidden = code || !G.showCode;
   $('planTitle').textContent = code ? "Today's program" : "Today's plan";
@@ -781,6 +781,7 @@ function renderPalette(){
   const blk = k => { const b = MR.BLOCKS[k]; return `<button class="pal blk ${b.relay && !relay ? 'locked' : ''}" data-b="${k}" aria-label="${b.label}" title="${esc(b.desc)}${b.relay && !relay ? ' (needs the satellite relay kit)' : ''}" ${b.relay && !relay ? 'disabled' : ''}><span class="ic" aria-hidden="true">${b.icon}</span><span class="lb">${b.label}</span><small>${code ? 'Python' : 'holds blocks'}</small></button>`; };
   $('palette').innerHTML = `<div class="pgroup drive"><span class="pgl">Drive</span><div class="dpad">${btn('forward','up')}${btn('left','lf')}${btn('back','dn')}${btn('right','rt')}</div></div>`
     + group('Science', ['scan','analyze','drill','photo']) + group('Tools', ['dig']) + group('Power', ['charge'])
+    + group('Home', ['park'])
     + (relay ? group('Relay', ['go_signal','go_home']) : '')
     + `<div class="pgroup smart"><span class="pgl">${code ? 'Sensors' : 'Smart'}</span><div class="pbtns">${Object.keys(MR.BLOCKS).filter(k => relay || code ? true : k === 'repeat').map(blk).join('')}</div></div>`;
 }
@@ -857,7 +858,7 @@ while rover.sense_ahead() == "clear":
     if rover.signal_here():
         check()</pre>`);
 }
-const PIC = {forward:'↑', back:'↓', left:'↶', right:'↷', drill:'⛏'}, picOf = (t, r) => t === 'drill' && MR.heliCam(r) ? '📷' : PIC[t];
+const PIC = {forward:'↑', back:'↓', left:'↶', right:'↷', drill:'⛏', park:'🅿'}, picOf = (t, r) => t === 'drill' && MR.heliCam(r) ? '📷' : PIC[t];
 const FACE = ['north ↑', 'east →', 'south ↓', 'west ←'];
 /* A plain sentence for each block, so a plan reads like instructions. */
 function cmdText(c){

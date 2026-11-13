@@ -13,3 +13,5 @@ Made by the game's author for Crater Crew. Not NASA images.
   Supplied with transparent backgrounds; centered on squares for the game.
 - `lab-top-*.webp` (the Lab) and `pod-top-*.webp` (the base station on Mars): the author's building pictures, drawn at a slight
   angle and never rotated. Supplied with transparent backgrounds; centered on squares for the game.
+- `lrv-top-*.webp`: the Apollo 15 Lunar Roving Vehicle seen from above (the Moon map). The author's picture, supplied with a
+  transparent background; centered on a square for the game.

@@ -123,7 +123,7 @@ function drawStation(c, t, ts){
   drawUpgrades(c, ts);
   if (MR.MAPS[R.view.map].airless) return drawLM(c, sx, sy, s);
   const pod = roverArt('pod', ts * 2);   // the author's lander pod as the base station (preview); buildings never turn
-  if (pod) { const w = ts * POD_SIZE; c.drawImage(pod, sx + s / 2 - w / 2, sy + s / 2 - w / 2, w, w); return; }
+  if (pod) { const w = ts * POD_SIZE; c.drawImage(pod, sx + s / 2 + POD_SHIFT * ts - w / 2, sy + s / 2 - w / 2, w, w); return; }
   return drawBase(c, t, sx, sy, s, ts < 20 ? 0 : ts < 32 ? 1 : 2);
   c.fillStyle='rgba(40,14,6,0.35)'; c.fillRect(sx+s*.08, sy+s*.1, s*.92, s*.92);
   c.fillStyle='#9aa3ab'; c.fillRect(sx+s*.06, sy+s*.06, s*.88, s*.88);
@@ -320,9 +320,15 @@ function mastShadow(c, r, s, dx, dy){
 const ROVER_ART = {};
 /* The lander pod (base station) is big next to the rovers: about 9.6 squares across, so its ramp is one rover wide
    (about 1.6 squares, the size rovers are drawn). The station still works from its 2x2 squares in the middle. */
-const POD_SIZE = 9.6;
+const POD_SIZE = 9.6, POD_SHIFT = .425;   // shifted so its ramp lines up with the ramp squares (MR.LANDER)
 /* The Lab stands on the station's square in the game; with the pictures it is drawn beside the lander pod instead (in squares). */
-const LAB_OFF = [-1.55, .5];
+const LAB_OFF = [-3.3, .5];
+/* Rovers parked on the station's squares between sols sleep on the lander deck: drawn on the deck itself, up to
+   four side by side. Returns the shift in squares, or null. */
+const parkedOn = r => !R.running && R.view && !MR.MAPS[R.view.map].airless && r.job !== 'lab' && r.job !== 'heli' && MR.onStation(R.view.map, r.x, r.y) && !!roverArt('pod', 64);
+function parkOff(r, a){ if (!parkedOn(r)) return null; const S = MR.MAPS[R.view.map].station, list = R.view.rovers.filter(parkedOn), i = list.indexOf(r), n = list.length;
+  const spots = n === 1 ? [[0, 0]] : n === 2 ? [[-.85, 0], [.85, 0]] : [[-.85, -.85], [.85, -.85], [-.85, .85], [.85, .85]];
+  const [ox, oy] = spots[i % spots.length]; return [S.x + 1.5 + ox - (a.px + .5), S.y + .85 + oy - (a.py + .5)]; }
 const labArtOn = r => r.job === 'lab' && !!roverArt('lab', 64);
 /* With the rover pictures, rovers are drawn about 1.6 squares wide so their detail shows (they still stand on one square). */
 const ROVER_BIG = () => (MR.PREVIEW || []).includes('roverart') ? 1.6 : 1;
@@ -533,6 +539,7 @@ function drawGroundRover(c, r, a, t, s, lod){
 }
 /* Apollo Lunar Roving Vehicle, seen from above: open frame, wire-mesh wheels, two astronauts, umbrella antenna. */
 function drawLRV(c, r, a, t, s, lod){
+  if (drawArt(c, r, a, t, s, 'lrv', 1.15, [0, -.42])) return;   // the author's Apollo 15 Lunar Roving Vehicle (preview)
   const col = MR.colorHex(r.color);
   [[-.33, -.3], [.33, -.3], [-.33, .32], [.33, .32]].forEach(([x, y]) => {
     c.fillStyle = '#3a3c40'; rr(c, x*s - .09*s, y*s - .13*s, .18*s, .26*s, .07*s); c.fill();
@@ -678,7 +685,8 @@ function drawLab(c, r, s, lod, a, t){
 }
 function drawRover(c, r, a, t, ts, ghost){
   const s = ts*.92, cx = (a.px-R.cam.x+.5)*ts, cy = (a.py-R.cam.y+.5)*ts, heli = r.job === 'heli', lod = ts < 20 ? 0 : ts < 32 ? 1 : 2;
-  c.save(); c.translate(cx, cy); c.scale(ROVER_BIG(), ROVER_BIG());   // rovers drawn bigger than their square (preview)
+  const po = ghost ? null : parkOff(r, a);
+  c.save(); c.translate(cx + (po ? po[0]*ts : 0), cy + (po ? po[1]*ts : 0)); c.scale(ROVER_BIG(), ROVER_BIG());   // rovers drawn bigger than their square (preview)
   if (ghost) c.globalAlpha = .35; else if (R.offline && R.offline.has(r.pid)) c.globalAlpha = .45;
   if (heli) { c.fillStyle='rgba(40,12,4,0.28)'; c.beginPath(); c.ellipse(s*.12, s*.25, s*.32, s*.17, 0, 0, Math.PI*2); c.fill(); c.translate(0, -s*.12); }
   const moon0 = R.view && MR.MAPS[R.view.map].airless, perse = !heli && r.job !== 'buggy' && r.job !== 'lab' && !moon0;
@@ -691,6 +699,10 @@ function drawRover(c, r, a, t, ts, ghost){
   const moon = R.view && MR.MAPS[R.view.map].airless;
   if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod, a, t); else if (moon) drawLRV(c, r, a, t, s, lod); else if (R.view && R.view.map === 'utopia') drawZhurong(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
   if (r.job !== 'lab') drawParts(c, r, s, lod, !(heli || r.job === 'buggy' || moon || (R.view && R.view.map === 'utopia')));
+  if (po) {   // parked on the lander deck: asleep until the next sol
+    c.rotate(-a.ang*Math.PI/180); const k = s / ROVER_BIG(); c.fillStyle = 'rgba(200,230,255,.9)'; c.font = `700 ${Math.round(k*.32)}px 'Chakra Petch', sans-serif`; c.textAlign = 'center';
+    [[0, .5, .4], [.5, .38, .75], [1, .28, 1.05]].forEach(([i, sz, up]) => { const ph = ((t / 1400) + i / 3) % 1; c.globalAlpha = Math.sin(ph * Math.PI) * .9; c.font = `700 ${Math.round(k * sz * 1.6)}px 'Chakra Petch', sans-serif`;
+      c.fillText('Z', k * (.25 + i * .18), -k * (.45 + up * .35 + ph * .3)); }); c.globalAlpha = 1; c.rotate(a.ang*Math.PI/180); }
   if (perse && lod >= 1) { const an = -a.ang*Math.PI/180, ox = .2*s, oy = .25*s; mastShadow(c, r, s, ox*Math.cos(an) - oy*Math.sin(an), ox*Math.sin(an) + oy*Math.cos(an)); }
   c.restore();
 }
@@ -725,7 +737,7 @@ function drawHints(c, t, ts){
   });
 }
 function drawNameFlag(c, r, a, ts){
-  const lo = labArtOn(r) ? LAB_OFF : [0, 0], cx = (a.px-R.cam.x+.5+lo[0])*ts, top = (a.py-R.cam.y+lo[1])*ts - (r.job === 'heli' ? ts*.25 : 0) - (ROVER_BIG() - 1)*ts*.5, col = MR.colorHex(r.color);
+  const lo = labArtOn(r) ? LAB_OFF : parkOff(r, a) || [0, 0], cx = (a.px-R.cam.x+.5+lo[0])*ts, top = (a.py-R.cam.y+lo[1])*ts - (r.job === 'heli' ? ts*.25 : 0) - (ROVER_BIG() - 1)*ts*.5, col = MR.colorHex(r.color);
   const label = ts >= 22 ? r.name : r.name.slice(0,1).toUpperCase();
   c.font = `600 ${Math.max(10, Math.min(14, Math.round(ts*.34)))}px 'IBM Plex Sans', system-ui, sans-serif`;
   const w = c.measureText(label).width + 10, h = Math.max(15, Math.min(20, ts*.48)), y = top - h - 2;
