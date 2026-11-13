@@ -103,7 +103,7 @@ const realThumbs = () => true;   /* approved */
 if (on('cards')) {
   const deco = () => {
     const moon = MR.MAPS[MR.Game.lobby && MR.Game.lobby.map] && MR.MAPS[MR.Game.lobby.map].airless, p = MR.Store.current();
-    document.querySelectorAll('#jobPick .job').forEach(b => { if (b.querySelector('canvas')) return; const c = document.createElement('canvas'); c.width = c.height = 120; c.className = 'jpic'; b.prepend(c);
+    if (!MR.roverOn()) document.querySelectorAll('#jobPick .job').forEach(b => { if (b.querySelector('canvas')) return; const c = document.createElement('canvas'); c.width = c.height = 120; c.className = 'jpic'; b.prepend(c);
       const job = b.dataset.job; MR.Render.drawPreview(c, {zh:MR.Game.lobby && MR.Game.lobby.map === 'utopia' && ['scout','science','hauler','excavator'].includes(job), job, role:job === 'buggy' || job === 'heli' ? 'cadet' : 'explorer', color:(p && p.color) || 'teal', perks:[], tubes:job === 'hauler' ? ['clay','olivine','salts'] : [], dust:0}, moon && job !== 'heli' && job !== 'lab'); });
     document.querySelectorAll('#mapPick .mapcard').forEach(b => { if (b.querySelector('.mart')) return; const a = document.createElement('span'); a.className = 'mart'; a.dataset.m = b.dataset.map; a.setAttribute('aria-hidden', 'true');
       if (realThumbs()) { a.classList.add('real'); b.classList.add('pic'); const bp = b.querySelector('p'); if (bp) b.title = bp.textContent; a.style.backgroundImage = `url(img/maps/${b.dataset.map}.jpg)`; } if (b.dataset.map === 'webb' ? b.disabled && !/solo level/.test(b.textContent) : !(MR.Game.lobby && MR.Game.lobby.unlocked || MR.Store.unlocked()).includes(b.dataset.map)) a.innerHTML = '<i>LOCKED</i>'; b.prepend(a); });

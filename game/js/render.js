@@ -700,7 +700,9 @@ function drawRover(c, r, a, t, ts, ghost){
   c.rotate(a.ang*Math.PI/180);
   if (a.busy || a.wob > 0) c.translate((Math.random()-.5)*s*.03, (Math.random()-.5)*s*.03);
   const moon = R.view && MR.MAPS[R.view.map].airless;
-  if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod, a, t); else if (moon) drawLRV(c, r, a, t, s, lod); else if (R.view && R.view.map === 'utopia') drawZhurong(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
+  const MODEL_SIZE = {sojourner:1, spirit:1.08, opportunity:1.08, perseverance:1.12, zhurong:1.1, lrv:1.15};
+  if (r.model && MODEL_SIZE[r.model] && !heli && drawArt(c, r, a, t, s, MR.ROVERS[r.model].art, MODEL_SIZE[r.model], [0, -.42])) {}   // the rover picked by name (preview)
+  else if (heli) drawHeli(c, r, a, t, s, lod); else if (r.job === 'buggy') drawBuggy(c, r, a, t, s, lod); else if (r.job === 'lab') drawLab(c, r, s, lod, a, t); else if (moon) drawLRV(c, r, a, t, s, lod); else if (R.view && R.view.map === 'utopia') drawZhurong(c, r, a, t, s, lod); else drawGroundRover(c, r, a, t, s, lod);
   if (r.job !== 'lab') drawParts(c, r, s, lod, !(heli || r.job === 'buggy' || moon || (R.view && R.view.map === 'utopia')));
   if (po) {   // parked on the lander deck: asleep until the next sol
     c.rotate(-a.ang*Math.PI/180); const k = s / ROVER_BIG(); c.fillStyle = 'rgba(200,230,255,.9)'; c.font = `700 ${Math.round(k*.32)}px 'Chakra Petch', sans-serif`; c.textAlign = 'center';

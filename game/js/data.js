@@ -57,6 +57,26 @@ MR.JOBS = {
   lab:       {label:'Lab', roles:['explorer','specialist'], desc:"Stays at the station. Catalogs the team's samples and turns them into water, metal, bricks and glass to build base upgrades."},
 };
 MR.defaultJob = role => role === 'cadet' ? 'buggy' : 'scout';
+/* The rovers by name (?preview=roverart): pick a rover first, then one of the jobs it can do. Each job matches what the
+   real rover was good at. moon:true only on the Moon (and the Moon only with it). art: the picture in img/rovers/. */
+MR.ROVERS = {
+  sojourner:    {name:'Sojourner', art:'sojourner', real:'NASA, 1997 · the very first Mars rover', roles:['cadet'], jobs:['buggy']},
+  ingenuity:    {name:'Ingenuity', art:'ingenuity', real:'NASA helicopter, 2021–2024 · the first flight on another planet', roles:['cadet'], jobs:['heli']},
+  spirit:       {name:'Spirit', art:'spirit', real:'NASA, 2004–2010 · Gusev Crater, found signs of old hot springs', roles:['explorer','specialist'], jobs:['scout','science']},
+  opportunity:  {name:'Opportunity', art:'opportunity', real:'NASA, 2004–2018 · drove a whole marathon on Mars', roles:['explorer','specialist'], jobs:['scout','hauler']},
+  perseverance: {name:'Perseverance', art:'perseverance', real:'NASA, 2021–today · collects rock samples in tubes', roles:['explorer','specialist'], jobs:['science','hauler','excavator']},
+  zhurong:      {name:'Zhurong', art:'zhurong', real:'China, 2021–2022 · looked under the ground with radar', roles:['explorer','specialist'], jobs:['scout','science','excavator']},
+  lrv:          {name:'Moon buggy', art:'lrv', real:'Apollo 15 Lunar Roving Vehicle, 1971 · astronauts drove it', roles:['cadet','explorer','specialist'], jobs:['buggy','scout','science','hauler','excavator'], moon:true},
+};
+MR.roverOn = () => (MR.PREVIEW || []).includes('roverart');
+MR.roverJobs = (model, role) => { const m = MR.ROVERS[model]; return m ? m.jobs.filter(j => MR.JOBS[j] && MR.JOBS[j].roles.includes(role)) : []; };
+MR.roversFor = role => Object.keys(MR.ROVERS).filter(k => MR.ROVERS[k].roles.includes(role));
+const DEF_MODEL = {buggy:'sojourner', heli:'ingenuity', scout:'spirit', hauler:'opportunity', science:'perseverance', excavator:'perseverance'};
+/* The rover a player really drives on a map: the Moon always means the Moon buggy, the Lab is the Lab. */
+MR.modelFor = (p, map) => { if (p.job === 'lab') return 'lab'; const moon = map && MR.MAPS[map] && MR.MAPS[map].airless;
+  if (moon) return 'lrv'; const m = MR.ROVERS[p.model];
+  if (m && !m.moon && m.roles.includes(p.role) && m.jobs.includes(p.job)) return p.model;
+  return map === 'utopia' && p.role !== 'cadet' && ['scout','science','excavator'].includes(p.job) && !p.model ? 'zhurong' : DEF_MODEL[p.job] || 'spirit'; };
 
 /* A small sample vial, drawn in the icon's text color. */
 MR.ICON_VIAL = '<svg class="svgic" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(28 12 12)"><path d="M7 3h10M8.6 3v13a3.4 3.4 0 0 0 6.8 0V3" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.6 10.5h6.8V16a3.4 3.4 0 0 1-6.8 0z" fill="currentColor"/></g></svg>';

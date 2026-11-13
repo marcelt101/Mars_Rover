@@ -68,7 +68,7 @@ MR.openCrate = (p, from, out, addXp, sticker) => {
   g.own[k] = Date.now(); MR.autoFit(g, k); p.perks = MR.equippedPerks(p);
   out.push({k:'crate', from, id:k});
 };
-MR.playerSummary = p => ({pid:p.id, name:p.name, color:p.color, avatar:p.avatar ?? null, role:p.role, job:p.job, rank:MR.rankOf(p.xp), perks:MR.equippedPerks(p)});
+MR.playerSummary = p => ({pid:p.id, name:p.name, color:p.color, avatar:p.avatar ?? null, role:p.role, job:p.job, model:p.model || null, rank:MR.rankOf(p.xp), perks:MR.equippedPerks(p)});
 
 /* Turn the events of one sol into rewards for this player. Returns a list of notices. */
 MR.applyRewards = (p, myPid, events, ctx) => {

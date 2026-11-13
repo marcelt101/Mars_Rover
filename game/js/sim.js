@@ -68,6 +68,7 @@ MR.makeRover = (p, cell, map) => {
     perks:[], x:cell[0], y:cell[1], dir:MR.MAPS[map].startDir, bat:100, batMax:100, stuck:false, tubes:[], tubeMeta:[], dust:0, wheels:100};
   if (!MR.JOBS[r.job] || !MR.JOBS[r.job].roles.includes(r.role)) r.job = MR.defaultJob(r.role);
   if (MR.MAPS[map].airless && r.job === 'heli') { r.job = 'buggy'; r.noAir = true; }
+  if (MR.roverOn && MR.roverOn()) { r.model = MR.modelFor({...p, job:r.job}, map); const ok = MR.roverJobs(r.model, r.role); if (r.model !== 'lab' && ok.length && !ok.includes(r.job)) { r.job = ok[0]; r.model = MR.modelFor({...p, job:r.job}, map); } }   // the rover by name (preview)
   r.perks = cleanPerks(p);
   if (r.perks.includes('big_battery')) r.batMax = r.bat = 150;
   return r;
