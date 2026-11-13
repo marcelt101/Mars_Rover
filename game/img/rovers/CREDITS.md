@@ -1,4 +1,8 @@
 # Rover pictures (top-down)
 
-- `mer-top-512.webp`, `mer-top-256.webp`: a Mars Exploration Rover (Spirit / Opportunity) seen from above.
-  Made by the game's author for Crater Crew; background removed for the game. Not a NASA image.
+Made by the game's author for Crater Crew. Not NASA images.
+
+- `spirit-top-512.webp`, `spirit-top-256.webp`: Spirit, a Mars Exploration Rover, seen from above (the Scout).
+  White background removed for the game.
+- `opportunity-top-512.webp`, `opportunity-top-256.webp`: Opportunity, Spirit's twin, seen from above (the Hauler).
+  Supplied with a transparent background; centered on a square for the game.

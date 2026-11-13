@@ -316,11 +316,13 @@ function mastShadow(c, r, s, dx, dy){
 /* Rover pictures drawn top-down by the game's author (img/rovers/). Shown instead of the drawn rover once loaded.
    Waiting for approval: ?preview=roverart. The picture's top is the rover's front, like the drawn rovers. */
 const ROVER_ART = {};
+/* With the rover pictures, rovers are drawn about 1.6 squares wide so their detail shows (they still stand on one square). */
+const ROVER_BIG = () => (MR.PREVIEW || []).includes('roverart') ? 1.6 : 1;
 const roverArt = (key, ts) => { if (!(MR.PREVIEW || []).includes('roverart')) return null; const n = ts > 70 ? 512 : 256, k = key + n;
   if (!ROVER_ART[k]) { const im = new Image(); im.src = `img/rovers/${key}-top-${n}.webp`; ROVER_ART[k] = im; }
   return ROVER_ART[k].complete && ROVER_ART[k].naturalWidth ? ROVER_ART[k] : null; };
 function drawMER(c, r, a, t, s, lod){
-  const art = roverArt('mer', s / .92);
+  const art = roverArt(r.job === 'hauler' ? 'opportunity' : 'spirit', s / .92);   // the twins: Scout is Spirit, Hauler is Opportunity
   if (art) { const w = s * 1.08, col = MR.colorHex(r.color);
     c.save(); c.globalAlpha *= .55; c.strokeStyle = col; c.lineWidth = s * .05; c.beginPath(); c.arc(0, 0, s * .5, 0, Math.PI * 2); c.stroke(); c.restore();   // the player's color, under the rover
     c.drawImage(art, -w / 2, -w / 2, w, w);
@@ -645,7 +647,7 @@ function drawLab(c, r, s, lod){
 }
 function drawRover(c, r, a, t, ts, ghost){
   const s = ts*.92, cx = (a.px-R.cam.x+.5)*ts, cy = (a.py-R.cam.y+.5)*ts, heli = r.job === 'heli', lod = ts < 20 ? 0 : ts < 32 ? 1 : 2;
-  c.save(); c.translate(cx, cy);
+  c.save(); c.translate(cx, cy); c.scale(ROVER_BIG(), ROVER_BIG());   // rovers drawn bigger than their square (preview)
   if (ghost) c.globalAlpha = .35; else if (R.offline && R.offline.has(r.pid)) c.globalAlpha = .45;
   if (heli) { c.fillStyle='rgba(40,12,4,0.28)'; c.beginPath(); c.ellipse(s*.12, s*.25, s*.32, s*.17, 0, 0, Math.PI*2); c.fill(); c.translate(0, -s*.12); }
   const moon0 = R.view && MR.MAPS[R.view.map].airless, perse = !heli && r.job !== 'buggy' && r.job !== 'lab' && !moon0;
@@ -692,7 +694,7 @@ function drawHints(c, t, ts){
   });
 }
 function drawNameFlag(c, r, a, ts){
-  const cx = (a.px-R.cam.x+.5)*ts, top = (a.py-R.cam.y)*ts - (r.job === 'heli' ? ts*.25 : 0), col = MR.colorHex(r.color);
+  const cx = (a.px-R.cam.x+.5)*ts, top = (a.py-R.cam.y)*ts - (r.job === 'heli' ? ts*.25 : 0) - (ROVER_BIG() - 1)*ts*.5, col = MR.colorHex(r.color);
   const label = ts >= 22 ? r.name : r.name.slice(0,1).toUpperCase();
   c.font = `600 ${Math.max(10, Math.min(14, Math.round(ts*.34)))}px 'IBM Plex Sans', system-ui, sans-serif`;
   const w = c.measureText(label).width + 10, h = Math.max(15, Math.min(20, ts*.48)), y = top - h - 2;
