@@ -321,6 +321,15 @@ const ROVER_BIG = () => (MR.PREVIEW || []).includes('roverart') ? 1.6 : 1;
 const roverArt = (key, ts) => { if (!(MR.PREVIEW || []).includes('roverart')) return null; const n = ts > 70 ? 512 : 256, k = key + n;
   if (!ROVER_ART[k]) { const im = new Image(); im.src = `img/rovers/${key}-top-${n}.webp`; ROVER_ART[k] = im; }
   return ROVER_ART[k].complete && ROVER_ART[k].naturalWidth ? ROVER_ART[k] : null; };
+/* Draw a rover picture centered on the rover, with the player's color as a ring underneath. Returns false if the
+   picture isn't switched on or loaded yet, so the drawn rover is used instead. */
+function drawArt(c, r, a, t, s, key, size, drill){
+  const art = roverArt(key, s / .92); if (!art) return false; const w = s * size;
+  c.save(); c.globalAlpha *= .55; c.strokeStyle = MR.colorHex(r.color); c.lineWidth = s * .05; c.beginPath(); c.arc(0, 0, s * .5, 0, Math.PI * 2); c.stroke(); c.restore();
+  c.drawImage(art, -w / 2, -w / 2, w, w);
+  if (drill && (a.busy === 'drill' || a.busy === 'dig')) { c.strokeStyle = '#f0bf5a'; c.lineWidth = s * .04; c.beginPath(); c.arc(drill[0] * s, drill[1] * s, s * .09, t / 60, t / 60 + 4); c.stroke(); }
+  return true;
+}
 function drawMER(c, r, a, t, s, lod){
   const art = roverArt(r.job === 'hauler' ? 'opportunity' : 'spirit', s / .92);   // the twins: Scout is Spirit, Hauler is Opportunity
   if (art) { const w = s * 1.08, col = MR.colorHex(r.color);
@@ -406,6 +415,7 @@ function drawMER(c, r, a, t, s, lod){
 }
 function drawGroundRover(c, r, a, t, s, lod){
   if (r.job === 'scout' || r.job === 'hauler') return drawMER(c, r, a, t, s, lod);
+  if (drawArt(c, r, a, t, s, 'perseverance', 1.12, [0, .45])) return;   // Science and Excavator: the author's Perseverance (preview)
   const col = MR.colorHex(r.color), P = k => (r.perks || []).includes(k), sci = r.job === 'science';
   const ww = (P('wide_wheels') ? .19 : .14)*s, wh = .22*s;
   // rocker-bogie suspension (dark titanium tubes)
@@ -543,6 +553,7 @@ function drawLRV(c, r, a, t, s, lod){
    butterfly wings, a mast with the camera head at the front, a dish antenna, and six wheels on active suspension.
    It has no arm: its laser (MarSCoDe) studies rocks from a distance, so it flashes a beam when it analyzes. */
 function drawZhurong(c, r, a, t, s, lod){
+  if (drawArt(c, r, a, t, s, 'zhurong', 1.1, [0, -.4])) return;   // the author's Zhurong (preview)
   const col = MR.colorHex(r.color), ys = [-.3, 0, .3];
   c.strokeStyle = '#3a3f45'; c.lineWidth = s*.04; c.lineCap = 'round';
   [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd*.36*s, -.3*s); c.lineTo(sd*.25*s, 0); c.lineTo(sd*.36*s, .3*s); c.moveTo(sd*.25*s, 0); c.lineTo(sd*.36*s, 0); c.stroke(); });
@@ -598,6 +609,10 @@ function drawBuggy(c, r, a, t, s, lod){
   if (a.busy === 'drill') { c.strokeStyle = '#f0bf5a'; c.lineWidth = s*.05; c.beginPath(); c.arc(0, -.44*s, s*.1, t/60, t/60 + 4); c.stroke(); }
 }
 function drawHeli(c, r, a, t, s, lod){
+  if (drawArt(c, r, a, t, s, 'ingenuity', 1.15, null)) {   // the author's Ingenuity (preview); a soft blur where the two rotors spin
+    c.save(); c.rotate(t / 45); c.globalAlpha *= .22; c.fillStyle = '#d8dde2'; c.beginPath(); c.arc(0, 0, s * .55, 0, Math.PI * 2); c.fill();
+    c.globalAlpha = .35; c.strokeStyle = '#1d2228'; c.lineWidth = s * .03; [0, Math.PI / 2].forEach(k => { c.beginPath(); c.moveTo(Math.cos(k) * s * .55, Math.sin(k) * s * .55); c.lineTo(-Math.cos(k) * s * .55, -Math.sin(k) * s * .55); c.stroke(); }); c.restore();
+    return; }
   const col = MR.colorHex(r.color);
   c.strokeStyle = '#9aa1a9'; c.lineWidth = s*.03; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([x, y]) => { c.beginPath(); c.moveTo(x*.07*s, y*.07*s); c.lineTo(x*.27*s, y*.27*s); c.stroke();
     c.fillStyle = '#c9ced4'; c.beginPath(); c.arc(x*.27*s, y*.27*s, s*.03, 0, Math.PI*2); c.fill(); });

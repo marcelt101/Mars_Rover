@@ -8,3 +8,6 @@ Made by the game's author for Crater Crew. Not NASA images.
   Supplied with a transparent background; centered on a square for the game.
 - `sojourner-top-512.webp`, `sojourner-top-256.webp`: Sojourner, the first Mars rover (1997), seen from above (the Cadets' Buggy).
   Supplied with a transparent background; centered on a square for the game.
+- `perseverance-top-*.webp` (Science and Excavator rovers), `ingenuity-top-*.webp` (the helicopter), `zhurong-top-*.webp`
+  (Utopia Planitia): from the author's sprite pack (AI-made game artwork, "not verified engineering-accurate replicas").
+  Supplied with transparent backgrounds; centered on squares for the game.
