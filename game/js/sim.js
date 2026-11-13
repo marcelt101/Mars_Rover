@@ -20,8 +20,8 @@ MR.regionAt = (st, x, y) => MR.nearStation(st.map, x, y, 2) ? 'Base station' : M
 /* With the lander: nothing may hide under it (finds there move just outside), and the ramp and its foot are clear. */
 function clearLander(map, w){
   const S = MR.MAPS[map].station, fake = {lander:true, map}, under = [], spots = [];
-  for (let y = S.y - 4; y <= S.y + 7; y++) for (let x = S.x - 4; x <= S.x + 6; x++) { if (!MR.inb(x, y)) continue;
-    const i = y*MW + x, k = MR.landerKind(fake, x, y), foot = x === S.x + 1 && y >= S.y + 5 && y <= S.y + 6;
+  for (let y = S.y - 8; y <= S.y + 7; y++) for (let x = S.x - 5; x <= S.x + 6; x++) { if (!MR.inb(x, y)) continue;
+    const i = y*MW + x, k = MR.landerKind(fake, x, y), foot = MR.MAPS[map].airless ? MR.onStation(map, x, y) : x === S.x + 1 && y >= S.y + 5 && y <= S.y + 6;
     if (k || foot) { if (w.res[i]) under.push([w.res[i], w.obs[i] === 'A', w.kid ? w.kid[i] : 0]); w.res[i] = ''; w.obs[i] = ''; w.trap[i] = 0; if (w.kid) w.kid[i] = 0;
       if (MR.TER[w.ter[i]].block || k === 'walk' || foot) w.ter[i] = MR.T.FLOOR; } }
   under.forEach(([id, art, kid]) => { for (let d = 5; d < 12; d++) { let done = false;
@@ -33,6 +33,11 @@ function clearLander(map, w){
 /* With the lander, rovers start on its deck, then on the ramp, then in front of it. */
 function landerSpawn(map, w){
   const S = MR.MAPS[map].station, fake = {lander:true, map};
+  if (MR.MAPS[map].airless) { const cells = [[S.x, S.y+1], [S.x+1, S.y+1], [S.x, S.y], [S.x+1, S.y]];   // the Moon: parked at the foot of the ladder
+    for (let d = 1; d <= 6 && cells.length < MR.MAX_PLAYERS; d++) for (let y = S.y - d; y <= S.y + 1 + d; y++) for (let x = S.x - d; x <= S.x + 1 + d; x++) {
+      if (Math.max(S.x - x, x - S.x - 1, S.y - y, y - S.y - 1) !== d || !MR.inb(x, y) || MR.landerKind(fake, x, y)) continue;
+      const i = y*MW + x; if (w.obs[i] || MR.TER[w.ter[i]].block) continue; cells.push([x, y]); }
+    return cells; }
   const cells = [[S.x+1, S.y+1], [S.x+1, S.y], [S.x, S.y+1], [S.x, S.y], [S.x+1, S.y+2], [S.x+1, S.y+3], [S.x+1, S.y+4]];   // the first rover right at the top of the ramp
   for (let d = 1; d <= 6 && cells.length < MR.MAX_PLAYERS; d++) for (let y = S.y + 5 - d; y <= S.y + 5 + d; y++) for (let x = S.x + 1 - d; x <= S.x + 1 + d; x++) {
     if (Math.max(Math.abs(x - S.x - 1), Math.abs(y - S.y - 5)) !== d || !MR.inb(x, y) || MR.landerKind(fake, x, y)) continue;
@@ -77,7 +82,7 @@ MR.refitRover = (r, perks) => {
 MR.newGame = ({map, seed, players, day}) => {
   const cadets = players.filter(p => p.role === 'cadet').length, others = players.length - cadets;
   const world = MR.genWorld(map, seed, cadets > 0);
-  const lander = !MR.MAPS[map].airless && (MR.PREVIEW || []).includes('roverart');   // the solid lander with a ramp (preview)
+  const lander = (MR.PREVIEW || []).includes('roverart');   // the solid lander: a ramp on Mars, a ladder on the Moon (preview)
   if (lander) clearLander(map, world);
   const cells = lander ? landerSpawn(map, world) : spawnCells(map, world);
   const st = {v:MR.VERSION, map, seed, sol:1, won:false, rng:(seed ^ 0x5bd1e995) | 0,
@@ -561,7 +566,7 @@ MR.simulateSol = (prev, plans) => {
         const more = [...steps.map(s2 => ({...s2, idx:a.idx})), {k:'parked', idx:a.idx}];
         if (r.prog) r.prog.queue.unshift(...more); else q[r.pid].unshift(...more);
         any = true; continue; }
-      if (a.k === 'parked') { any = true; E0({t:'parked', idx:a.idx, at:[r.x, r.y], msg:{k:'good', text:`${r.name} parked ${st.lander ? 'on the lander' : 'at the station'} and went to sleep. Good night, ${r.name}!`}}); continue; }
+      if (a.k === 'parked') { any = true; E0({t:'parked', idx:a.idx, at:[r.x, r.y], msg:{k:'good', text:`${r.name} parked ${MR.MAPS[st.map].airless ? 'beside the lunar module' : st.lander ? 'on the lander' : 'at the station'} and went to sleep. Good night, ${r.name}!`}}); continue; }
       any = true;
       const E = o => { const e = {pid:r.pid, idx:a.idx, ...o}; evs.push(e); return e; };
       if (r.prog && isPower(r) && r.bat < 10 && a.k !== 'charge') {

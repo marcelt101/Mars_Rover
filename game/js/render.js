@@ -121,7 +121,9 @@ function drawUpgrades(c, ts){
 function drawStation(c, t, ts){
   const S = MR.MAPS[R.view.map].station, sx = (S.x-R.cam.x)*ts, sy = (S.y-R.cam.y)*ts, s = ts*2;
   drawUpgrades(c, ts);
-  if (MR.MAPS[R.view.map].airless) return drawLM(c, sx, sy, s);
+  if (MR.MAPS[R.view.map].airless) { const lm = roverArt('lm', ts * 2);   // the author's Apollo Lunar Module (preview), its ladder reaching down to the parking spot
+    if (lm) { const L = MR.LANDER_LM, w = ts * L.size; c.drawImage(lm, sx + s / 2 - w / 2, sy + s / 2 - L.dy * ts - w / 2, w, w); return; }
+    return drawLM(c, sx, sy, s); }
   const pod = roverArt('pod', ts * 2);   // the author's lander pod as the base station (preview); buildings never turn
   if (pod) { const w = ts * POD_SIZE; c.drawImage(pod, sx + s / 2 + POD_SHIFT * ts - w / 2, sy + s / 2 - w / 2, w, w); return; }
   return drawBase(c, t, sx, sy, s, ts < 20 ? 0 : ts < 32 ? 1 : 2);
@@ -325,8 +327,9 @@ const POD_SIZE = 9.6, POD_SHIFT = .425;   // shifted so its ramp lines up with t
 const LAB_OFF = [-3.3, .5];
 /* Rovers parked on the station's squares between sols sleep on the lander deck: drawn on the deck itself, up to
    four side by side. Returns the shift in squares, or null. */
-const parkedOn = r => !R.running && R.view && !MR.MAPS[R.view.map].airless && r.job !== 'lab' && r.job !== 'heli' && MR.onStation(R.view.map, r.x, r.y) && !!roverArt('pod', 64);
-function parkOff(r, a){ if (!parkedOn(r)) return null; const S = MR.MAPS[R.view.map].station, list = R.view.rovers.filter(parkedOn), i = list.indexOf(r), n = list.length;
+const parkedOn = r => !R.running && R.view && r.job !== 'lab' && r.job !== 'heli' && MR.onStation(R.view.map, r.x, r.y) && !!roverArt(MR.MAPS[R.view.map].airless ? 'lm' : 'pod', 64);
+function parkOff(r, a){ if (!parkedOn(r)) return null; if (MR.MAPS[R.view.map].airless) return [0, 0];   // on the Moon: parked on the ground where it stands
+  const S = MR.MAPS[R.view.map].station, list = R.view.rovers.filter(parkedOn), i = list.indexOf(r), n = list.length;
   const spots = n === 1 ? [[0, 0]] : n === 2 ? [[-.85, 0], [.85, 0]] : [[-.85, -.85], [.85, -.85], [-.85, .85], [.85, .85]];
   const [ox, oy] = spots[i % spots.length]; return [S.x + 1.5 + ox - (a.px + .5), S.y + .85 + oy - (a.py + .5)]; }
 const labArtOn = r => r.job === 'lab' && !!roverArt('lab', 64);
@@ -836,7 +839,8 @@ R.frame = t => {
   }
   rovers.forEach(r => { const a = R.anim[r.pid]; if (a) drawNameFlag(c, r, a, ts); });
   c.font = `600 ${Math.max(11, Math.round(ts*.42))}px 'Chakra Petch', sans-serif`; c.textAlign='center'; c.textBaseline='middle';
-  MR.MAPS[R.view.map].labels.forEach(l => { const X=(l.x-cam.x)*ts, Y=(l.y-cam.y)*ts; if (X<-200||X>R.VW+200||Y<-40||Y>R.VH+40) return;
+  MR.MAPS[R.view.map].labels.forEach(l0 => { const S0 = MR.MAPS[R.view.map].station, l = /LUNAR MODULE/.test(l0.t) && roverArt('lm', 64) ? {...l0, x:S0.x + 1, y:S0.y + 2.9} : l0;   // with the LM picture its name sits below the parking spot
+    const X=(l.x-cam.x)*ts, Y=(l.y-cam.y)*ts; if (X<-200||X>R.VW+200||Y<-40||Y>R.VH+40) return;
     c.fillStyle='rgba(20,8,4,0.55)'; c.fillText(l.t, X+1, Y+1.5); c.fillStyle='rgba(255,240,225,0.78)'; c.fillText(l.t, X, Y); });
   // minimap
   const m = R.mctx, mw = R.mini.width, mh = R.mini.height, sx = mw/MW, sy = mh/MH;

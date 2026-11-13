@@ -15,3 +15,5 @@ Made by the game's author for Crater Crew. Not NASA images.
   angle and never rotated. Supplied with transparent backgrounds; centered on squares for the game.
 - `lrv-top-*.webp`: the Apollo 15 Lunar Roving Vehicle seen from above (the Moon map). The author's picture, supplied with a
   transparent background; centered on a square for the game.
+- `lm-top-*.webp`: the Apollo Lunar Module seen from above (the Moon's base station). The author's picture, with a transparent
+  background. It shows the NASA logo and the US flag as painted on the real spacecraft.
