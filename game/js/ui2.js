@@ -122,17 +122,23 @@ if (!/[?&]nomenu=1/.test(location.search)) {   /* approved: the game-style menu 
       <button class="mbtn-big primary" id="mPlay"><span>▶</span>Play</button>
       <button class="mbtn-big" id="mLog"><span>🗓</span>30-day Mission Log</button>
       <div class="msmall">
-        <button id="mCrew"></button><button id="mTut">🎓 Tutorial</button><button id="mGuide">📖 What it teaches</button><button id="mSet">⚙ Settings</button><button id="mPar">👪 Parents</button>
+        <button id="mCrew"></button><button id="mTut"><i>🎓</i><span>Tutorial</span></button><button id="mGuide" title="What the game teaches"><i>📖</i><span>Guide</span></button><button id="mSet"><i>⚙</i><span>Settings</span></button><button id="mPar"><i>👪</i><span>Parents</span></button>
       </div></div>
-    <div class="mview" data-v="play" hidden><div class="mhead"><button class="mback">‹ Back</button><b>Play</b></div><div id="mPlaySlot"></div></div>
+    <div class="mview" data-v="play" hidden><div class="mhead"><button class="mback">‹ Back</button><b>Play</b></div>
+      <div class="mswitch" id="mSwitch"><button data-free="0"><b>🏆 Campaign</b><small>Real NASA missions · unlock new worlds</small></button><button class="free" data-free="1"><b>🎈 Free play</b><small>Any world, any rover · instant fun</small></button></div>
+      <div id="mPlaySlot"></div></div>
     <div class="mview" data-v="crew" hidden><div class="mhead"><button class="mback">‹ Back</button><b>Who's playing?</b></div><div id="mCrewSlot"></div></div>`;
   H.querySelector('.hero') ? H.querySelector('.hero').after(m) : H.prepend(m);
   $('mResume').append($('resumePanel')); $('mPlaySlot').append($('modes')); $('mCrewSlot').append($('profiles'));
-  const view = v => { m.querySelectorAll('.mview').forEach(x => x.hidden = x.dataset.v !== v); MR.sfx && MR.sfx.click(); };
+  const view = v => { m.querySelectorAll('.mview').forEach(x => x.hidden = x.dataset.v !== v); document.body.dataset.mview = v; MR.sfx && MR.sfx.click(); };
   MR.UI2.menu = view;
-  const sh = UI.show; UI.show = name => { sh(name); if (name === 'scrHome') m.querySelectorAll('.mview').forEach(x => x.hidden = x.dataset.v !== 'main'); };
+  const sh = UI.show; UI.show = name => { sh(name); if (name === 'scrHome') { m.querySelectorAll('.mview').forEach(x => x.hidden = x.dataset.v !== 'main'); document.body.dataset.mview = 'main'; } };
   m.querySelectorAll('.mback').forEach(b => b.onclick = () => view('main'));
   $('mPlay').onclick = () => MR.Store.current() ? view('play') : UI.profileModal(null);
+  /* Campaign or Free play is chosen here, once; Solo and Host then use it (remembered for this visit). */
+  const sw = $('mSwitch'), setSw = f => { MR.Game.nextFree = f; try { sessionStorage.setItem('mr2.free', f ? '1' : ''); } catch (e) {} sw.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.free === '1') === f))); };
+  sw.hidden = !(MR.freeOn && MR.freeOn()); let f0 = false; try { f0 = sessionStorage.getItem('mr2.free') === '1'; } catch (e) {} setSw(f0);
+  sw.onclick = e => { const b = e.target.closest('button[data-free]'); if (b) { setSw(b.dataset.free === '1'); MR.sfx && MR.sfx.click(); } };
   $('mLog').onclick = () => MR.Store.current() ? MR.LogUI.calendar() : UI.profileModal(null);
   $('mCrew').onclick = () => MR.Store.profiles().length ? view('crew') : UI.profileModal(null);
   $('mTut').onclick = () => MR.Store.current() ? MR.Game.startTutorial() : UI.profileModal(null);
@@ -141,7 +147,7 @@ if (!/[?&]nomenu=1/.test(location.search)) {   /* approved: the game-style menu 
   $('profiles').addEventListener('click', e => { if (e.target.closest('.pcard:not(.new)')) setTimeout(() => view('main'), 60); });
   const rh = UI.renderHome;
   UI.renderHome = () => { rh(); const cur = MR.Store.current();
-    $('mCrew').innerHTML = cur ? `${UI.avatar(cur)} <span>${UI.esc(cur.name)}</span>` : '👤 Create crew member';
+    $('mCrew').innerHTML = cur ? `${UI.avatar(cur)}<span>${UI.esc(cur.name)}</span>` : '<i>👤</i><span>New crew</span>';
     $('mPlay').innerHTML = cur ? '<span>▶</span>Play' : '<span>+</span>Create your crew member';
     $('mResume').hidden = $('resumePanel').hidden; };
   UI.renderHome();

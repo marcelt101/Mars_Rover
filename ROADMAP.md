@@ -149,4 +149,4 @@ picture teaches one thing: galaxies, clouds of dust and gas, star formation, bla
   and sample tools. Ages: Cadet 2 tools and a still astronaut; Explorer 4 tools, estimates, full delay; Specialist 6.
 - Opened from the level list in solo games (team games and Mission Log days keep the old Moon map for now). Finishing
   EVA 3 in campaign mode unlocks Meridiani. Progress per profile (p.moon), resumes mid-EVA.
-- Still to do: the menu flow redesign (one path: Play, Campaign or Free play, Solo/Host/Join, rover, map, Start).
+- Menu flow redone: Play, then Campaign or Free play (one switch), then equal Solo / Host / Join cards; the lobby only shows a label. Game-style buttons (ui3.css) everywhere, also in Webb and the Moon.

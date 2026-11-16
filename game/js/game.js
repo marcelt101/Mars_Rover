@@ -40,12 +40,10 @@ G.onProfileChanged = () => { if (G.phase === 'lobby') { refreshMyLobbyEntry(); }
 $('homeBtn').onclick = () => { if (G.phase === 'lobby') leave(); };
 /* Free play (?preview=freeplay): the same solo game with every map and rover open and fun challenges instead of campaigns. */
 MR.freeOn = () => (MR.PREVIEW || []).includes('freeplay');
-if (MR.freeOn()) $('freeMode').hidden = false;
-$('freeBtn').onclick = () => { $('soloBtn').click(); if (G.lobby) { G.lobby.free = true; renderLobby(); } };
 /* The Moon map opens Apollo 15 Mission Control (moon.html) in solo games; Mission Log days and team games keep the old Moon map for now. */
 MR.moonApollo = () => G.mode === 'solo' && !G.lobby.day;
-$('soloBtn').onclick = () => { if (!me()) return; G.resume = null; G.noSave = false; G.lostCode = null; G.planSum = {}; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()}; enterLobby(); };
-$('hostBtn').onclick = () => { G.resume = null; G.noSave = false; startHost(); };
+$('soloBtn').onclick = () => { if (!me()) return; G.resume = null; G.noSave = false; G.lostCode = null; G.planSum = {}; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked(), free:!!(G.nextFree && MR.freeOn())}; enterLobby(); };
+$('hostBtn').onclick = () => { G.resume = null; G.noSave = false; startHost(); if (G.lobby && G.nextFree && MR.freeOn()) { G.lobby.free = true; broadcast(lobbyMsg()); renderLobby(); } };
 $('logBtn').onclick = () => MR.LogUI.calendar();
 G.keepExploring = () => { G.contAfterWin = true; $('win').hidden = true; G.phase = 'plan'; renderGame(); saveExpedition(); };
 /* Start a Mission Log day: solo goes to the lobby with the day's map; host opens a room for the day. */
@@ -369,10 +367,9 @@ function renderLobby(){
   const roverNo = k => myM && mine.model ? (myM.moon ? !MR.MAPS[k].airless : !!MR.MAPS[k].airless) : false;
   $('mapPick').innerHTML = MR.MAP_ORDER.map(k => { const m = MR.MAPS[k], open = unlocked.includes(k) && !roverNo(k);
     return `<button class="mapcard" data-map="${k}" aria-pressed="${k === G.lobby.map}" ${open && G.mode !== 'client' ? '' : 'disabled'}><b>${m.name}</b><small>${m.rover} · ${m.year}</small><p>${roverNo(k) && unlocked.includes(k) ? (myM.moon ? 'Mars rovers only: pick a Mars rover to go here.' : 'Only the Moon buggy drives here: pick it to go to the Moon.') : open ? esc(m.blurb) : !MR.edMapOk(k) ? 'In the full game.' : `Locked. Finish a ${MR.MAPS[m.unlock].name} expedition to unlock.`}</p></button>` + (k === MR.WEBB_LEVEL.after ? webbCard(unlocked) : ''); }).join('');
-  const mp = $('modePick'); mp.hidden = !MR.freeOn() || !!G.lobby.day || !!G.resume;
-  if (!mp.hidden) { const f = !!G.lobby.free, host = G.mode !== 'client';
-    mp.innerHTML = `<button data-free="0" aria-pressed="${!f}" ${host ? '' : 'disabled'}><b>🏆 Campaign</b><small>Follow real NASA campaigns, unlock new maps</small></button><button data-free="1" aria-pressed="${f}" ${host ? '' : 'disabled'}><b>🎈 Free play</b><small>Any map, any rover, small challenges</small></button>`;
-    mp.onclick = e => { const b = e.target.closest('button[data-free]'); if (!b || b.disabled) return; G.lobby.free = b.dataset.free === '1'; MR.sfx.click(); if (!G.lobby.free && !MR.Store.unlocked().includes(G.lobby.map)) G.lobby.map = MR.Store.unlocked().slice(-1)[0]; broadcast(lobbyMsg()); renderLobby(); }; }
+  const mb = $('modeBadge'); mb.hidden = !MR.freeOn() || !!G.lobby.day || !!G.resume;   // the game type was picked on the Play screen
+  if (!mb.hidden) { const f = !!G.lobby.free; mb.className = 'modebadge' + (f ? ' free' : '');
+    mb.innerHTML = f ? '<b>🎈 Free play</b><span>Every world is open. Small challenges, no campaign.</span>' : '<b>🏆 Campaign</b><span>Real NASA campaigns. Finish a world to unlock the next.</span>'; }
   const dm = G.lobby.day && MR.missionOf(G.lobby.day);
   $('mapNote').textContent = dm ? `Mission Log, day ${dm.day}: ${dm.title} (${MR.MAPS[dm.map].name}).` : G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
   if (G.resume || dm) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);

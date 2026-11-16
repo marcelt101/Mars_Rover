@@ -1,0 +1,68 @@
+/* Game-style controls (loaded last): chunky buttons with a lit top edge, a thick base that presses down,
+   a glow on hover, the display font in capitals. Cards in a row are always the same height. */
+:root{--gb-top:#4a5867;--gb-bot:#232c36;--gb-edge:#0c1117;--gb-line:#5b6b7b}
+html body .btn{font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.07em;text-transform:uppercase;color:#eef3f7;
+  background:linear-gradient(180deg,var(--gb-top),var(--gb-bot));border:1px solid var(--gb-line);border-bottom:4px solid var(--gb-edge);border-radius:12px;
+  padding:9px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 4px 12px rgba(0,0,0,.35);text-shadow:0 1px 0 rgba(0,0,0,.45);
+  transition:transform .06s,filter .15s,box-shadow .15s,border-bottom-width .06s;cursor:pointer;margin-bottom:0}
+html body .btn:hover:not(:disabled){filter:brightness(1.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 2px rgba(88,207,190,.35),0 6px 16px rgba(0,0,0,.4)}
+html body .btn:active:not(:disabled){transform:translateY(3px);border-bottom-width:1px;margin-bottom:3px}
+html body .btn:disabled{filter:grayscale(.7) brightness(.7);opacity:.6}
+html body .btn.primary{color:#04221d;text-shadow:0 1px 0 rgba(255,255,255,.35);background:linear-gradient(180deg,#9af3e5,#4cc4b2 55%,#33a493);
+  border-color:#7fe3d4;border-bottom-color:#17594f;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 22px rgba(88,207,190,.35),0 4px 12px rgba(0,0,0,.35)}
+html body .btn.gold{color:#2a1700;background:linear-gradient(180deg,#ffe29a,#f0bf5a 55%,#d39a2c);border-color:#ffe6a6;border-bottom-color:#7a5212}
+html body .btn.danger{color:#fff;background:linear-gradient(180deg,#ff8f80,#d9503f);border-color:#ffa99d;border-bottom-color:#6e1f16}
+html body .btn.big{font-size:18px;padding:15px 26px;border-radius:14px;border-bottom-width:5px}
+html body .btn.big:active:not(:disabled){border-bottom-width:1px;margin-bottom:4px;transform:translateY(4px)}
+html body .btn.small{font-size:12px;padding:6px 11px;border-radius:10px;border-bottom-width:3px}
+#hudLeave{color:#fff!important;background:linear-gradient(180deg,#c9574a,#8e2f25)!important;border-color:#e88a7e!important;border-bottom-color:#4a120c!important}
+
+/* The Play screen: a Campaign / Free play switch, then three equal cards (Solo, Host, Join). */
+.mswitch{display:grid;grid-template-columns:1fr 1fr;gap:0;width:min(560px,100%);margin:0 auto 14px;padding:5px;border-radius:16px;
+  background:rgba(8,12,17,.85);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+.mswitch button{border:0;border-radius:12px;padding:12px 10px;background:transparent;color:#aebccb;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.mswitch button b{font:700 18px var(--display);letter-spacing:.06em;text-transform:uppercase}
+.mswitch button small{font-size:12px;opacity:.85}
+.mswitch button[aria-pressed="true"]{color:#04221d;background:linear-gradient(180deg,#9af3e5,#45bba9);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 #17594f}
+.mswitch button.free[aria-pressed="true"]{color:#2a1700;background:linear-gradient(180deg,#ffe29a,#e8ae3f);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 #7a5212}
+html body .modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+html body .modes .panel.mode{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;height:100%;margin:0;padding:20px 18px 18px}
+html body .modes .panel.mode p{margin:0;flex:1;display:flex;align-items:flex-start;justify-content:center;min-height:42px}
+html body .modes .panel.mode .btn.big,html body .modes .panel.mode .row{width:100%;margin-top:auto}
+html body .modes .panel.mode .row{display:flex;gap:8px}
+html body .modes .panel.mode .row .btn{flex:none}
+#freeMode{display:none!important}
+.modebadge{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:9px 12px;border-radius:12px;font-size:13.5px;background:rgba(88,207,190,.1);border:1px solid rgba(88,207,190,.4)}
+.modebadge b{font:700 14px var(--display);letter-spacing:.06em;text-transform:uppercase}
+.modebadge.free{background:rgba(240,191,90,.1);border-color:rgba(240,191,90,.5)}
+/* The small menu buttons: equal game tiles in one row */
+html body .msmall{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;width:min(560px,100%);margin:6px auto 0}
+html body .msmall button{flex-direction:column;justify-content:center;gap:3px;height:62px;padding:6px;border-radius:12px;font:700 12px var(--display);letter-spacing:.04em;text-transform:uppercase;color:#dfe8ef;
+  background:linear-gradient(180deg,rgba(58,70,84,.92),rgba(30,38,47,.92));border:1px solid rgba(120,140,160,.45);border-bottom:3px solid rgba(8,12,17,.95);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+html body .msmall button:hover{filter:brightness(1.15)}
+html body .msmall button:active{transform:translateY(2px);border-bottom-width:1px}
+html body .msmall button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+@media (max-width:760px){
+  html body .modes{grid-template-columns:1fr}
+  html body .msmall{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+  html body .msmall button{height:56px;font-size:10px}
+  .mswitch button b{font-size:15px}
+}
+html body .btn.teal{color:#04221d;text-shadow:none;background:linear-gradient(180deg,#9af3e5,#4cc4b2 55%,#33a493);border-color:#7fe3d4;border-bottom-color:#17594f}
+/* long answer and step buttons (Webb processing) stay in normal case so they're easy to read */
+html body .psteps .btn{text-transform:none;letter-spacing:0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-weight:600;font-size:14px;text-align:left}
+html body .btn.wrong{filter:none;background:linear-gradient(180deg,#5a2a27,#3a1b19)!important}
+html body .btn.right{background:linear-gradient(180deg,#2f6e52,#1d4735)!important}
+html body .msmall button i{font-style:normal;font-size:22px;line-height:1}
+html body .msmall button .av{width:26px;height:26px}
+html body .mback,html body .mhead .mback{font:700 13px var(--display);letter-spacing:.06em;text-transform:uppercase;color:#eef3f7;padding:8px 14px;border-radius:11px;cursor:pointer;
+  background:linear-gradient(180deg,#4a5867,#232c36);border:1px solid #5b6b7b;border-bottom:3px solid #0c1117;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+html body .mback:active{transform:translateY(2px);border-bottom-width:1px}
+/* Phones: inside Play or Crew, the big logo steps aside so the choices are on screen */
+@media (max-width:760px){ body[data-mview="play"] .hero, body[data-mview="crew"] .hero{display:none} body[data-mview="play"] .mmenu, body[data-mview="crew"] .mmenu{padding-top:8px} }
+@media (max-width:760px){
+  body[data-mview="play"]::after, body[data-mview="crew"]::after{content:"";position:fixed;inset:0;background:rgba(5,8,12,.86);z-index:0;pointer-events:none}
+  body[data-mview="play"] .app, body[data-mview="crew"] .app{position:relative;z-index:1}
+}
+html body .mbtn-big:not(.primary){background:linear-gradient(180deg,#3f4c5a,#1f2731);border:1px solid #5b6b7b;border-bottom:5px solid #0c1117;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 16px rgba(0,0,0,.4)}
+html body .mbtn-big:not(.primary):hover{filter:brightness(1.12)}
