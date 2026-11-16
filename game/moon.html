@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Apollo 15 Mission Control · Crater Crew</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<!-- The Moon level: Apollo 15 at Hadley-Apennine (July 30 - August 2, 1971). The player is Mission Control in Houston:
+     the astronauts drive the Lunar Roving Vehicle; Houston talks to them with a 1.3-second radio delay, plans which
+     geology stations they visit before their oxygen runs low, steers the rover's TV camera from Earth, and helps pick
+     the right sample tools. Code: js/moon/data.js (the real mission), js/moon/moon.js (the game). -->
+<style>
+:root{--fg:#e6ecf1;--muted:#9fb0c0;--gold:#f0bf5a;--teal:#58cfbe;--warn:#ff9a5a;--bad:#ff7b6c;--ok:#7fe0a8;--panel:#0d131a;--panel2:#141c25;--line:#24303c;
+  --display:'Chakra Petch',sans-serif;--mono:'IBM Plex Mono',monospace}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#05070a;color:var(--fg);font-family:'IBM Plex Sans',system-ui,sans-serif}
+body{overflow:hidden}
+button{font:inherit;color:inherit}
+.btn{font:700 15px var(--display);letter-spacing:.05em;background:var(--panel2);color:var(--fg);border:1px solid #33414f;border-radius:10px;padding:10px 16px;cursor:pointer;transition:border-color .15s,transform .05s}
+.btn:hover{border-color:var(--teal)}.btn:active{transform:translateY(1px)}
+.btn.gold{background:var(--gold);color:#1d1300;border-color:var(--gold)}
+.btn.teal{background:var(--teal);color:#05201b;border-color:var(--teal)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.hidden{display:none!important}
+/* layout: map on the left, Mission Control console on the right */
+#app{display:grid;grid-template-columns:minmax(0,1fr) 400px;height:100vh;height:100dvh}
+#mapWrap{position:relative;overflow:hidden;background:#0b0d10}
+#map{position:absolute;inset:0;width:100%;height:100%;display:block}
+#console{display:flex;flex-direction:column;gap:10px;padding:12px;background:linear-gradient(180deg,#0a0f15,#070a0e);border-left:1px solid var(--line);overflow:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.card h3{margin:0 0 8px;font:700 13px var(--display);letter-spacing:.14em;color:var(--teal);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.card h3 small{font:500 11px var(--mono);letter-spacing:0;color:var(--muted);text-transform:none}
+/* top bar over the map */
+#top{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:8px;align-items:center;pointer-events:none;z-index:2}
+#top>*{pointer-events:auto}
+.chip{background:rgba(8,12,17,.86);border:1px solid var(--line);border-radius:12px;padding:6px 12px;font:600 13px var(--display);letter-spacing:.06em;backdrop-filter:blur(4px)}
+.chip small{display:block;font:500 10px var(--mono);color:var(--muted);letter-spacing:.08em}
+#leave{margin-left:auto;border-color:rgba(255,123,108,.55);color:#ffb3a8}
+/* oxygen */
+.o2{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.o2 b{font:700 26px var(--display)}
+.bar{height:12px;border-radius:6px;background:#1a232d;overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#3fae7a,#7fe0a8);border-radius:6px;transition:width .3s}
+.bar.low i{background:linear-gradient(90deg,#c9573f,#ff9a5a)}
+.bar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--gold)}
+.o2note{font-size:12px;color:var(--muted);margin-top:6px;min-height:16px}
+/* comms */
+.comm{display:grid;grid-template-columns:62px 1fr 62px;align-items:center;gap:6px;font:600 11px var(--mono);color:var(--muted);text-align:center}
+.comm .line{position:relative;height:30px}
+.comm .line canvas{width:100%;height:30px;display:block}
+.ant{margin-top:6px;font-size:12.5px;display:flex;gap:6px;align-items:center}
+.ant i{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:none}
+.ant.tv i{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+#log{display:flex;flex-direction:column;gap:6px;max-height:210px;overflow:auto;font-size:13.5px;line-height:1.4;padding-right:4px}
+#log p{margin:0;padding:6px 9px;border-radius:9px;background:var(--panel2)}
+#log p b{font:700 11px var(--mono);letter-spacing:.06em;display:block;margin-bottom:1px}
+#log p.h b{color:var(--teal)} #log p.c b{color:var(--gold)} #log p.s{background:transparent;color:var(--muted);font-size:12px;padding:2px 9px}
+/* stations */
+#stations{display:flex;flex-direction:column;gap:6px}
+.st{display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center;text-align:left;padding:8px 10px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+.st:hover{border-color:var(--teal)}
+.st .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--display);background:#26323e}
+.st b{display:block;font:600 14px var(--display);letter-spacing:.03em}
+.st small{color:var(--muted);font-size:12px}
+.st .t{font:500 11px var(--mono);color:var(--muted);text-align:right}
+.st.done{opacity:.55}.st.done .n{background:var(--ok);color:#05201b}
+.st.here{border-color:var(--gold);box-shadow:0 0 0 2px rgba(240,191,90,.25)}
+.st.next{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 4px rgba(88,207,190,.35)}}
+.st.lm .n{background:var(--gold);color:#1d1300}
+/* overlays */
+.ov{position:fixed;inset:0;background:rgba(3,5,8,.72);display:grid;place-items:center;z-index:10;padding:16px}
+.box{width:min(760px,100%);max-height:94vh;overflow:auto;background:var(--panel);border:1px solid #33414f;border-radius:18px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.box h2{margin:0 0 4px;font:700 24px var(--display);letter-spacing:.03em}
+.box .sub{color:var(--muted);margin:0 0 12px}
+.box p{line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.end{justify-content:flex-end;margin-top:14px}
+/* EVA picker */
+.evas{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.eva{text-align:left;padding:12px;border-radius:14px;border:2px solid var(--line);background:var(--panel2);cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:150px}
+.eva:hover:not(:disabled){border-color:var(--teal)}
+.eva b{font:700 18px var(--display)}.eva small{color:var(--muted);font-size:12.5px;line-height:1.4}
+.eva .stars{color:var(--gold);font-size:18px;margin-top:auto}
+.eva:disabled{opacity:.45;cursor:not-allowed}
+.eva.sel{border-color:var(--gold);background:rgba(240,191,90,.08)}
+/* TV */
+#tv{width:100%;aspect-ratio:16/9;border-radius:12px;background:#000;display:block;border:3px solid #1d2630}
+.tvbar{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin-top:10px}
+.pad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,44px);gap:6px}
+.pad button{border-radius:10px;border:1px solid #4b5866;background:linear-gradient(180deg,#3c4652,#252c34);font-size:20px;cursor:pointer;touch-action:none}
+.pad button:active{background:linear-gradient(180deg,#4f8aa3,#2c5568)}
+.pad .u{grid-column:2}.pad .l{grid-column:1;grid-row:2}.pad .d{grid-column:2;grid-row:2}.pad .r{grid-column:3;grid-row:2}
+.lag{font:500 12px var(--mono);color:var(--muted);line-height:1.5}
+.lag b{color:var(--gold)}
+.meter{height:14px;border-radius:7px;background:#1a232d;overflow:hidden}.meter i{display:block;height:100%;background:linear-gradient(90deg,#f0bf5a,#ffe08a);width:0;transition:width .2s}
+/* tools */
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:12px 0}
+.tool{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border-radius:14px;border:2px solid var(--line);background:var(--panel2);cursor:pointer}
+.tool svg{width:64px;height:64px}
+.tool b{font:600 14px var(--display)}.tool small{color:var(--muted);font-size:11.5px;text-align:center}
+.tool:hover{border-color:var(--teal)}
+.tool.wrong{border-color:var(--bad);animation:shake .35s}.tool.right{border-color:var(--ok);background:rgba(127,224,168,.12)}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.sample{display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:center;background:var(--panel2);border-radius:14px;padding:12px;margin-top:10px}
+.rock{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-size:44px;background:radial-gradient(circle at 35% 30%,#3a4552,#11161c)}
+.sample b{font:700 17px var(--display)}.sample p{margin:4px 0 0;font-size:14px}
+.res{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.res div{display:flex;justify-content:space-between;padding:8px 10px;background:var(--panel2);border-radius:10px}
+.big{font:700 40px var(--display);color:var(--gold);letter-spacing:.1em}
+/* phone */
+@media (max-width:860px){
+  body{overflow:auto}
+  #app{grid-template-columns:1fr;grid-template-rows:56vh auto;height:auto}
+  #mapWrap{height:56vh}
+  #console{border-left:0;border-top:1px solid var(--line)}
+  .evas{grid-template-columns:1fr}
+  .eva{min-height:0}
+  #top .chip small{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="mapWrap">
+    <canvas id="map" aria-label="Map of the Apollo 15 landing site at Hadley-Apennine"></canvas>
+    <div id="top">
+      <div class="chip" id="cEva">EVA 1<small>MOONWALK</small></div>
+      <div class="chip" id="cClock">0:00<small>EVA TIME</small></div>
+      <div class="chip" id="cDist">0.0 km<small>DRIVEN</small></div>
+      <button class="btn" id="leave" title="Back to the level list">⏏ Leave game</button>
+    </div>
+  </div>
+  <div id="console">
+    <div class="card">
+      <h3>Oxygen <small id="o2who">Dave Scott · Jim Irwin</small></h3>
+      <div class="o2"><b id="o2t">6:30</b><div class="bar" id="o2bar"><i id="o2i"></i><u id="o2u"></u></div><span id="o2pct">100%</span></div>
+      <div class="o2note" id="o2note"></div>
+    </div>
+    <div class="card">
+      <h3>Communications <small>Houston ↔ Falcon</small></h3>
+      <div class="comm"><span>🌍 HOUSTON</span><div class="line"><canvas id="sig" width="400" height="60"></canvas></div><span>🌕 HADLEY</span></div>
+      <div class="ant" id="ant"><i></i><span>Voice on the low-gain antenna</span></div>
+    </div>
+    <div class="card">
+      <h3>Capcom loop <small id="lagNote">delay 1.3 s</small></h3>
+      <div id="log" aria-live="polite"></div>
+    </div>
+    <div class="card">
+      <h3>Traverse plan <small id="planNote"></small></h3>
+      <div id="stations"></div>
+    </div>
+  </div>
+</div>
+<div class="ov hidden" id="ov"><div class="box" id="box"></div></div>
+<script src="js/edition.js?v=3"></script>
+<script src="js/moon/data.js?v=3"></script>
+<script src="js/music.js?v=3"></script>
+<script src="js/moon/moon.js?v=3"></script>
+</body>
+</html>

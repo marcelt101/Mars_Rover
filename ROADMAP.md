@@ -140,3 +140,13 @@ picture teaches one thing: galaxies, clouds of dust and gas, star formation, bla
 - Venus map for Venera. Webb phases 2-4 (Explorer blocks, Specialist code-only steering, badge ladders).
 - Before Steam: a desktop app, Steam's AI-art disclosure, remove the NASA logo from the Lunar Module picture,
   store images and a trailer.
+
+## The Moon rebuilt: Apollo 15 Mission Control (game/moon.html)
+- The player is Houston; Dave Scott and Jim Irwin drive. Three real EVAs (6:33, 7:12, 4:50 of oxygen) with the real
+  stations (Elbow, St. George, 6, 6a, Spur crater and the Genesis Rock, Dune, Scarp, rille rim, 10), the real LM jobs
+  (unload the rover, ALSEP, heat-flow drilling, the stuck deep core, the hammer and the feather), the walk-back circle,
+  the 1.3-second radio delay (voice while driving, TV only when parked), the TV camera steered from Earth with the delay,
+  and sample tools. Ages: Cadet 2 tools and a still astronaut; Explorer 4 tools, estimates, full delay; Specialist 6.
+- Opened from the level list in solo games (team games and Mission Log days keep the old Moon map for now). Finishing
+  EVA 3 in campaign mode unlocks Meridiani. Progress per profile (p.moon), resumes mid-EVA.
+- Still to do: the menu flow redesign (one path: Play, Campaign or Free play, Solo/Host/Join, rover, map, Start).

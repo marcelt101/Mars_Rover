@@ -42,6 +42,8 @@ $('homeBtn').onclick = () => { if (G.phase === 'lobby') leave(); };
 MR.freeOn = () => (MR.PREVIEW || []).includes('freeplay');
 if (MR.freeOn()) $('freeMode').hidden = false;
 $('freeBtn').onclick = () => { $('soloBtn').click(); if (G.lobby) { G.lobby.free = true; renderLobby(); } };
+/* The Moon map opens Apollo 15 Mission Control (moon.html) in solo games; Mission Log days and team games keep the old Moon map for now. */
+MR.moonApollo = () => G.mode === 'solo' && !G.lobby.day;
 $('soloBtn').onclick = () => { if (!me()) return; G.resume = null; G.noSave = false; G.lostCode = null; G.planSum = {}; G.mode = 'solo'; G.myPid = me().id; G.lobby = {players:[{...MR.playerSummary(me()), connected:true, host:true}], map:MR.Store.unlocked().slice(-1)[0], unlocked:MR.Store.unlocked()}; enterLobby(); };
 $('hostBtn').onclick = () => { G.resume = null; G.noSave = false; startHost(); };
 $('logBtn').onclick = () => MR.LogUI.calendar();
@@ -349,7 +351,7 @@ function renderLobby(){
   renderNet();
   const players = G.lobby.players;
   $('crewCount').textContent = `${players.length} / ${MR.MAX_PLAYERS}`;
-  $('crewList').innerHTML = players.map(x => `<li>${UI.avatar(x)}<span class="who"><b>${esc(x.name)}${x.pid === G.myPid ? ' (you)' : ''}</b><small>${MR.ROLES[x.role].label} · ${MR.roverOn() && x.job !== 'lab' && MR.ROVERS[MR.modelFor(x, G.lobby.map)] ? esc(MR.ROVERS[MR.modelFor(x, G.lobby.map)].name) + ' · ' : ''}${MR.JOBS[x.job] ? MR.JOBS[x.job].label : ''} · ${MR.RANKS[x.rank|0].name}</small></span>${MR.Msg.can(x.pid) ? `<button class="btn dmb" data-dm="${esc(x.pid)}" aria-label="Send a message to ${esc(x.name)}">✉</button>` : ''}${host && !x.host ? `<button class="btn dmb kick" data-kick="${esc(x.pid)}" aria-label="Remove ${esc(x.name)} from the game" title="Remove from the game">✕</button>` : ''}${x.host ? '<span class="tag">Host</span>' : ''}<span class="dot ${x.connected ? '' : 'off'}" title="${x.connected ? 'Connected' : 'Offline'}"></span></li>`).join('');
+  $('crewList').innerHTML = players.map(x => `<li>${UI.avatar(x)}<span class="who"><b>${esc(x.name)}${x.pid === G.myPid ? ' (you)' : ''}</b><small>${MR.ROLES[x.role].label} · ${G.lobby.map === 'moon' && MR.moonApollo() ? 'Apollo 15 · Mission Control' : `${MR.roverOn() && x.job !== 'lab' && MR.ROVERS[MR.modelFor(x, G.lobby.map)] ? esc(MR.ROVERS[MR.modelFor(x, G.lobby.map)].name) + ' · ' : ''}${MR.JOBS[x.job] ? MR.JOBS[x.job].label : ''} · ${MR.RANKS[x.rank|0].name}`}</small></span>${MR.Msg.can(x.pid) ? `<button class="btn dmb" data-dm="${esc(x.pid)}" aria-label="Send a message to ${esc(x.name)}">✉</button>` : ''}${host && !x.host ? `<button class="btn dmb kick" data-kick="${esc(x.pid)}" aria-label="Remove ${esc(x.name)} from the game" title="Remove from the game">✕</button>` : ''}${x.host ? '<span class="tag">Host</span>' : ''}<span class="dot ${x.connected ? '' : 'off'}" title="${x.connected ? 'Connected' : 'Offline'}"></span></li>`).join('');
   const mine = players.find(x => x.pid === G.myPid) || (p && MR.playerSummary(p));
   const airless = MR.MAPS[G.lobby.map] && MR.MAPS[G.lobby.map].airless;
   if (mine && MR.roverOn() && !mine.model && mine.job !== 'lab' && G.mode !== 'client' && me()) { mine.model = me().model = MR.modelFor({...mine, model:null}, lastMars()); MR.Store.save(); }   // start with a Mars rover
@@ -375,7 +377,7 @@ function renderLobby(){
   $('mapNote').textContent = dm ? `Mission Log, day ${dm.day}: ${dm.title} (${MR.MAPS[dm.map].name}).` : G.mode === 'client' ? 'The host picks the map' : G.resume ? `Continuing your ${MR.MAPS[G.resume.map].name} expedition on sol ${G.resume.sol}. Rovers of players who don't join wait where they are.` : '';
   if (G.resume || dm) document.querySelectorAll('#mapPick .mapcard').forEach(b => b.disabled = true);
   $('startBtn').hidden = G.mode === 'client';
-  $('startBtn').textContent = G.resume ? 'Continue expedition' : 'Start expedition';   // the same on every level, Webb included
+  $('startBtn').textContent = G.resume ? 'Continue expedition' : G.lobby.map === 'moon' && MR.moonApollo() ? 'Start the Apollo 15 mission' : 'Start expedition';   // the same on every level, Webb included
   $('jobPick').closest('.panel').hidden = G.lobby.map === 'webb';   // no rover to pick: you fly the telescope
   $('lobbyWait').textContent = G.mode === 'client' ? 'Waiting for the host to start…' : (host && players.length < 2 ? 'Waiting for players to join (you can also start alone).' : '');
 }
@@ -397,6 +399,8 @@ function renderRoverPick(mine){
     return `<button class="rcard ${R.soon ? 'soon' : ''} ${locked ? 'soon locked' : ''}" data-locked="${locked ? 1 : ''}" data-model="${k}" aria-pressed="${k === cur}" ${off ? 'disabled' : ''}><img src="img/rovers/${R.art}-top-256.webp" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'noart',textContent:'${R.soon ? '🪐' : '🚀'}'}))"><b>${esc(R.name)}</b>${why ? `<small>${esc(why)}</small>` : ''}</button>`; });   // only the name: the story is in the box that opens
   if (team && role !== 'cadet') cards.push(`<button class="rcard" data-model="lab" aria-pressed="${cur === 'lab'}"><img src="img/rovers/lab-top-256.webp" alt=""><b>Lab</b></button>`);
   const jobs = cur === 'lab' ? ['lab'] : MR.roverJobs(cur, role);
+  if (cur === 'lrv' && MR.moonApollo()) { $('jobPick').innerHTML = `<div class="rstep"><i>1</i> Pick your rover</div><div class="rcards">${cards.join('')}</div>
+    <div class="moonnote"><b>🌕 Apollo 15 Mission Control</b>On the Moon, astronauts Dave Scott and Jim Irwin drive the buggy. You are Mission Control in Houston: plan their moonwalks, talk to them by radio, and steer the TV camera from Earth.</div>`; return; }
   $('jobPick').innerHTML = `<div class="rstep"><i>1</i> Pick your rover</div><div class="rcards">${cards.join('')}</div>
     <div class="rstep"><i>2</i> Pick ${esc(cur === 'lab' ? 'the Lab' : MR.ROVERS[cur].name)}'s job</div>
     <div class="jobs">${jobs.map(k => { const j = MR.JOBS[k]; return `<div class="jobw"><button class="job" data-job="${k}" aria-pressed="${k === mine.job}"><b>${j.label}</b><small>${esc(j.desc)}</small></button><button class="jinfo" data-info="${k}" aria-label="About the ${j.label} job" title="About this job">i</button></div>`; }).join('')}</div>`;
@@ -440,6 +444,8 @@ $('jobPick').onclick = e => { const rc = e.target.closest('.rcard'); if (rc) { i
 $('mapPick').onclick = e => { const b = e.target.closest('.mapcard'); if (!b || b.disabled || G.mode === 'client') return; G.lobby.map = b.dataset.map; broadcast(lobbyMsg()); renderLobby(); MR.sfx.click(); };
 $('startBtn').onclick = () => {
   if (G.mode === 'client') return;
+  if (G.lobby.map === 'moon' && MR.moonApollo()) { MR.sfx && MR.sfx.click(); const slot = new URLSearchParams(location.search).get('slot'), qs = [slot ? 'slot=' + encodeURIComponent(slot) : '', G.lobby.free ? 'free=1' : ''].filter(Boolean).join('&');
+    location.href = 'moon.html' + (qs ? '?' + qs : ''); return; }   // the Moon is Apollo 15 Mission Control
   if (G.lobby.map === 'webb') { MR.sfx && MR.sfx.click(); const slot = new URLSearchParams(location.search).get('slot'); location.href = 'webb.html' + (slot ? '?slot=' + encodeURIComponent(slot) : ''); return; }
   const players = G.lobby.players.filter(x => x.connected), ex = G.resume;
   let st;

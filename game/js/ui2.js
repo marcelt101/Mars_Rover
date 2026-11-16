@@ -155,9 +155,11 @@ if (!/[?&]nomenu=1/.test(location.search)) {   /* approved: the title screen */
   const go = () => { sp.classList.add('out'); document.body.classList.remove('onsplash'); MR.sfx && MR.sfx.click(); setTimeout(() => sp.remove(), 350); };
   $('splashPlay').onclick = go;
   addEventListener('keydown', e => { if (document.getElementById('splash') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } });
-  if (location.hash === '#levels') sp.remove(), document.body.classList.remove('onsplash');   // back from the Webb level: no title screen
+  if (/^#levels/.test(location.hash)) sp.remove(), document.body.classList.remove('onsplash');   // back from the Webb level: no title screen
 }
 /* Back from the Webb level (webb.html#…→ index.html#levels): straight to the level list, Webb still picked. */
-if (location.hash === '#levels') setTimeout(() => { history.replaceState(null, '', location.pathname + location.search);
-  if (!MR.Store.current()) return; $('soloBtn').click(); if (MR.webbOn() && MR.webbOpen(MR.Store.unlocked())) { MR.Game.lobby.map = 'webb'; const b = document.querySelector('#mapPick [data-map="webb"]'); if (b) b.click(); } }, 0);
+if (/^#levels/.test(location.hash)) { const back = location.hash; setTimeout(() => { history.replaceState(null, '', location.pathname + location.search);
+  if (!MR.Store.current()) return; $('soloBtn').click();
+  if (back === '#levels-moon') { const b = document.querySelector('.rcard[data-model="lrv"]'); if (b && !b.disabled && !b.dataset.locked) { b.click(); const c = document.querySelector('.sheet [data-close]'); if (c) c.click(); } return; }
+  if (MR.webbOn() && MR.webbOpen(MR.Store.unlocked())) { MR.Game.lobby.map = 'webb'; const b = document.querySelector('#mapPick [data-map="webb"]'); if (b) b.click(); } }, 0); }
 })();

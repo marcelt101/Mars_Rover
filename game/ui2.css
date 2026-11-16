@@ -253,3 +253,4 @@ body[data-scr="scrGame"] .hudleave{display:inline-flex}
 /* The lobby's Start bar stays on screen (pinned to the bottom), whatever the window size or itch.io frame. */
 .startbar{position:sticky;bottom:0;z-index:5;margin-top:10px;padding:12px 14px;border-radius:14px 14px 0 0;
   background:linear-gradient(180deg,rgba(10,14,20,.88),rgba(10,14,20,.97));border:1px solid var(--line);border-bottom:0;box-shadow:0 -10px 30px rgba(0,0,0,.55);backdrop-filter:blur(6px)}
+.moonnote{margin-top:6px;padding:12px 14px;border-radius:12px;border:1px solid rgba(240,191,90,.45);background:rgba(240,191,90,.08);font-size:14px;line-height:1.45;color:var(--fg)}.moonnote b{display:block;font:700 15px var(--display);color:var(--gold,#f0bf5a);margin-bottom:3px}
