@@ -18,6 +18,8 @@ const isHostish = () => G.mode === 'solo' || G.mode === 'host';
 const team = () => G.mode !== 'solo';
 /* Code mode: Specialists always write Python; Explorers can switch to it from the Python tab ("Write my own"),
    and the choice is kept in their profile. */
+/* Where the signal goes: the Moon or Mars (wording on buttons and messages). */
+const where = () => G.state && MR.MAPS[G.state.map] && MR.MAPS[G.state.map].airless ? 'the Moon' : 'Mars';
 const isCode = r => !!r && (r.role === 'specialist' || (r.role === 'explorer' && r.pid === G.myPid && !!(me() || {}).pyMode));
 
 /* ---------- start-up ---------- */
@@ -816,10 +818,10 @@ function renderTeam(){
   else if (team()) {
     const waiting = G.state.rovers.filter(r => { const lp = G.lobby.players.find(x => x.pid === r.pid); return lp && lp.connected && !G.readyPids.includes(r.pid); });
     const flying = G.state.rovers.filter(r => G.readyPids.includes(r.pid) && sigLeft(r.pid) > 0), al = autoLeftNow();
-    t = waiting.length ? `Waiting for: <b>${waiting.map(r => esc(r.name)).join(', ')}</b>` : flying.length ? 'Everyone has sent. Waiting for the signals to reach Mars…' : 'All plans are on Mars. Starting the sol…';
+    t = waiting.length ? `Waiting for: <b>${waiting.map(r => esc(r.name)).join(', ')}</b>` : flying.length ? `Everyone has sent. Waiting for the signals to reach ${where()}…` : `All plans are on ${where()}. Starting the sol…`;
     if (waiting.length && al != null && al > 0) t += ` · the sol starts in <b>${Math.ceil(al / 1000)} s</b>`;
-    if (G.ready) t = `<b>${sigLeft(G.myPid) > 0 ? 'Your signal is on its way.' : 'Your plan is on Mars.'}</b> ` + t;
-  } else t = 'Plan your moves, then send them to Mars.';
+    if (G.ready) t = `<b>${sigLeft(G.myPid) > 0 ? 'Your signal is on its way.' : `Your plan is on ${where()}.`}</b> ` + t;
+  } else t = `Plan your moves, then send them to ${where()}.`;
   $('teamLine').innerHTML = t;
   $('forceBtn').hidden = !(G.mode === 'host' && G.phase === 'plan' && G.ready && G.state.rovers.length > 1);
   renderLock(); renderNudges();
@@ -988,7 +990,7 @@ function renderPlan(){
   const row = (c, key, n, depth) => { const b = MR.BLOCKS[c.type], d = b || MR.CMDS[c.type], open = b && G.cursor === key, info = pv[key] || {};
     const pad = depth ? ` style="--depth:${depth}"` : '';
     const argBtns = d.arg ? `<span class="arg"><button class="mini-b big" data-a="dec" aria-label="${b ? 'Fewer times' : 'Fewer squares'}" ${dis}>−</button><b>${c.arg}</b><button class="mini-b big" data-a="inc" aria-label="${b ? 'More times' : 'More squares'}" ${dis}>+</button></span>` : '';
-    const sub = info.unknown ? 'Decided on Mars' : info.halted ? 'May not run (stops before this)' : `faces ${FACE[info.dir]}${MR.usesPower(r) ? ` · ${info.bat}% left` : ''}`;
+    const sub = info.unknown ? `Decided on ${where()}` : info.halted ? 'May not run (stops before this)' : `faces ${FACE[info.dir]}${MR.usesPower(r) ? ` · ${info.bat}% left` : ''}`;
     const num = c.state === 'done' ? '✓' : depth ? '' : n;
     return `<li class="cmd pstep ${b ? 'blk' : 'cat-' + d.cat} ${depth ? 'inb' : ''} ${open ? 'open' : ''} ${info.warn ? 'warn' : ''} ${info.halted ? 'halted' : ''} ${c.state||''}" data-i="${key}"${pad}>`
       + `<span class="drag" title="Drag to move" aria-hidden="true">⋮⋮</span><span class="num">${num}</span><span class="pic ic">${cmdPic(c, d)}</span>`
@@ -1028,7 +1030,7 @@ function renderLock(){
   $('trashBtn').disabled = !canEdit;
   const empty = r.role !== 'specialist' && !G.plan.length, hasPlan = true;
   const keep = r.prog && !G.cancelProg && (isCode(r) ? !progTouched() : !G.plan.length);
-  const label = G.phase === 'run' ? 'Rovers driving…' : G.phase === 'won' && !G.contAfterWin ? 'Done' : G.ready ? 'Change plan' : keep ? 'Keep program running' : empty ? 'Wait this sol' : team() ? 'Ready' : 'Send to Mars';
+  const label = G.phase === 'run' ? 'Rovers driving…' : G.phase === 'won' && !G.contAfterWin ? 'Done' : G.ready ? 'Change plan' : keep ? 'Keep program running' : empty ? 'Wait this sol' : team() ? 'Ready' : `Send to ${where()}`;
   $('sendBtn').textContent = label; $('sendBtn').disabled = G.phase !== 'plan' || (!G.ready && !hasPlan);
   $('goBtn').textContent = G.phase === 'run' ? '…' : G.ready ? 'WAITING' : 'GO!';
   $('goBtn').disabled = G.phase !== 'plan' || (!G.ready && !G.plan.length);
@@ -1282,7 +1284,7 @@ function uplink(own){
   return new Promise(res => { const t0 = performance.now();
     (function step(t){ const k = ms ? Math.min(1, (t - t0) / ms) : 1;
       $('ulBar').style.width = (k*100) + '%'; if (cv && !cv.hidden) MR.Garage.drawUplink(cv, k, r, t);
-      $('ulTitle').textContent = `Signal on its way to Mars… ${Math.max(0, Math.ceil((ms - (t - t0)) / 1000))} s`;
+      $('ulTitle').textContent = `Signal on its way to ${where()}… ${Math.max(0, Math.ceil((ms - (t - t0)) / 1000))} s`;
       if (own && (gen !== G.gen || !G.ready || G.phase !== 'plan')) { $('uplink').hidden = true; $('ulBar').style.width = '0'; res(); return; }
       if (k < 1) requestAnimationFrame(step);
       else if (cv && !cv.hidden && !own) { res(); MR.sfx.click(); const b0 = performance.now();   // the rover beeps back while the sol starts
